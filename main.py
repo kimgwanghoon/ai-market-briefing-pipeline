@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple
@@ -88,31 +89,130 @@ def get_korean_index_data(market_type: str) -> dict:
 
 def get_index_data(ticker: str) -> dict:
     default = {"price": "N/A", "change": "-", "color": "#6b7280", "trend": "보합"}
+
     try:
-        data = yf.Ticker(ticker).history(period="5d")
-        if len(data) < 2:
-            return default
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+        res = requests.get(
+            url,
+            params={"range": "7d", "interval": "1d"},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=10,
+        )
+        res.raise_for_status()
+        chart = res.json().get("chart", {})
+        result = chart.get("result") or []
+        if result:
+            closes = result[0].get("indicators", {}).get("quote", [{}])[0].get("close", [])
+            closes = [float(v) for v in closes if v is not None]
+            if len(closes) >= 2:
+                today_close = closes[-1]
+                yesterday_close = closes[-2]
+                diff = today_close - yesterday_close
+                pct_change = (diff / yesterday_close) * 100
 
-        today_close = float(data["Close"].iloc[-1])
-        yesterday_close = float(data["Close"].iloc[-2])
-        diff = today_close - yesterday_close
-        pct_change = (diff / yesterday_close) * 100
+                if diff > 0:
+                    color, sign, trend = "#ef4444", "▲", "상승"
+                elif diff < 0:
+                    color, sign, trend = "#3b82f6", "▼", "하락"
+                else:
+                    color, sign, trend = "#6b7280", "-", "보합"
 
-        if diff > 0:
-            color, sign, trend = "#ef4444", "▲", "상승"
-        elif diff < 0:
-            color, sign, trend = "#3b82f6", "▼", "하락"
-        else:
-            color, sign, trend = "#6b7280", "-", "보합"
-
-        return {
-            "price": f"{today_close:,.2f}",
-            "change": f"{sign} {abs(diff):.2f} ({pct_change:+.2f}%)",
-            "color": color,
-            "trend": trend,
-        }
+                return {
+                    "price": f"{today_close:,.2f}",
+                    "change": f"{sign} {abs(diff):.2f} ({pct_change:+.2f}%)",
+                    "color": color,
+                    "trend": trend,
+                }
     except Exception:
-        return default
+        pass
+
+    for wait_seconds in (0, 1, 2):
+        if wait_seconds:
+            time.sleep(wait_seconds)
+        try:
+            data = yf.Ticker(ticker).history(period="7d")
+            close = data.get("Close")
+            if close is None:
+                continue
+            close = close.dropna()
+            if len(close) < 2:
+                continue
+
+            today_close = float(close.iloc[-1])
+            yesterday_close = float(close.iloc[-2])
+            diff = today_close - yesterday_close
+            pct_change = (diff / yesterday_close) * 100
+
+            if diff > 0:
+                color, sign, trend = "#ef4444", "▲", "상승"
+            elif diff < 0:
+                color, sign, trend = "#3b82f6", "▼", "하락"
+            else:
+                color, sign, trend = "#6b7280", "-", "보합"
+
+            return {
+                "price": f"{today_close:,.2f}",
+                "change": f"{sign} {abs(diff):.2f} ({pct_change:+.2f}%)",
+                "color": color,
+                "trend": trend,
+            }
+        except Exception:
+            continue
+
+    return default
+
+
+def get_batch_index_data(ticker_map: dict) -> dict:
+    default = {"price": "N/A", "change": "-", "color": "#6b7280", "trend": "보합"}
+    results = {key: default.copy() for key in ticker_map}
+
+    symbols = list(ticker_map.values())
+    if not symbols:
+        return results
+
+    try:
+        data = yf.download(
+            tickers=" ".join(symbols),
+            period="7d",
+            group_by="ticker",
+            auto_adjust=False,
+            progress=False,
+            threads=False,
+        )
+        if data.empty:
+            return results
+
+        for key, ticker in ticker_map.items():
+            try:
+                close = data[ticker]["Close"].dropna()
+            except Exception:
+                continue
+
+            if len(close) < 2:
+                continue
+
+            today_close = float(close.iloc[-1])
+            yesterday_close = float(close.iloc[-2])
+            diff = today_close - yesterday_close
+            pct_change = (diff / yesterday_close) * 100
+
+            if diff > 0:
+                color, sign, trend = "#ef4444", "▲", "상승"
+            elif diff < 0:
+                color, sign, trend = "#3b82f6", "▼", "하락"
+            else:
+                color, sign, trend = "#6b7280", "-", "보합"
+
+            results[key] = {
+                "price": f"{today_close:,.2f}",
+                "change": f"{sign} {abs(diff):.2f} ({pct_change:+.2f}%)",
+                "color": color,
+                "trend": trend,
+            }
+    except Exception:
+        return results
+
+    return results
 
 
 def fallback_summary(
