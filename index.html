@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Evening Briefing: 오늘 국장 마감 & 미장 프리뷰</title>
-  <meta name="description" content="한국 시장 상승폭 확대" />
+  <meta name="description" content="한국 시장, 강력 반등!" />
   <meta property="og:title" content="Evening Briefing: 오늘 국장 마감 & 미장 프리뷰" />
-  <meta property="og:description" content="한국 시장 상승폭 확대" />
+  <meta property="og:description" content="한국 시장, 강력 반등!" />
   <meta property="og:image" content="cover.png" />
   <style>
     :root {
@@ -69,6 +69,7 @@
     }
 
     .cover-section {
+      position: relative;
       text-align: center;
       margin-bottom: 32px;
     }
@@ -80,6 +81,32 @@
       border-radius: 16px;
       border: 1px solid var(--line);
       box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+    }
+
+    .bubble-overlay {
+      position: absolute;
+      top: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      width: 100%;
+      max-width: 600px;
+      padding: 0 10px;
+    }
+
+    .bubble {
+      background: white;
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--ink);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      max-width: 140px;
     }
 
     .section-title {
@@ -218,7 +245,7 @@
     <header class="header">
       <span class="badge">AUTOMATED BRIEFING</span>
       <h1>Evening Briefing: 오늘 국장 마감 & 미장 프리뷰</h1>
-      <p class="time">생성 시각(KST): 2026-03-05 14:56:22</p>
+      <p class="time">생성 시각(KST): 2026-03-05 14:58:14</p>
     </header>
 
     <section class="indexes-section">
@@ -229,18 +256,18 @@
         <div class="indexes">
           <div class="item">
             <p class="name">KOSPI</p>
-            <p class="price">5,689.29</p>
-            <p class="change" style="color: #ef4444">▲ 595.75 (+11.70%)</p>
+            <p class="price">5,674.29</p>
+            <p class="change" style="color: #ef4444">▲ 580.75 (+11.40%)</p>
           </div>
           <div class="item">
             <p class="name">KOSDAQ</p>
-            <p class="price">1,148.37</p>
-            <p class="change" style="color: #ef4444">▲ 169.93 (+17.37%)</p>
+            <p class="price">1,147.34</p>
+            <p class="change" style="color: #ef4444">▲ 168.90 (+17.26%)</p>
           </div>
           <div class="item">
             <p class="name">EWY</p>
-            <p class="price">134.37</p>
-            <p class="change" style="color: #ef4444">▲ 2.03 (+1.53%)</p>
+            <p class="price">N/A</p>
+            <p class="change" style="color: #6b7280">-</p>
           </div>
         </div>
       </div>
@@ -250,18 +277,18 @@
         <div class="indexes">
           <div class="item">
             <p class="name">S&P 500</p>
-            <p class="price">6,869.50</p>
-            <p class="change" style="color: #ef4444">▲ 52.87 (+0.78%)</p>
+            <p class="price">N/A</p>
+            <p class="change" style="color: #6b7280">-</p>
           </div>
           <div class="item">
             <p class="name">DOW</p>
-            <p class="price">48,739.41</p>
-            <p class="change" style="color: #ef4444">▲ 238.14 (+0.49%)</p>
+            <p class="price">N/A</p>
+            <p class="change" style="color: #6b7280">-</p>
           </div>
           <div class="item">
             <p class="name">NASDAQ</p>
-            <p class="price">22,807.48</p>
-            <p class="change" style="color: #ef4444">▲ 290.79 (+1.29%)</p>
+            <p class="price">N/A</p>
+            <p class="change" style="color: #6b7280">-</p>
           </div>
         </div>
       </div>
@@ -269,10 +296,16 @@
 
     <section class="cover-section">
       <img class="cover" src="cover.png" alt="시장 브리핑 커버" />
+      <div class="bubble-overlay">
+        <span class="bubble">📈 상승</span>
+        <span class="bubble">📉 하락</span>
+        <span class="bubble">⚠️ 변동성</span>
+        <span class="bubble">💡 관전점</span>
+      </div>
     </section>
 
     <section class="headline-card">
-      <h2 class="headline">한국 시장 상승폭 확대</h2>
+      <h2 class="headline">한국 시장, 강력 반등!</h2>
       
       
       
@@ -287,13 +320,13 @@
         <li>[한국 시장]</li>
       
         
-        <li><strong>코스피</strong>는 5,689.29로 595.75포인트 상승하며 <strong>11.70%</strong>의 강세를 보였습니다.</li>
+        <li><strong>코스피</strong>는 <strong>5,674.29</strong>로 마감하며 <strong>11.40%</strong> 상승, 최근 상승세가 두드러짐.</li>
       
         
-        <li><strong>코스닥</strong> 역시 1,148.37로 169.93포인트 상승, <strong>17.37%</strong>의 놀라운 상승률을 기록했습니다.</li>
+        <li><strong>코스닥</strong>도 <strong>1,147.34</strong>로 마감, <strong>17.26%</strong>의 상승폭을 기록하며 강력한 반등을 보여줌.</li>
       
         
-        <li>투자자들은 시장 <strong>상승세</strong>에 긍정적인 반응을 보이며, 반도체 및 IT 부문 주식에 대한 <strong>관심</strong>이 높아졌습니다.</li>
+        <li>기술주 중심의 상승세가 <strong>투자 심리</strong>를 개선시키며 전반적인 시장 활기를 불어넣음.</li>
       
         
           
@@ -307,13 +340,16 @@
         <li>[미국 시장]</li>
       
         
-        <li><strong>S&P500</strong>은 6,869.50으로 52.87포인트 상승, <strong>0.78%</strong>의 증가율을 보이며 긍정적인 분위기를 이어갔습니다.</li>
+          
+          
+        
+        <li>미국 시장은 오늘 <strong>중요 경제 지표</strong> 발표를 앞두고 투자자들의 <strong>관심</strong>이 집중됨.</li>
       
         
-        <li><strong>다우존스</strong>는 48,739.41로 238.14포인트 상승하며 <strong>지속적인 회복세</strong>를 나타냈습니다.</li>
+        <li>특히 <strong>금리 인상</strong> 우려와 관련된 논의가 필수적이며, 이것이 투자 심리에 <strong>영향</strong>을 미칠 가능성 있음.</li>
       
         
-        <li>오늘 밤에는 <strong>나스닥</strong>의 성과가 특히 주목받을 것으로 보이며, 투자자들은 <strong>금리</strong> 발표 및 <strong>기업 실적</strong>에 따른 영향을 주의 깊게 살펴볼 것입니다.</li>
+        <li><strong>연방준비제도</strong>의 정책 변화가 주요 포인트가 될 전망, 시장 불확실성을 완화할 수 있는 방안에 주목해야 함.</li>
       
       </ol>
     </section>
