@@ -23,7 +23,7 @@ OUTPUT_DIR = BASE_DIR / "public"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 OPENAI_API_KEY = os.getenv("AI_API_KEY")
-TEAMS_WEBHOOK_URL = os.getenv("TEAMS_WEBHOOK_URL")
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 GITHUB_PAGES_URL = os.getenv("GITHUB_PAGES_URL", "")
 
 KST = pytz.timezone("Asia/Seoul")
@@ -242,68 +242,35 @@ def render_html(headline: str, summary_items: List[str], cover_image: str, index
     (OUTPUT_DIR / "index.html").write_text(html_output, encoding="utf-8")
 
 
-def send_teams_alert(headline: str, summary_items: List[str], indexes: dict) -> None:
-    if not TEAMS_WEBHOOK_URL:
+def send_discord_alert(headline: str, summary_items: List[str], indexes: dict) -> None:
+    if not DISCORD_WEBHOOK_URL:
         return
 
     body_text = "\n".join([re.sub(r"\*+", "", s) for s in summary_items])
 
+    embed_fields = [
+        {"name": "KOSPI", "value": f"{indexes['kospi']['price']} ({indexes['kospi']['change']})", "inline": True},
+        {"name": "KOSDAQ", "value": f"{indexes['kosdaq']['price']} ({indexes['kosdaq']['change']})", "inline": True},
+        {"name": "EWY", "value": f"{indexes['ewy']['price']} ({indexes['ewy']['change']})", "inline": True},
+        {"name": "S&P 500", "value": f"{indexes['sp500']['price']} ({indexes['sp500']['change']})", "inline": True},
+        {"name": "Dow", "value": f"{indexes['dow']['price']} ({indexes['dow']['change']})", "inline": True},
+        {"name": "NASDAQ", "value": f"{indexes['nasdaq']['price']} ({indexes['nasdaq']['change']})", "inline": True},
+    ]
+
     payload = {
-        "type": "message",
-        "attachments": [
+        "embeds": [
             {
-                "contentType": "application/vnd.microsoft.card.adaptive",
-                "content": {
-                    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-                    "type": "AdaptiveCard",
-                    "version": "1.2",
-                    "body": [
-                        {
-                            "type": "TextBlock",
-                            "text": f"🚨 {EDITION_TITLE}",
-                            "weight": "Bolder",
-                            "size": "Medium",
-                            "color": "Accent",
-                        },
-                        {
-                            "type": "TextBlock",
-                            "text": f"📰 {headline}",
-                            "weight": "Bolder",
-                            "size": "Large",
-                            "wrap": True,
-                        },
-                        {
-                            "type": "FactSet",
-                            "facts": [
-                                {"title": "KOSPI", "value": f"{indexes['kospi']['price']} ({indexes['kospi']['change']})"},
-                                {"title": "KOSDAQ", "value": f"{indexes['kosdaq']['price']} ({indexes['kosdaq']['change']})"},
-                                {"title": "EWY", "value": f"{indexes['ewy']['price']} ({indexes['ewy']['change']})"},
-                                {"title": "S&P 500", "value": f"{indexes['sp500']['price']} ({indexes['sp500']['change']})"},
-                                {"title": "Dow", "value": f"{indexes['dow']['price']} ({indexes['dow']['change']})"},
-                                {"title": "NASDAQ", "value": f"{indexes['nasdaq']['price']} ({indexes['nasdaq']['change']})"},
-                            ],
-                        },
-                        {
-                            "type": "TextBlock",
-                            "text": body_text,
-                            "wrap": True,
-                            "separator": True,
-                        },
-                    ],
-                    "actions": [
-                        {
-                            "type": "Action.OpenUrl",
-                            "title": "브리핑 페이지 열기",
-                            "url": GITHUB_PAGES_URL or "https://github.com",
-                        }
-                    ],
-                },
+                "title": f"🚨 {EDITION_TITLE}",
+                "color": 5763714,
+                "fields": embed_fields,
+                "description": f"**📰 {headline}**\n\n{body_text}",
+                "url": GITHUB_PAGES_URL or "https://github.com",
             }
-        ],
+        ]
     }
 
     try:
-        requests.post(TEAMS_WEBHOOK_URL, json=payload, timeout=10)
+        requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=10)
     except Exception:
         pass
 
@@ -328,7 +295,7 @@ def main() -> None:
     )
 
     render_html(headline, summary_items, cover_image, indexes)
-    send_teams_alert(headline, summary_items, indexes)
+    send_discord_alert(headline, summary_items, indexes)
 
     print("Generated:", OUTPUT_DIR / "index.html")
 

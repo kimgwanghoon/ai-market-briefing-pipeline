@@ -34,7 +34,7 @@ jobs:
       - name: Generate page
         env:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
-          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           GITHUB_PAGES_URL: ${{ secrets.GITHUB_PAGES_URL }}
         run: python main.py
 
