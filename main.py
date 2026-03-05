@@ -490,6 +490,9 @@ def generate_ai_briefing(
     )
 
     if not OPENAI_API_KEY:
+        existing_cover = get_existing_cover_file()
+        if existing_cover:
+            return fallback_headline, fallback_items, existing_cover
         generate_cover_svg(OUTPUT_DIR / "cover.svg", fallback_headline)
         return fallback_headline, fallback_items, "cover.svg"
 
