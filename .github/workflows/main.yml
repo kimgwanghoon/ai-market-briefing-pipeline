@@ -2,8 +2,8 @@ name: Build and Deploy Pages
 
 on:
   schedule:
-    - cron: "30 0 * * 1-5"
-    - cron: "30 6 * * 1-5"
+    - cron: "0 23 * * 0-4"
+    - cron: "0 9 * * 1-5"
   workflow_dispatch:
 
 permissions:
