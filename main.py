@@ -115,9 +115,9 @@ def fallback_summary(kospi: dict, kosdaq: dict, sp500: dict, dow: dict, nasdaq: 
 
 def normalize_summary_items(items: List[str], fallback_items: List[str]) -> List[str]:
     cleaned = [item.strip() for item in items if item and item.strip()]
-    if len(cleaned) < 3:
-        return fallback_items[:5]
-    return cleaned[:5]
+    if len(cleaned) < 5:
+        return fallback_items[:8]
+    return cleaned[:8]
 
 
 def generate_cover_svg(path: Path, title: str) -> None:
@@ -161,11 +161,18 @@ def generate_ai_briefing(kospi: dict, kosdaq: dict, sp500: dict, dow: dict, nasd
 
     text_prompt = f"""
 현재 팩트 데이터 (절대 지어내지 말 것):
-- 현재 국장: 코스피 {kospi['price']} ({kospi['change']}), 코스닥 {kosdaq['price']} ({kosdaq['change']})
-- 미장 데이터: S&P500 {sp500['price']} ({sp500['change']}), 다우존스 {dow['price']} ({dow['change']}), 나스닥 {nasdaq['price']} ({nasdaq['change']})
+- 한국 시장: 코스피 {kospi['price']} ({kospi['change']}), 코스닥 {kosdaq['price']} ({kosdaq['change']})
+- 미국 시장: S&P500 {sp500['price']} ({sp500['change']}), 다우존스 {dow['price']} ({dow['change']}), 나스닥 {nasdaq['price']} ({nasdaq['change']})
 - 한국 야간지표(EWY): {ewy['price']} ({ewy['change']} - {ewy['trend']})
 
-당신은 여의도의 실전 투자 수석 애널리스트입니다. 위 데이터를 분석해 {prompt_context}를 3~5개의 핵심 포인트로 작성해 주세요.
+당신은 여의도의 실전 투자 수석 애널리스트입니다. 
+{prompt_context}를 아래 형식으로 작성해 주세요.
+
+[한국 시장]
+- 한국 시장에 대한 분석 및 요약 (2-3개 포인트)
+
+[미국 시장]
+- 미국 시장에 대한 분석 및 요약 (2-3개 포인트)
 
 조건:
 1) 각 포인트는 한 줄씩 작성
@@ -179,11 +186,18 @@ def generate_ai_briefing(kospi: dict, kosdaq: dict, sp500: dict, dow: dict, nasd
             messages=[{"role": "user", "content": text_prompt}],
         )
         llm_summary_raw = text_response.choices[0].message.content.strip()
-        summary_items = [
-            item.strip().lstrip("-").strip()
-            for item in llm_summary_raw.split("\n")
-            if item.strip()
-        ]
+        
+        lines = llm_summary_raw.split("\n")
+        summary_items = []
+        for line in lines:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if stripped.startswith("[") and "]" in stripped:
+                summary_items.append(stripped)
+            else:
+                summary_items.append(stripped.lstrip("-").strip())
+        
         summary_items = normalize_summary_items(summary_items, fallback_items)
 
         headline_prompt = (
