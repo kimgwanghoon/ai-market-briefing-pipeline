@@ -160,30 +160,47 @@ def generate_ai_briefing(kospi: dict, kosdaq: dict, sp500: dict, dow: dict, nasd
     )
 
     text_prompt = f"""
-현재 팩트 데이터 (절대 지어내지 말 것):
+목표:
+- {prompt_context}를 개인투자자 대상 데일리 브리핑으로 작성하세요.
+
+사용 가능한 팩트 데이터(이 범위 밖 정보는 추정/창작 금지):
 - 한국 시장: 코스피 {kospi['price']} ({kospi['change']}), 코스닥 {kosdaq['price']} ({kosdaq['change']})
 - 미국 시장: S&P500 {sp500['price']} ({sp500['change']}), 다우존스 {dow['price']} ({dow['change']}), 나스닥 {nasdaq['price']} ({nasdaq['change']})
 - 한국 야간지표(EWY): {ewy['price']} ({ewy['change']} - {ewy['trend']})
 
-당신은 여의도의 실전 투자 수석 애널리스트입니다. 
-{prompt_context}를 아래 형식으로 작성해 주세요.
+작성 규칙:
+1) 반드시 아래 출력 형식 그대로 작성하세요. 섹션명/불릿 기호/줄 수를 지키세요.
+2) 각 불릿은 45자 내외의 짧은 문장으로 작성하세요.
+3) 핵심 키워드는 각 불릿마다 1개 이상 **굵게** 표시하세요.
+4) [한국 시장] 3개 + [미국 시장] 3개, 총 6개 불릿을 작성하세요.
+5) 각 섹션에서 최소 1개 불릿은 숫자(지수/등락률/변동폭)를 포함하세요.
+6) 데이터가 N/A이거나 불명확하면 숫자를 만들지 말고 "데이터 확인 필요"라고 명시하세요.
+7) 과장, 투자확정 표현(예: 반드시 오른다)은 금지합니다.
 
+출력 형식:
 [한국 시장]
-- 한국 시장에 대한 분석 및 요약 (2-3개 포인트)
-
+- ...
+- ...
+- ...
 [미국 시장]
-- 미국 시장에 대한 분석 및 요약 (2-3개 포인트)
-
-조건:
-1) 각 포인트는 한 줄씩 작성
-2) 강조할 핵심 단어는 **굵게** 처리
-3) 수치가 있는 포인트를 최소 2개 포함
+- ...
+- ...
+- ...
 """.strip()
 
     try:
         text_response = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": text_prompt}],
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "당신은 한국/미국 주식 데일리 브리핑 에디터입니다. "
+                        "입력된 데이터만 사용해 간결하고 실행 가능한 관전 포인트를 작성하세요."
+                    ),
+                },
+                {"role": "user", "content": text_prompt},
+            ],
         )
         llm_summary_raw = text_response.choices[0].message.content.strip()
         
@@ -201,8 +218,10 @@ def generate_ai_briefing(kospi: dict, kosdaq: dict, sp500: dict, dow: dict, nasd
         summary_items = normalize_summary_items(summary_items, fallback_items)
 
         headline_prompt = (
-            "다음 요약을 바탕으로 15자 내외의 짧고 강한 헤드라인을 만들어 주세요. "
-            "불필요한 특수기호는 사용하지 마세요.\n\n"
+            "다음 브리핑 요약을 바탕으로 한국어 헤드라인 1개를 작성하세요. "
+            "길이는 12~18자, 공백 포함입니다. "
+            "강한 명사 중심으로 쓰고, 과장/감탄/특수기호는 금지합니다. "
+            "출력은 헤드라인 한 줄만 작성하세요.\n\n"
             f"내용: {llm_summary_raw}"
         )
         headline_response = client.chat.completions.create(
