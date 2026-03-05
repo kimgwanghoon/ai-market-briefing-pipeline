@@ -1,5 +1,6 @@
 import os
 import re
+import json
 from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple
@@ -21,6 +22,8 @@ except ImportError:
 BASE_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = BASE_DIR / "public"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+DATA_DIR = OUTPUT_DIR / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 OPENAI_API_KEY = os.getenv("AI_API_KEY")
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
@@ -260,6 +263,107 @@ def get_existing_cover_file() -> str:
     return ""
 
 
+def detect_run_source() -> str:
+    event_name = os.getenv("GITHUB_EVENT_NAME", "").strip().lower()
+    if event_name in {"push", "schedule", "workflow_dispatch"}:
+        return event_name
+    return "local"
+
+
+def is_briefing_response_valid(text: str) -> bool:
+    lines = [line.strip() for line in text.split("\n") if line.strip()]
+    if not any("[한국 시장]" in line for line in lines):
+        return False
+    if not any("[미국 시장]" in line for line in lines):
+        return False
+
+    bullet_count = sum(1 for line in lines if line.startswith("-"))
+    if bullet_count < 6:
+        return False
+    if "핵심 관전 포인트" not in text:
+        return False
+    return True
+
+
+def parse_price_value(value: str) -> float:
+    cleaned = str(value).replace(",", "").strip()
+    if cleaned in {"", "N/A", "-"}:
+        return float("nan")
+    try:
+        return float(cleaned)
+    except ValueError:
+        return float("nan")
+
+
+def build_risk_trends(snapshot_history: List[dict], current_indexes: dict) -> dict:
+    keys = ["vix", "usdkrw", "us10y", "wti"]
+    labels = {"up": "상승", "down": "하락", "flat": "보합", "na": "데이터 확인 필요"}
+    colors = {"up": "#ef4444", "down": "#3b82f6", "flat": "#6b7280", "na": "#6b7280"}
+
+    previous_indexes = {}
+    if snapshot_history:
+        previous_indexes = snapshot_history[0].get("indexes", {})
+
+    trends = {}
+    for key in keys:
+        current = parse_price_value(current_indexes.get(key, {}).get("price", "N/A"))
+        previous = parse_price_value(previous_indexes.get(key, {}).get("price", "N/A"))
+        if current != current or previous != previous:
+            trend_key = "na"
+        elif current > previous:
+            trend_key = "up"
+        elif current < previous:
+            trend_key = "down"
+        else:
+            trend_key = "flat"
+
+        trends[key] = {"text": labels[trend_key], "color": colors[trend_key]}
+
+    return trends
+
+
+def load_recent_snapshots(limit: int = 7) -> List[dict]:
+    snapshots: List[dict] = []
+    files = sorted(DATA_DIR.glob("*.json"), reverse=True)
+    for path in files:
+        if path.name == "latest.json":
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        snapshots.append(data)
+        if len(snapshots) >= limit:
+            break
+    return snapshots
+
+
+def save_snapshot(headline: str, summary_items: List[str], cover_image: str, indexes: dict) -> None:
+    timestamp = datetime.now(KST)
+    payload = {
+        "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+        "edition_title": EDITION_TITLE,
+        "headline": headline,
+        "summary_items": summary_items,
+        "indexes": indexes,
+        "cover_image": cover_image,
+        "generate_ai_image": GENERATE_AI_IMAGE,
+        "run_source": detect_run_source(),
+    }
+    stamp = timestamp.strftime("%Y-%m-%d-%H%M%S")
+    try:
+        (DATA_DIR / f"{stamp}.json").write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        (DATA_DIR / "latest.json").write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    except Exception:
+        pass
+
+
 def generate_ai_briefing(
     kospi: dict,
     kosdaq: dict,
@@ -347,6 +451,28 @@ def generate_ai_briefing(
             ],
         )
         llm_summary_raw = text_response.choices[0].message.content.strip()
+        if not is_briefing_response_valid(llm_summary_raw):
+            retry_prompt = (
+                "이전 응답이 형식 규칙을 지키지 못했습니다. "
+                "반드시 [한국 시장] 3개 불릿, [미국 시장] 3개 불릿으로 다시 작성하고, "
+                "마지막 불릿은 '오늘의 핵심 관전 포인트'로 시작해 조건형 시나리오 2개를 포함하세요.\n\n"
+                f"원본 요청:\n{text_prompt}\n\n"
+                f"이전 응답:\n{llm_summary_raw}"
+            )
+            retry_response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "당신은 형식을 정확히 지키는 금융 브리핑 에디터입니다. "
+                            "지정된 포맷과 불릿 수를 반드시 준수하세요."
+                        ),
+                    },
+                    {"role": "user", "content": retry_prompt},
+                ],
+            )
+            llm_summary_raw = retry_response.choices[0].message.content.strip()
         
         lines = llm_summary_raw.split("\n")
         watchpoint_line = build_watchpoint_line(vix, usdkrw, us10y)
@@ -419,7 +545,14 @@ Show: bull and bear characters, up/down arrows, charts, stock market icons, Kore
         return fallback_headline, fallback_items, "cover.svg"
 
 
-def render_html(headline: str, summary_items: List[str], cover_image: str, indexes: dict) -> None:
+def render_html(
+    headline: str,
+    summary_items: List[str],
+    cover_image: str,
+    indexes: dict,
+    risk_trends: dict,
+    snapshot_count: int,
+) -> None:
     env = Environment(loader=FileSystemLoader(str(BASE_DIR)))
     env.filters["bold"] = bold_filter
     template = env.get_template("template.html")
@@ -430,6 +563,8 @@ def render_html(headline: str, summary_items: List[str], cover_image: str, index
         comic_headline=headline,
         summary_items=summary_items,
         cover_image=cover_image,
+        risk_trends=risk_trends,
+        snapshot_count=snapshot_count,
         **indexes,
     )
 
@@ -474,6 +609,8 @@ def send_discord_alert(headline: str, summary_items: List[str], indexes: dict) -
 
 
 def main() -> None:
+    previous_snapshots = load_recent_snapshots(limit=7)
+
     indexes = {
         "kospi": get_korean_index_data("KOSPI"),
         "kosdaq": get_korean_index_data("KOSDAQ"),
@@ -500,8 +637,12 @@ def main() -> None:
         indexes["wti"],
     )
 
-    render_html(headline, summary_items, cover_image, indexes)
+    risk_trends = build_risk_trends(previous_snapshots, indexes)
+    snapshot_count = len(previous_snapshots) + 1
+
+    render_html(headline, summary_items, cover_image, indexes, risk_trends, snapshot_count)
     send_discord_alert(headline, summary_items, indexes)
+    save_snapshot(headline, summary_items, cover_image, indexes)
 
     print("Generated:", OUTPUT_DIR / "index.html")
 
