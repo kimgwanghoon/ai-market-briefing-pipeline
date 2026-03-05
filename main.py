@@ -102,12 +102,24 @@ def get_index_data(ticker: str) -> dict:
         return default
 
 
-def fallback_summary(kospi: dict, kosdaq: dict, sp500: dict, dow: dict, nasdaq: dict, ewy: dict) -> Tuple[str, List[str]]:
+def fallback_summary(
+    kospi: dict,
+    kosdaq: dict,
+    sp500: dict,
+    dow: dict,
+    nasdaq: dict,
+    ewy: dict,
+    vix: dict,
+    usdkrw: dict,
+    us10y: dict,
+    wti: dict,
+) -> Tuple[str, List[str]]:
     headline = "핵심 지수 점검"
     summary_items = [
         f"국장 지표는 코스피 {kospi['price']} ({kospi['change']}), 코스닥 {kosdaq['price']} ({kosdaq['change']})로 집계되었습니다.",
         f"미장 지표는 S&P500 {sp500['price']} ({sp500['change']}), 다우 {dow['price']} ({dow['change']}), 나스닥 {nasdaq['price']} ({nasdaq['change']}) 흐름입니다.",
         f"한국 야간지표 EWY는 {ewy['price']} ({ewy['change']})로, 국내 개장 심리에 영향을 줄 수 있습니다.",
+        f"리스크 체온계는 VIX {vix['price']} ({vix['change']}), 달러/원 {usdkrw['price']} ({usdkrw['change']}), 미 10년물 {us10y['price']} ({us10y['change']}), WTI {wti['price']} ({wti['change']})입니다.",
         "오늘은 지수 레벨보다 변동성 확장 여부를 우선 확인하고, 급등 추격보다 분할 대응 전략이 유효합니다.",
     ]
     return headline, summary_items
@@ -144,8 +156,30 @@ def generate_cover_svg(path: Path, title: str) -> None:
     path.write_text(svg, encoding="utf-8")
 
 
-def generate_ai_briefing(kospi: dict, kosdaq: dict, sp500: dict, dow: dict, nasdaq: dict, ewy: dict) -> Tuple[str, List[str], str]:
-    fallback_headline, fallback_items = fallback_summary(kospi, kosdaq, sp500, dow, nasdaq, ewy)
+def generate_ai_briefing(
+    kospi: dict,
+    kosdaq: dict,
+    sp500: dict,
+    dow: dict,
+    nasdaq: dict,
+    ewy: dict,
+    vix: dict,
+    usdkrw: dict,
+    us10y: dict,
+    wti: dict,
+) -> Tuple[str, List[str], str]:
+    fallback_headline, fallback_items = fallback_summary(
+        kospi,
+        kosdaq,
+        sp500,
+        dow,
+        nasdaq,
+        ewy,
+        vix,
+        usdkrw,
+        us10y,
+        wti,
+    )
 
     if not OPENAI_API_KEY:
         generate_cover_svg(OUTPUT_DIR / "cover.svg", fallback_headline)
@@ -167,6 +201,7 @@ def generate_ai_briefing(kospi: dict, kosdaq: dict, sp500: dict, dow: dict, nasd
 - 한국 시장: 코스피 {kospi['price']} ({kospi['change']}), 코스닥 {kosdaq['price']} ({kosdaq['change']})
 - 미국 시장: S&P500 {sp500['price']} ({sp500['change']}), 다우존스 {dow['price']} ({dow['change']}), 나스닥 {nasdaq['price']} ({nasdaq['change']})
 - 한국 야간지표(EWY): {ewy['price']} ({ewy['change']} - {ewy['trend']})
+- 리스크/거시: VIX {vix['price']} ({vix['change']}), 달러원 {usdkrw['price']} ({usdkrw['change']}), 미10년물 {us10y['price']} ({us10y['change']}), WTI {wti['price']} ({wti['change']})
 
 작성 규칙:
 1) 반드시 아래 출력 형식 그대로 작성하세요. 섹션명/불릿 기호/줄 수를 지키세요.
@@ -176,6 +211,8 @@ def generate_ai_briefing(kospi: dict, kosdaq: dict, sp500: dict, dow: dict, nasd
 5) 각 섹션에서 최소 1개 불릿은 숫자(지수/등락률/변동폭)를 포함하세요.
 6) 데이터가 N/A이거나 불명확하면 숫자를 만들지 말고 "데이터 확인 필요"라고 명시하세요.
 7) 과장, 투자확정 표현(예: 반드시 오른다)은 금지합니다.
+8) 마지막 불릿은 반드시 "오늘의 핵심 관전 포인트" 한 줄로 마무리하세요.
+9) 관전 포인트에는 최소 2개 조건형 트리거를 포함하세요. 예: "A면 B, C면 D".
 
 출력 형식:
 [한국 시장]
@@ -196,7 +233,8 @@ def generate_ai_briefing(kospi: dict, kosdaq: dict, sp500: dict, dow: dict, nasd
                     "role": "system",
                     "content": (
                         "당신은 한국/미국 주식 데일리 브리핑 에디터입니다. "
-                        "입력된 데이터만 사용해 간결하고 실행 가능한 관전 포인트를 작성하세요."
+                        "입력된 데이터만 사용해 간결하고 실행 가능한 관전 포인트를 작성하세요. "
+                        "특히 마지막 문장은 실전 투자자가 바로 체크할 수 있는 조건형 시나리오로 작성하세요."
                     ),
                 },
                 {"role": "user", "content": text_prompt},
@@ -290,6 +328,10 @@ def send_discord_alert(headline: str, summary_items: List[str], indexes: dict) -
         {"name": "S&P 500", "value": f"{indexes['sp500']['price']} ({indexes['sp500']['change']})", "inline": True},
         {"name": "Dow", "value": f"{indexes['dow']['price']} ({indexes['dow']['change']})", "inline": True},
         {"name": "NASDAQ", "value": f"{indexes['nasdaq']['price']} ({indexes['nasdaq']['change']})", "inline": True},
+        {"name": "VIX", "value": f"{indexes['vix']['price']} ({indexes['vix']['change']})", "inline": True},
+        {"name": "USD/KRW", "value": f"{indexes['usdkrw']['price']} ({indexes['usdkrw']['change']})", "inline": True},
+        {"name": "US10Y", "value": f"{indexes['us10y']['price']} ({indexes['us10y']['change']})", "inline": True},
+        {"name": "WTI", "value": f"{indexes['wti']['price']} ({indexes['wti']['change']})", "inline": True},
     ]
 
     payload = {
@@ -318,6 +360,10 @@ def main() -> None:
         "dow": get_index_data("^DJI"),
         "nasdaq": get_index_data("^IXIC"),
         "ewy": get_index_data("EWY"),
+        "vix": get_index_data("^VIX"),
+        "usdkrw": get_index_data("KRW=X"),
+        "us10y": get_index_data("^TNX"),
+        "wti": get_index_data("CL=F"),
     }
 
     headline, summary_items, cover_image = generate_ai_briefing(
@@ -327,6 +373,10 @@ def main() -> None:
         indexes["dow"],
         indexes["nasdaq"],
         indexes["ewy"],
+        indexes["vix"],
+        indexes["usdkrw"],
+        indexes["us10y"],
+        indexes["wti"],
     )
 
     render_html(headline, summary_items, cover_image, indexes)
