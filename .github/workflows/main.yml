@@ -45,4 +45,5 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./public
           branch: gh-pages
+          keep_files: true
           allow_empty_commit: true
