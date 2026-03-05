@@ -1,48 +1,21 @@
-# market-briefing-hub
+# AI Market Briefing Pipeline
 
-한미 주요 지수 데이터를 모아 AI 브리핑을 생성하고, `public/index.html` 정적 페이지를 만드는 프로젝트입니다.
+한미 주요 지수 데이터를 자동으로 수집하고, AI로 시황 핵심 포인트를 생성하는 자동화 브리핑 파이프라인입니다.
 
-## 로컬 실행
+## 기술 스택
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python main.py
-```
+- **Python 3.11** - 메인 언어
+- **OpenAI API** - 시황 요약, 헤드라인, 커버 이미지 생성
+- **yfinance** - 미국 ETF/지수 데이터 수집
+- **requests** - 네이버 국장 데이터 수집
+- **Jinja2** - HTML 템플릿 렌더링
+- **GitHub Actions** - 스케줄 실행 및 Pages 배포
 
-Windows PowerShell:
+## 주요 파일
 
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python main.py
-```
-
-생성 결과:
-- `public/index.html`
-- `public/cover.png` 또는 `public/cover.svg`
-
-## 환경 변수
-
-로컬에서는 `.env` 파일을 사용합니다.
-
-```env
-AI_API_KEY=your_openai_api_key
-TEAMS_WEBHOOK_URL=optional_teams_webhook
-GITHUB_PAGES_URL=https://<username>.github.io/<repository>/
-```
-
-- `AI_API_KEY`: OpenAI 요약/헤드라인/이미지 생성용 (없으면 fallback 모드)
-- `TEAMS_WEBHOOK_URL`: 선택값, 설정 시 Teams 카드 전송
-- `GITHUB_PAGES_URL`: 선택값, Teams 카드 버튼 URL
-
-## GitHub Actions / Pages
-
-1. 저장소 `Settings > Pages`에서 Source를 `GitHub Actions`로 설정
-2. 저장소 Secrets에 필요 값 등록
-   - `AI_API_KEY` (권장)
-   - `TEAMS_WEBHOOK_URL` (선택)
-   - `GITHUB_PAGES_URL` (선택)
-3. `.github/workflows/main.yml` 수동 실행 또는 스케줄 실행
+| 파일 | 설명 |
+|------|------|
+| `main.py` | 지수 수집 → AI 브리핑 생성 → HTML 렌더링 → Teams 알림 실행 |
+| `template.html` | 브리핑 페이지 HTML 템플릿 |
+| `.github/workflows/main.yml` | 평일 오전/오후 자동 실행 및 GitHub Pages 배포 |
+| `requirements.txt` | Python 의존성 |
