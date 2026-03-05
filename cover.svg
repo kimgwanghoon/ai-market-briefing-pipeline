@@ -9,6 +9,6 @@
 <circle cx="170" cy="110" r="120" fill="#dbeafe"/>
 <circle cx="1120" cy="560" r="160" fill="#fee2e2"/>
 <text x="80" y="260" font-family="Pretendard, sans-serif" font-size="46" font-weight="700" fill="#0f172a">Daily Market Briefing</text>
-<text x="80" y="330" font-family="Pretendard, sans-serif" font-size="30" font-weight="600" fill="#1e293b">핵심 지수 점검</text>
+<text x="80" y="330" font-family="Pretendard, sans-serif" font-size="30" font-weight="600" fill="#1e293b">한국 시장 회복세와 변동성</text>
 <text x="80" y="390" font-family="Pretendard, sans-serif" font-size="24" fill="#334155">Generated fallback cover</text>
 </svg>
