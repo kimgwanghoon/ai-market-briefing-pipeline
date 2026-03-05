@@ -26,6 +26,16 @@ OPENAI_API_KEY = os.getenv("AI_API_KEY")
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 GITHUB_PAGES_URL = os.getenv("GITHUB_PAGES_URL", "")
 
+
+def env_flag(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+GENERATE_AI_IMAGE = env_flag("GENERATE_AI_IMAGE", default=True)
+
 KST = pytz.timezone("Asia/Seoul")
 NOW_KST = datetime.now(KST)
 CURRENT_TIME_STR = NOW_KST.strftime("%Y-%m-%d %H:%M:%S")
@@ -373,19 +383,22 @@ Show: bull and bear characters, up/down arrows, charts, stock market icons, Kore
 """.strip()
 
         image_file = "cover.svg"
-        try:
-            image_response = client.images.generate(
-                model="dall-e-3",
-                prompt=image_prompt,
-                size="1024x1024",
-                quality="standard",
-                n=1,
-            )
-            image_url = image_response.data[0].url
-            img_data = requests.get(image_url, timeout=30).content
-            (OUTPUT_DIR / "cover.png").write_bytes(img_data)
-            image_file = "cover.png"
-        except Exception:
+        if GENERATE_AI_IMAGE:
+            try:
+                image_response = client.images.generate(
+                    model="dall-e-3",
+                    prompt=image_prompt,
+                    size="1024x1024",
+                    quality="standard",
+                    n=1,
+                )
+                image_url = image_response.data[0].url
+                img_data = requests.get(image_url, timeout=30).content
+                (OUTPUT_DIR / "cover.png").write_bytes(img_data)
+                image_file = "cover.png"
+            except Exception:
+                generate_cover_svg(OUTPUT_DIR / "cover.svg", headline)
+        else:
             generate_cover_svg(OUTPUT_DIR / "cover.svg", headline)
 
         return headline, summary_items, image_file

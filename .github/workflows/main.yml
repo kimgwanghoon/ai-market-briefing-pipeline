@@ -1,6 +1,9 @@
 name: Build and Deploy Pages
 
 on:
+  push:
+    branches:
+      - master
   schedule:
     - cron: "0 23 * * 0-4"
     - cron: "0 9 * * 1-5"
@@ -33,6 +36,7 @@ jobs:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           GITHUB_PAGES_URL: ${{ secrets.GITHUB_PAGES_URL }}
+          GENERATE_AI_IMAGE: ${{ github.event_name != 'push' }}
         run: python main.py
 
       - name: Deploy to GitHub Pages
