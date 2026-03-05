@@ -125,11 +125,97 @@ def fallback_summary(
     return headline, summary_items
 
 
-def normalize_summary_items(items: List[str], fallback_items: List[str]) -> List[str]:
-    cleaned = [item.strip() for item in items if item and item.strip()]
-    if len(cleaned) < 5:
-        return fallback_items[:8]
-    return cleaned[:8]
+def ensure_bold_keyword(text: str) -> str:
+    if "**" in text:
+        return text
+    match = re.search(r"[A-Za-z0-9가-힣/%+-]+", text)
+    if not match:
+        return text
+    token = match.group(0)
+    return text.replace(token, f"**{token}**", 1)
+
+
+def build_watchpoint_line(vix: dict, usdkrw: dict, us10y: dict) -> str:
+    return (
+        "오늘의 **핵심 관전 포인트**: "
+        f"**VIX**({vix['price']})가 전일 대비 반등하면 변동성 확대를 우선 경계하고, "
+        f"**미10년물**({us10y['price']})과 **달러원**({usdkrw['price']})이 동반 상승하면 "
+        "성장주 추격보다 현금 비중 점검을 우선하세요."
+    )
+
+
+def build_fallback_section_items(
+    kospi: dict,
+    kosdaq: dict,
+    sp500: dict,
+    dow: dict,
+    nasdaq: dict,
+    ewy: dict,
+    vix: dict,
+    usdkrw: dict,
+    us10y: dict,
+    wti: dict,
+) -> Tuple[List[str], List[str]]:
+    korea_items = [
+        f"**코스피** {kospi['price']} ({kospi['change']}), **코스닥** {kosdaq['price']} ({kosdaq['change']})로 국내 수급 방향을 먼저 확인하세요.",
+        f"야간 **EWY** {ewy['price']} ({ewy['change']})와 **달러원** {usdkrw['price']} ({usdkrw['change']}) 조합이 장초 리스크 선호를 가늠합니다.",
+        "장초 급등 추격보다 **거래대금**과 업종 순환 강도 확인 후 분할 대응이 유효합니다.",
+    ]
+    us_items = [
+        f"**S&P500** {sp500['price']} ({sp500['change']}), **다우** {dow['price']} ({dow['change']}), **나스닥** {nasdaq['price']} ({nasdaq['change']}) 흐름을 비교하세요.",
+        f"**VIX** {vix['price']} ({vix['change']}), **미10년물** {us10y['price']} ({us10y['change']}), **WTI** {wti['price']} ({wti['change']})로 변동성/금리/원자재 축을 동시에 점검하세요.",
+        build_watchpoint_line(vix, usdkrw, us10y),
+    ]
+    return korea_items, us_items
+
+
+def normalize_summary_items(
+    items: List[str],
+    fallback_korea_items: List[str],
+    fallback_us_items: List[str],
+    watchpoint_line: str,
+) -> List[str]:
+    korea_items: List[str] = []
+    us_items: List[str] = []
+    current_section = "korea"
+
+    for raw in items:
+        stripped = raw.strip()
+        if not stripped:
+            continue
+        if "[한국 시장]" in stripped or stripped.startswith("한국 시장"):
+            current_section = "korea"
+            continue
+        if "[미국 시장]" in stripped or stripped.startswith("미국 시장"):
+            current_section = "us"
+            continue
+
+        cleaned = stripped.lstrip("-").strip()
+        if not cleaned:
+            continue
+        cleaned = ensure_bold_keyword(cleaned)
+
+        if current_section == "korea" and len(korea_items) < 3:
+            korea_items.append(cleaned)
+        elif current_section == "us" and len(us_items) < 3:
+            us_items.append(cleaned)
+        elif len(korea_items) < 3:
+            korea_items.append(cleaned)
+        elif len(us_items) < 3:
+            us_items.append(cleaned)
+
+    while len(korea_items) < 3:
+        korea_items.append(fallback_korea_items[len(korea_items)])
+
+    while len(us_items) < 3:
+        us_items.append(fallback_us_items[len(us_items)])
+
+    us_items = us_items[:3]
+    if "핵심 관전 포인트" not in us_items[-1]:
+        us_items[-1] = watchpoint_line
+    us_items = [ensure_bold_keyword(item) for item in us_items]
+
+    return ["[한국 시장]", *korea_items[:3], "[미국 시장]", *us_items]
 
 
 def generate_cover_svg(path: Path, title: str) -> None:
@@ -243,17 +329,25 @@ def generate_ai_briefing(
         llm_summary_raw = text_response.choices[0].message.content.strip()
         
         lines = llm_summary_raw.split("\n")
-        summary_items = []
-        for line in lines:
-            stripped = line.strip()
-            if not stripped:
-                continue
-            if stripped.startswith("[") and "]" in stripped:
-                summary_items.append(stripped)
-            else:
-                summary_items.append(stripped.lstrip("-").strip())
-        
-        summary_items = normalize_summary_items(summary_items, fallback_items)
+        watchpoint_line = build_watchpoint_line(vix, usdkrw, us10y)
+        fallback_korea_items, fallback_us_items = build_fallback_section_items(
+            kospi,
+            kosdaq,
+            sp500,
+            dow,
+            nasdaq,
+            ewy,
+            vix,
+            usdkrw,
+            us10y,
+            wti,
+        )
+        summary_items = normalize_summary_items(
+            lines,
+            fallback_korea_items,
+            fallback_us_items,
+            watchpoint_line,
+        )
 
         headline_prompt = (
             "다음 브리핑 요약을 바탕으로 한국어 헤드라인 1개를 작성하세요. "
