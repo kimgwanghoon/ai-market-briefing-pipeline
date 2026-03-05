@@ -69,7 +69,6 @@
     }
 
     .cover-section {
-      position: relative;
       text-align: center;
       margin-bottom: 32px;
     }
@@ -81,32 +80,6 @@
       border-radius: 16px;
       border: 1px solid var(--line);
       box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
-    }
-
-    .bubble-overlay {
-      position: absolute;
-      top: 10%;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      flex-wrap: wrap;
-      width: 100%;
-      max-width: 600px;
-      padding: 0 10px;
-    }
-
-    .bubble {
-      background: white;
-      border: 2px solid var(--accent);
-      border-radius: 12px;
-      padding: 8px 14px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--ink);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      max-width: 140px;
     }
 
     .section-title {
@@ -296,12 +269,6 @@
 
     <section class="cover-section">
       <img class="cover" src="{{ cover_image }}" alt="시장 브리핑 커버" />
-      <div class="bubble-overlay">
-        <span class="bubble">📈 상승</span>
-        <span class="bubble">📉 하락</span>
-        <span class="bubble">⚠️ 변동성</span>
-        <span class="bubble">💡 관전점</span>
-      </div>
     </section>
 
     <section class="headline-card">
@@ -309,6 +276,7 @@
       
       {% set sections = { '한국 시장': false, '미국 시장': false } %}
       {% for item in summary_items %}
+        {% set is_section_header = ('[한국 시장]' in item or '[미국 시장]' in item or '한국 시장' in item[:10] or '미국 시장' in item[:10]) %}
         {% if '[한국 시장]' in item or '한국 시장' in item[:10] %}
           {% set _ = sections.update({'한국 시장': true}) %}
           {% if sections['한국 시장'] and not sections['한국 시장_표시'] %}
@@ -325,7 +293,9 @@
           {% set _ = sections.update({'미국 시장_표시': true}) %}
           {% endif %}
         {% endif %}
+        {% if not is_section_header %}
         <li>{{ item | bold | safe }}</li>
+        {% endif %}
       {% endfor %}
       </ol>
     </section>
