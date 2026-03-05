@@ -212,11 +212,11 @@ def generate_ai_briefing(kospi: dict, kosdaq: dict, sp500: dict, dow: dict, nasd
         headline = headline_response.choices[0].message.content.strip()
 
         image_prompt = f"""
-Webtoon style 4-panel comic about stock market: {headline}
-Style: clean line art, soft colors, expressive bull and bear characters, Korean market atmosphere.
+Webtoon style 4-panel comic about Korean stock market: {headline}
+Style: clean line art, soft colors, expressive bull and bear characters.
 Layout: 2x2 grid.
-IMPORTANT: Do NOT include any text in the image. No text bubbles. Just visual scenes.
-Show: bull and bear characters, up/down arrows, charts, stock icons.
+IMPORTANT: Do NOT include any text in the image. No text bubbles.
+Show: bull and bear characters, up/down arrows, charts, stock market icons, Korean flag colors.
 """.strip()
 
         image_file = "cover.svg"
