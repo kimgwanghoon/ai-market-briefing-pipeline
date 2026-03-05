@@ -32,99 +32,94 @@
         radial-gradient(circle at 88% 10%, #bae6fd 0, transparent 34%),
         radial-gradient(circle at 8% 92%, #fee2e2 0, transparent 28%),
         linear-gradient(160deg, var(--bg-a), var(--bg-b));
+      min-height: 100vh;
     }
 
     .page {
-      max-width: 1040px;
+      max-width: 900px;
       margin: 0 auto;
-      padding: 28px 16px 56px;
+      padding: 40px 20px 80px;
     }
 
     .header {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-bottom: 18px;
+      text-align: center;
+      margin-bottom: 32px;
     }
 
     .badge {
       display: inline-flex;
-      width: fit-content;
-      padding: 6px 10px;
+      padding: 8px 16px;
       border-radius: 999px;
       background: var(--accent-soft);
       color: var(--accent);
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 700;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.04em;
     }
 
     h1 {
-      margin: 0;
-      font-size: clamp(1.45rem, 3.2vw, 2.1rem);
-      line-height: 1.28;
+      margin: 16px 0 8px;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      line-height: 1.25;
     }
 
     .time {
-      margin: 0;
       color: var(--muted);
-      font-size: 0.92rem;
+      font-size: 0.95rem;
     }
 
-    .layout {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 14px;
+    .cover-section {
+      text-align: center;
+      margin-bottom: 32px;
     }
 
-    @media (min-width: 920px) {
-      .layout {
-        grid-template-columns: 1.2fr 0.8fr;
-      }
+    .cover {
+      width: 100%;
+      max-width: 600px;
+      display: block;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
     }
 
-    .card {
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin: 0 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--accent);
+      display: inline-block;
+    }
+
+    .headline-card {
+      background: var(--card);
       border: 1px solid var(--line);
       border-radius: 16px;
-      background: var(--card);
-      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
-      padding: 16px;
-      animation: enter 450ms ease both;
-    }
-
-    .card:nth-child(2) {
-      animation-delay: 90ms;
-    }
-
-    @keyframes enter {
-      from {
-        transform: translateY(10px);
-        opacity: 0;
-      }
-      to {
-        transform: translateY(0);
-        opacity: 1;
-      }
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
     }
 
     .headline {
-      margin: 0 0 12px;
-      padding: 8px 10px;
-      border-left: 4px solid var(--accent);
+      margin: 0 0 16px;
+      padding: 12px 16px;
       background: #f0fdfa;
+      border-left: 5px solid var(--accent);
       border-radius: 8px;
-      font-size: 1.08rem;
+      font-size: 1.3rem;
       font-weight: 700;
+      line-height: 1.4;
     }
 
     .summary {
       margin: 0;
-      padding-left: 20px;
-      line-height: 1.56;
+      padding-left: 24px;
+      line-height: 1.7;
     }
 
     .summary li {
-      margin-bottom: 8px;
+      margin-bottom: 12px;
+      font-size: 1.05rem;
     }
 
     .summary strong {
@@ -132,54 +127,77 @@
       color: #134e4a;
     }
 
-    .cover {
-      width: 100%;
-      display: block;
-      border-radius: 10px;
+    .indexes-section {
+      background: var(--card);
       border: 1px solid var(--line);
-      background: #f8fafc;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    .market-group {
+      margin-bottom: 24px;
+    }
+
+    .market-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .market-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
       margin-bottom: 12px;
-      aspect-ratio: 1 / 1;
-      object-fit: cover;
     }
 
     .indexes {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 9px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    @media (max-width: 600px) {
+      .indexes {
+        grid-template-columns: repeat(2, 1fr);
+      }
     }
 
     .item {
       border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 9px 10px;
+      border-radius: 12px;
+      padding: 14px 16px;
       background: #f8fafc;
+      text-align: center;
     }
 
     .name {
-      margin: 0 0 4px;
+      margin: 0 0 6px;
       color: var(--muted);
-      font-size: 11px;
-      letter-spacing: 0.06em;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
       text-transform: uppercase;
     }
 
     .price {
       margin: 0;
-      font-size: 0.97rem;
+      font-size: 1.1rem;
       font-weight: 750;
     }
 
     .change {
-      margin: 2px 0 0;
-      font-size: 0.84rem;
+      margin: 4px 0 0;
+      font-size: 0.9rem;
       font-weight: 700;
     }
 
     .footer {
-      margin-top: 16px;
+      margin-top: 32px;
       color: var(--muted);
-      font-size: 0.82rem;
+      font-size: 0.85rem;
       text-align: center;
     }
   </style>
@@ -189,40 +207,57 @@
     <header class="header">
       <span class="badge">AUTOMATED BRIEFING</span>
       <h1>Evening Briefing: 오늘 국장 마감 & 미장 프리뷰</h1>
-      <p class="time">생성 시각(KST): 2026-03-05 14:18:34</p>
+      <p class="time">생성 시각(KST): 2026-03-05 14:25:59</p>
     </header>
 
-    <section class="layout">
-      <article class="card">
-        <h2 class="headline">핵심 지수 점검</h2>
-        <ol class="summary">
-          
-          <li>국장 지표는 코스피 5,653.90 (▲ 560.36 (+11.00%)), 코스닥 1,137.06 (▲ 158.62 (+16.21%))로 집계되었습니다.</li>
-          
-          <li>미장 지표는 S&P500 N/A (-), 다우 N/A (-), 나스닥 N/A (-) 흐름입니다.</li>
-          
-          <li>한국 야간지표 EWY는 N/A (-)로, 국내 개장 심리에 영향을 줄 수 있습니다.</li>
-          
-          <li>오늘은 지수 레벨보다 변동성 확장 여부를 우선 확인하고, 급등 추격보다 분할 대응 전략이 유효합니다.</li>
-          
-        </ol>
-      </article>
+    <section class="cover-section">
+      <img class="cover" src="cover.svg" alt="시장 브리핑 커버" />
+    </section>
 
-      <aside class="card">
-        <img class="cover" src="cover.svg" alt="시장 브리핑 커버" />
+    <section class="headline-card">
+      <h2 class="headline">핵심 지수 점검</h2>
+      <ol class="summary">
+        
+        <li>국장 지표는 코스피 5,660.32 (▲ 566.78 (+11.13%)), 코스닥 1,138.59 (▲ 160.15 (+16.37%))로 집계되었습니다.</li>
+        
+        <li>미장 지표는 S&P500 N/A (-), 다우 N/A (-), 나스닥 N/A (-) 흐름입니다.</li>
+        
+        <li>한국 야간지표 EWY는 N/A (-)로, 국내 개장 심리에 영향을 줄 수 있습니다.</li>
+        
+        <li>오늘은 지수 레벨보다 변동성 확장 여부를 우선 확인하고, 급등 추격보다 분할 대응 전략이 유효합니다.</li>
+        
+      </ol>
+    </section>
+
+    <section class="indexes-section">
+      <h3 class="section-title">📊 주요 지수</h3>
+      
+      <div class="market-group">
+        <p class="market-label">🇰🇷 한국 시장</p>
         <div class="indexes">
           <div class="item">
             <p class="name">KOSPI</p>
-            <p class="price">5,653.90</p>
-            <p class="change" style="color: #ef4444">▲ 560.36 (+11.00%)</p>
+            <p class="price">5,660.32</p>
+            <p class="change" style="color: #ef4444">▲ 566.78 (+11.13%)</p>
           </div>
           <div class="item">
             <p class="name">KOSDAQ</p>
-            <p class="price">1,137.06</p>
-            <p class="change" style="color: #ef4444">▲ 158.62 (+16.21%)</p>
+            <p class="price">1,138.59</p>
+            <p class="change" style="color: #ef4444">▲ 160.15 (+16.37%)</p>
           </div>
           <div class="item">
-            <p class="name">S&P500</p>
+            <p class="name">EWY</p>
+            <p class="price">N/A</p>
+            <p class="change" style="color: #6b7280">-</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="market-group">
+        <p class="market-label">🇺🇸 미국 시장</p>
+        <div class="indexes">
+          <div class="item">
+            <p class="name">S&P 500</p>
             <p class="price">N/A</p>
             <p class="change" style="color: #6b7280">-</p>
           </div>
@@ -236,13 +271,8 @@
             <p class="price">N/A</p>
             <p class="change" style="color: #6b7280">-</p>
           </div>
-          <div class="item">
-            <p class="name">EWY</p>
-            <p class="price">N/A</p>
-            <p class="change" style="color: #6b7280">-</p>
-          </div>
         </div>
-      </aside>
+      </div>
     </section>
 
     <p class="footer">Generated by market-briefing-hub</p>
