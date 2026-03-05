@@ -252,6 +252,14 @@ def generate_cover_svg(path: Path, title: str) -> None:
     path.write_text(svg, encoding="utf-8")
 
 
+def get_existing_cover_file() -> str:
+    if (OUTPUT_DIR / "cover.png").exists():
+        return "cover.png"
+    if (OUTPUT_DIR / "cover.svg").exists():
+        return "cover.svg"
+    return ""
+
+
 def generate_ai_briefing(
     kospi: dict,
     kosdaq: dict,
@@ -382,7 +390,7 @@ IMPORTANT: Do NOT include any text in the image. No text bubbles.
 Show: bull and bear characters, up/down arrows, charts, stock market icons, Korean flag colors.
 """.strip()
 
-        image_file = "cover.svg"
+        image_file = get_existing_cover_file() or "cover.svg"
         if GENERATE_AI_IMAGE:
             try:
                 image_response = client.images.generate(
@@ -397,9 +405,13 @@ Show: bull and bear characters, up/down arrows, charts, stock market icons, Kore
                 (OUTPUT_DIR / "cover.png").write_bytes(img_data)
                 image_file = "cover.png"
             except Exception:
-                generate_cover_svg(OUTPUT_DIR / "cover.svg", headline)
+                if not get_existing_cover_file():
+                    generate_cover_svg(OUTPUT_DIR / "cover.svg", headline)
+                    image_file = "cover.svg"
         else:
-            generate_cover_svg(OUTPUT_DIR / "cover.svg", headline)
+            if not get_existing_cover_file():
+                generate_cover_svg(OUTPUT_DIR / "cover.svg", headline)
+                image_file = "cover.svg"
 
         return headline, summary_items, image_file
     except Exception:
