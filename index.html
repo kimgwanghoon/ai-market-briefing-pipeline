@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Morning Briefing: 간밤의 미장 & 국장 프리뷰</title>
-  <meta name="description" content="핵심 지수 점검" />
-  <meta property="og:title" content="Morning Briefing: 간밤의 미장 & 국장 프리뷰" />
-  <meta property="og:description" content="핵심 지수 점검" />
-  <meta property="og:image" content="cover.svg" />
+  <title>Evening Briefing: 오늘 국장 마감 & 미장 프리뷰</title>
+  <meta name="description" content="코스닥 투자 심리 강세" />
+  <meta property="og:title" content="Evening Briefing: 오늘 국장 마감 & 미장 프리뷰" />
+  <meta property="og:description" content="코스닥 투자 심리 강세" />
+  <meta property="og:image" content="cover.png" />
   <style>
     :root {
       --bg-a: #f8fafc;
@@ -32,99 +32,191 @@
         radial-gradient(circle at 88% 10%, #bae6fd 0, transparent 34%),
         radial-gradient(circle at 8% 92%, #fee2e2 0, transparent 28%),
         linear-gradient(160deg, var(--bg-a), var(--bg-b));
+      min-height: 100vh;
     }
 
     .page {
-      max-width: 1040px;
+      max-width: 900px;
       margin: 0 auto;
-      padding: 28px 16px 56px;
+      padding: 40px 20px 80px;
     }
 
     .header {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-bottom: 18px;
+      text-align: center;
+      margin-bottom: 32px;
     }
 
     .badge {
       display: inline-flex;
-      width: fit-content;
-      padding: 6px 10px;
+      padding: 8px 16px;
       border-radius: 999px;
       background: var(--accent-soft);
       color: var(--accent);
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 700;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.04em;
     }
 
     h1 {
-      margin: 0;
-      font-size: clamp(1.45rem, 3.2vw, 2.1rem);
-      line-height: 1.28;
+      margin: 16px 0 8px;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      line-height: 1.25;
     }
 
     .time {
-      margin: 0;
       color: var(--muted);
-      font-size: 0.92rem;
+      font-size: 0.95rem;
     }
 
-    .layout {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 14px;
+    .quick-links {
+      margin-top: 10px;
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
-    @media (min-width: 920px) {
-      .layout {
-        grid-template-columns: 1.2fr 0.8fr;
-      }
+    .quick-links a {
+      text-decoration: none;
+      color: var(--accent);
+      font-size: 0.85rem;
+      font-weight: 700;
+      border: 1px solid #99f6e4;
+      background: #f0fdfa;
+      border-radius: 999px;
+      padding: 6px 10px;
     }
 
-    .card {
+    .cover-section {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .cover {
+      width: 100%;
+      max-width: 600px;
+      display: block;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+    }
+
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin: 0 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--accent);
+      display: inline-block;
+    }
+
+    .indexes-section {
+      background: var(--card);
       border: 1px solid var(--line);
       border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    .market-group {
+      margin-bottom: 24px;
+    }
+
+    .market-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .market-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+
+    .indexes {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    @media (max-width: 600px) {
+      .indexes {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .item {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 16px;
+      background: #f8fafc;
+      text-align: center;
+    }
+
+    .name {
+      margin: 0 0 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .price {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 750;
+    }
+
+    .change {
+      margin: 4px 0 0;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .headline-card {
       background: var(--card);
-      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
-      padding: 16px;
-      animation: enter 450ms ease both;
-    }
-
-    .card:nth-child(2) {
-      animation-delay: 90ms;
-    }
-
-    @keyframes enter {
-      from {
-        transform: translateY(10px);
-        opacity: 0;
-      }
-      to {
-        transform: translateY(0);
-        opacity: 1;
-      }
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
     }
 
     .headline {
-      margin: 0 0 12px;
-      padding: 8px 10px;
-      border-left: 4px solid var(--accent);
+      margin: 0 0 16px;
+      padding: 12px 16px;
       background: #f0fdfa;
+      border-left: 5px solid var(--accent);
       border-radius: 8px;
-      font-size: 1.08rem;
+      font-size: 1.3rem;
       font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .summary-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin: 20px 0 12px;
+      color: var(--accent);
+    }
+
+    .summary-title:first-child {
+      margin-top: 0;
     }
 
     .summary {
       margin: 0;
-      padding-left: 20px;
-      line-height: 1.56;
+      padding-left: 24px;
+      line-height: 1.7;
     }
 
     .summary li {
-      margin-bottom: 8px;
+      margin-bottom: 10px;
+      font-size: 1.05rem;
     }
 
     .summary strong {
@@ -132,54 +224,60 @@
       color: #134e4a;
     }
 
-    .cover {
-      width: 100%;
-      display: block;
-      border-radius: 10px;
+    .risk-section {
+      background: var(--card);
       border: 1px solid var(--line);
-      background: #f8fafc;
-      margin-bottom: 12px;
-      aspect-ratio: 1 / 1;
-      object-fit: cover;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
     }
 
-    .indexes {
+    .risk-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 9px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
     }
 
-    .item {
+    @media (max-width: 600px) {
+      .risk-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .risk-item {
       border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 9px 10px;
+      border-radius: 12px;
+      padding: 14px 16px;
       background: #f8fafc;
     }
 
-    .name {
-      margin: 0 0 4px;
+    .risk-name {
+      margin: 0 0 6px;
       color: var(--muted);
-      font-size: 11px;
-      letter-spacing: 0.06em;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
       text-transform: uppercase;
     }
 
-    .price {
+    .risk-meta {
       margin: 0;
-      font-size: 0.97rem;
-      font-weight: 750;
+      font-size: 0.95rem;
+      font-weight: 700;
+      line-height: 1.5;
     }
 
-    .change {
-      margin: 2px 0 0;
-      font-size: 0.84rem;
-      font-weight: 700;
+    .risk-note {
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 0.88rem;
     }
 
     .footer {
-      margin-top: 16px;
+      margin-top: 32px;
       color: var(--muted);
-      font-size: 0.82rem;
+      font-size: 0.85rem;
       text-align: center;
     }
   </style>
@@ -188,61 +286,151 @@
   <main class="page">
     <header class="header">
       <span class="badge">AUTOMATED BRIEFING</span>
-      <h1>Morning Briefing: 간밤의 미장 & 국장 프리뷰</h1>
-      <p class="time">생성 시각(KST): 2026-03-05 11:10:41</p>
+      <h1>Evening Briefing: 오늘 국장 마감 & 미장 프리뷰</h1>
+      <p class="time">생성 시각(KST): 2026-03-06 16:00:09</p>
+      <div class="quick-links">
+        <a href="live.html">장중 보기</a>
+      </div>
     </header>
 
-    <section class="layout">
-      <article class="card">
-        <h2 class="headline">핵심 지수 점검</h2>
-        <ol class="summary">
-          
-          <li>국장 지표는 코스피 5,617.75 (▲ 524.21 (+10.29%)), 코스닥 1,101.10 (▲ 122.66 (+12.54%))로 집계되었습니다.</li>
-          
-          <li>미장 지표는 S&P500 6,869.50 (▲ 52.87 (+0.78%)), 다우 48,739.41 (▲ 238.14 (+0.49%)), 나스닥 22,807.48 (▲ 290.79 (+1.29%)) 흐름입니다.</li>
-          
-          <li>한국 야간지표 EWY는 134.37 (▲ 2.03 (+1.53%))로, 국내 개장 심리에 영향을 줄 수 있습니다.</li>
-          
-          <li>오늘은 지수 레벨보다 변동성 확장 여부를 우선 확인하고, 급등 추격보다 분할 대응 전략이 유효합니다.</li>
-          
-        </ol>
-      </article>
-
-      <aside class="card">
-        <img class="cover" src="cover.svg" alt="시장 브리핑 커버" />
+    <section class="indexes-section">
+      <h3 class="section-title">📊 주요 지수</h3>
+      
+      <div class="market-group">
+        <p class="market-label">🇰🇷 한국 시장</p>
         <div class="indexes">
           <div class="item">
             <p class="name">KOSPI</p>
-            <p class="price">5,617.75</p>
-            <p class="change" style="color: #ef4444">▲ 524.21 (+10.29%)</p>
+            <p class="price">5,584.87</p>
+            <p class="change" style="color: #ef4444">▲ 0.97 (+0.02%)</p>
           </div>
           <div class="item">
             <p class="name">KOSDAQ</p>
-            <p class="price">1,101.10</p>
-            <p class="change" style="color: #ef4444">▲ 122.66 (+12.54%)</p>
-          </div>
-          <div class="item">
-            <p class="name">S&P500</p>
-            <p class="price">6,869.50</p>
-            <p class="change" style="color: #ef4444">▲ 52.87 (+0.78%)</p>
-          </div>
-          <div class="item">
-            <p class="name">DOW</p>
-            <p class="price">48,739.41</p>
-            <p class="change" style="color: #ef4444">▲ 238.14 (+0.49%)</p>
-          </div>
-          <div class="item">
-            <p class="name">NASDAQ</p>
-            <p class="price">22,807.48</p>
-            <p class="change" style="color: #ef4444">▲ 290.79 (+1.29%)</p>
+            <p class="price">1,154.67</p>
+            <p class="change" style="color: #ef4444">▲ 38.26 (+3.43%)</p>
           </div>
           <div class="item">
             <p class="name">EWY</p>
-            <p class="price">134.37</p>
-            <p class="change" style="color: #ef4444">▲ 2.03 (+1.53%)</p>
+            <p class="price">125.74</p>
+            <p class="change" style="color: #3b82f6">▼ 8.63 (-6.42%)</p>
           </div>
         </div>
-      </aside>
+      </div>
+
+      <div class="market-group">
+        <p class="market-label">🇺🇸 미국 시장</p>
+        <div class="indexes">
+          <div class="item">
+            <p class="name">S&P 500</p>
+            <p class="price">6,830.71</p>
+            <p class="change" style="color: #3b82f6">▼ 38.79 (-0.56%)</p>
+          </div>
+          <div class="item">
+            <p class="name">DOW</p>
+            <p class="price">47,954.74</p>
+            <p class="change" style="color: #3b82f6">▼ 784.67 (-1.61%)</p>
+          </div>
+          <div class="item">
+            <p class="name">NASDAQ</p>
+            <p class="price">22,748.99</p>
+            <p class="change" style="color: #3b82f6">▼ 58.49 (-0.26%)</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cover-section">
+      <img class="cover" src="cover.png" onerror="this.onerror=null;this.src='cover.svg';" alt="시장 브리핑 커버" />
+    </section>
+
+    <section class="risk-section">
+      <h3 class="section-title">🧭 리스크 대시보드</h3>
+      <div class="risk-grid">
+        <article class="risk-item">
+          <p class="risk-name">VIX</p>
+          <p class="risk-meta">현재 23.75 (▲ 2.60 (+12.29%)) · 최근 대비 <span style="color: #6b7280">데이터 확인 필요</span></p>
+        </article>
+        <article class="risk-item">
+          <p class="risk-name">USD/KRW</p>
+          <p class="risk-meta">현재 1,469.38 (▲ 8.63 (+0.59%)) · 최근 대비 <span style="color: #6b7280">데이터 확인 필요</span></p>
+        </article>
+        <article class="risk-item">
+          <p class="risk-name">US 10Y</p>
+          <p class="risk-meta">현재 4.15 (▲ 0.07 (+1.62%)) · 최근 대비 <span style="color: #6b7280">데이터 확인 필요</span></p>
+        </article>
+        <article class="risk-item">
+          <p class="risk-name">WTI</p>
+          <p class="risk-meta">현재 80.47 (▼ 0.54 (-0.67%)) · 최근 대비 <span style="color: #6b7280">데이터 확인 필요</span></p>
+        </article>
+      </div>
+      <p class="risk-note">누적 스냅샷 1건 기준으로 직전 기록과 방향을 비교합니다.</p>
+    </section>
+
+    <section class="headline-card">
+      <h2 class="headline">코스닥 투자 심리 강세</h2>
+      
+      
+      
+        
+        
+          
+          
+            
+      <p class="summary-title">📈 한국 시장</p>
+      <ol class="summary">
+          
+        
+        
+      
+        
+        
+        
+        <li>오늘 <strong>코스닥</strong>이 1,154.67에서 3.43% 상승하여 강세를 보였습니다. 이는 투자자의 <strong>긍정적 심리</strong>를 나타내며, 섹터별로 기술주가 주목을 받았습니다.</li>
+        
+      
+        
+        
+        
+        <li><strong>외국인</strong>의 순매수세가 지속되고 있으며, 특히 기술주에서 강한 매수세가 확인되었습니다. 이는 단기적인 <strong>수급 개선</strong> 신호로 작용할 수 있습니다.</li>
+        
+      
+        
+        
+        
+        <li>코스피는 5,584.87로 소폭 상승하였으나, 아직 <strong>상방 모멘텀</strong>이 약합니다. 하락 압력이 지속될 수 있으므로 주의가 필요합니다.</li>
+        
+      
+        
+        
+          
+          
+          </ol>
+      <p class="summary-title">🌎 미국 시장</p>
+      <ol class="summary">
+          
+          
+        
+        
+      
+        
+        
+        
+        <li>다우존스가 47,954.74로 1.61% 하락하며 <strong>위험 회피</strong> 심리가 커지고 있습니다. 이는 특히 경기 민감주의 움직임에 악영향을 미칠 수 있습니다.</li>
+        
+      
+        
+        
+        
+        <li>VIX가 23.75로 상승하여 <strong>변동성 확대</strong>를 시사합니다. 이는 투자자들이 향후 불확실성을 반영하고 있음을 나타냅니다.</li>
+        
+      
+        
+        
+        
+        <li>오늘의 <strong>핵심 관전 포인트</strong>: <strong>VIX</strong>(23.75)가 반등하면 단기 변동성 재확대를 염두에 두고, <strong>미10년물</strong>(4.15)과 <strong>달러원</strong>(1,469.38)이 동반 상승하면 고밸류 추격 대신 방어주와 현금 비중을 병행 점검하세요.</li>
+        
+      
+      </ol>
     </section>
 
     <p class="footer">Generated by market-briefing-hub</p>
