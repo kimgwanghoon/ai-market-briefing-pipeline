@@ -7,6 +7,7 @@ from pathlib import Path
 PROTECTED_RELATIVE_PATHS = {
     "latest.json",
     "intraday/latest.json",
+    "reports/latest.json",
 }
 
 

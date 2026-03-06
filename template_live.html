@@ -149,6 +149,81 @@
     .event-list li { margin-bottom: 8px; }
     .event-list a { color: #0f766e; text-decoration: none; }
     .event-list a:hover { text-decoration: underline; }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 760px) {
+      .split { grid-template-columns: 1fr; }
+    }
+
+    .tiny-list {
+      margin: 0;
+      padding-left: 18px;
+      line-height: 1.6;
+    }
+
+    .tiny-list li { margin-bottom: 6px; }
+
+    .metric {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .heatmap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .heatmap table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .heatmap th,
+    .heatmap td {
+      border: 1px solid var(--line);
+      padding: 6px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .timeline {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    @media (max-width: 760px) {
+      .timeline { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
+    .timeline-item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      background: #f8fafc;
+      text-align: center;
+    }
+
+    .timeline-time {
+      margin: 0 0 4px;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .timeline-score {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
@@ -170,6 +245,77 @@
         {% endfor %}
       </ol>
       <p class="watch">{{ watchpoint }}</p>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">전일 대비 자동 코멘트</h2>
+      <ol class="summary">
+        {% for line in day_over_day %}
+          <li>{{ line }}</li>
+        {% endfor %}
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">섹터 회전 탐지</h2>
+      <div class="split">
+        <div>
+          <p class="metric">강세 전개 후보</p>
+          <ol class="tiny-list">
+            {% for item in sector_rotation.strong %}
+              <li>{{ item.sector }} ({{ item.score }})</li>
+            {% endfor %}
+          </ol>
+        </div>
+        <div>
+          <p class="metric">약세/경계 후보</p>
+          <ol class="tiny-list">
+            {% for item in sector_rotation.weak %}
+              <li>{{ item.sector }} ({{ item.score }})</li>
+            {% endfor %}
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">신뢰도 점검</h2>
+      <p class="metric">평가 표본 {{ reliability.evaluated }}건</p>
+      <p class="metric">Hit Rate: {{ reliability.hit_rate }} / False Alarm: {{ reliability.false_alarm_rate }}</p>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">히트맵 / 타임라인</h2>
+      <div class="heatmap">
+        <table>
+          <thead>
+            <tr>
+              <th>일자</th>
+              {% for slot in heatmap.slots %}
+                <th>{{ slot }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in heatmap.rows %}
+              <tr>
+                <td>{{ row.day }}</td>
+                {% for cell in row.scores %}
+                  <td style="background: {{ cell.color }}">{{ cell.text }}</td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="timeline">
+        {% for item in heatmap.timeline %}
+          <article class="timeline-item">
+            <p class="timeline-time">{{ item.time }}</p>
+            <p class="timeline-score">{{ item.score }}</p>
+          </article>
+        {% endfor %}
+      </div>
     </section>
 
     <section class="card">

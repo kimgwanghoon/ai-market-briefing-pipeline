@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -31,6 +31,29 @@ KST = pytz.timezone("Asia/Seoul")
 OPENAI_API_KEY = os.getenv("AI_API_KEY")
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
 DART_API_KEY = os.getenv("DART_API_KEY", "").strip()
+
+
+def parse_snapshot_dt(snapshot: dict) -> datetime:
+    try:
+        return KST.localize(datetime.strptime(snapshot.get("timestamp", ""), "%Y-%m-%d %H:%M:%S"))
+    except Exception:
+        return datetime.now(KST)
+
+
+def load_intraday_history(limit: int = 400) -> List[dict]:
+    snapshots: List[dict] = []
+    files = sorted(INTRADAY_DATA_DIR.glob("*.json"), reverse=True)
+    for file_path in files:
+        if file_path.name == "latest.json":
+            continue
+        try:
+            data = json.loads(file_path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        snapshots.append(data)
+        if len(snapshots) >= limit:
+            break
+    return snapshots
 
 
 def score_text(text: str, positive: Dict[str, int], negative: Dict[str, int]) -> Tuple[int, List[str]]:
@@ -277,6 +300,172 @@ def build_sentiment(indexes: Dict[str, dict], news: List[dict], darts: List[dict
     }
 
 
+def find_previous_snapshot(current_dt: datetime, history: List[dict]) -> dict | None:
+    target = current_dt - timedelta(days=1)
+    target_slot = target.strftime("%H:%M")
+    closest = None
+    closest_gap = None
+
+    for item in history:
+        item_dt = parse_snapshot_dt(item)
+        if item_dt.strftime("%H:%M") != target_slot:
+            continue
+        gap = abs((item_dt - target).total_seconds())
+        if closest is None or gap < closest_gap:
+            closest = item
+            closest_gap = gap
+
+    if closest is not None:
+        return closest
+    return history[0] if history else None
+
+
+def build_day_over_day_comments(current_payload: dict, history: List[dict]) -> List[str]:
+    if not history:
+        return [
+            "전일 동일 시간 데이터가 없어 **당일 흐름 중심**으로 판단합니다.",
+            "리스크 지표의 절대 수준과 방향을 우선 확인하세요.",
+            "이벤트 누적이 쌓이면 비교 코멘트 정확도가 높아집니다.",
+        ]
+
+    current_dt = parse_snapshot_dt(current_payload)
+    previous = find_previous_snapshot(current_dt, history)
+    if previous is None:
+        return ["전일 비교 데이터 확인이 필요합니다."]
+
+    current_sentiment = current_payload.get("sentiment", {}).get("score", 0)
+    previous_sentiment = previous.get("sentiment", {}).get("score", 0)
+    sentiment_delta = round(current_sentiment - previous_sentiment, 2)
+
+    current_vix = parse_price(current_payload.get("market_signals", {}).get("vix", {}).get("price", "N/A"))
+    previous_vix = parse_price(previous.get("market_signals", {}).get("vix", {}).get("price", "N/A"))
+    vix_delta = round(current_vix - previous_vix, 2) if current_vix == current_vix and previous_vix == previous_vix else "N/A"
+
+    current_usd = parse_price(current_payload.get("market_signals", {}).get("usdkrw", {}).get("price", "N/A"))
+    previous_usd = parse_price(previous.get("market_signals", {}).get("usdkrw", {}).get("price", "N/A"))
+    usd_delta = round(current_usd - previous_usd, 2) if current_usd == current_usd and previous_usd == previous_usd else "N/A"
+
+    current_events = current_payload.get("events", {})
+    previous_events = previous.get("events", {})
+    event_delta = (current_events.get("news_count", 0) + current_events.get("dart_count", 0)) - (
+        previous_events.get("news_count", 0) + previous_events.get("dart_count", 0)
+    )
+
+    return [
+        f"전일 동시간 대비 **센티먼트 {sentiment_delta:+.2f}p** 변화로 현재 점수는 {current_sentiment}점입니다.",
+        f"리스크 축은 **VIX {vix_delta if vix_delta != 'N/A' else 'N/A'}**, **달러원 {usd_delta if usd_delta != 'N/A' else 'N/A'}** 만큼 변동했습니다.",
+        f"이벤트 발생량은 전일 대비 **{event_delta:+d}건** 차이로 뉴스/공시 민감도를 점검할 구간입니다.",
+    ]
+
+
+def detect_sector_rotation(news: List[dict], darts: List[dict]) -> dict:
+    sector_keywords = {
+        "반도체": ["반도체", "메모리", "하이닉스", "삼성전자", "soxx"],
+        "2차전지": ["2차전지", "배터리", "전기차", "양극재", "음극재"],
+        "바이오": ["바이오", "제약", "임상", "신약"],
+        "금융": ["은행", "보험", "증권", "금융", "배당"],
+        "에너지": ["유가", "정유", "가스", "에너지"],
+        "방산": ["방산", "미사일", "천궁", "수출"],
+    }
+
+    sector_scores = {name: 0 for name in sector_keywords}
+    for event in [*news, *darts]:
+        text = f"{event.get('title', '')} {event.get('corp_name', '')}".lower()
+        impact = float(event.get("impact_score", 0))
+        for sector, keywords in sector_keywords.items():
+            if any(keyword.lower() in text for keyword in keywords):
+                sector_scores[sector] += impact if impact != 0 else 0.5
+
+    ordered = sorted(sector_scores.items(), key=lambda x: x[1], reverse=True)
+    strong = [{"sector": name, "score": round(score, 2)} for name, score in ordered[:2]]
+    weak = [{"sector": name, "score": round(score, 2)} for name, score in ordered[-2:]]
+    return {
+        "scores": [{"sector": name, "score": round(score, 2)} for name, score in ordered],
+        "strong": strong,
+        "weak": weak,
+    }
+
+
+def compute_reliability(history: List[dict]) -> dict:
+    if len(history) < 6:
+        return {"evaluated": 0, "hit_rate": "N/A", "false_alarm_rate": "N/A"}
+
+    ordered = sorted(history, key=parse_snapshot_dt)
+    evaluated = 0
+    hit = 0
+    false_alarm = 0
+
+    for i in range(len(ordered) - 1):
+        current = ordered[i].get("sentiment", {})
+        next_item = ordered[i + 1].get("sentiment", {})
+        current_label = current.get("label", "neutral")
+        next_score = float(next_item.get("score", 0))
+        evaluated += 1
+
+        if current_label == "bullish":
+            if next_score >= 0:
+                hit += 1
+            else:
+                false_alarm += 1
+        elif current_label == "bearish":
+            if next_score <= 0:
+                hit += 1
+            else:
+                false_alarm += 1
+        else:
+            if -10 <= next_score <= 10:
+                hit += 1
+
+    if evaluated == 0:
+        return {"evaluated": 0, "hit_rate": "N/A", "false_alarm_rate": "N/A"}
+
+    hit_rate = round((hit / evaluated) * 100, 1)
+    false_alarm_rate = round((false_alarm / evaluated) * 100, 1)
+    return {"evaluated": evaluated, "hit_rate": f"{hit_rate}%", "false_alarm_rate": f"{false_alarm_rate}%"}
+
+
+def build_timeline_heatmap(current_payload: dict, history: List[dict]) -> dict:
+    merged = [current_payload, *history]
+    recent = sorted(merged, key=parse_snapshot_dt)[-40:]
+    slots = ["08:30", "09:30", "10:30", "11:30", "12:30", "13:30", "14:30", "15:30"]
+
+    day_map: Dict[str, Dict[str, float]] = {}
+    for item in recent:
+        dt = parse_snapshot_dt(item)
+        day_key = dt.strftime("%m-%d")
+        slot_key = dt.strftime("%H:%M")
+        if slot_key not in slots:
+            continue
+        day_map.setdefault(day_key, {})[slot_key] = float(item.get("sentiment", {}).get("score", 0))
+
+    days = sorted(day_map.keys())[-5:]
+    rows = []
+    for day in days:
+        row = {"day": day, "scores": []}
+        for slot in slots:
+            score = day_map[day].get(slot)
+            if score is None:
+                row["scores"].append({"slot": slot, "text": "-", "color": "#e2e8f0"})
+                continue
+            if score >= 18:
+                color = "#fecaca"
+            elif score <= -18:
+                color = "#bfdbfe"
+            else:
+                color = "#e2e8f0"
+            row["scores"].append({"slot": slot, "text": f"{score:.0f}", "color": color})
+        rows.append(row)
+
+    timeline = [
+        {
+            "time": parse_snapshot_dt(item).strftime("%m-%d %H:%M"),
+            "score": float(item.get("sentiment", {}).get("score", 0)),
+        }
+        for item in recent[-12:]
+    ]
+    return {"slots": slots, "rows": rows, "timeline": timeline}
+
+
 def build_rule_points(indexes: Dict[str, dict], sentiment: dict, news: List[dict], darts: List[dict]) -> Tuple[List[str], str]:
     label_kr = {"bullish": "우호", "neutral": "중립", "bearish": "경계"}[sentiment["label"]]
     point1 = (
@@ -343,13 +532,25 @@ def build_llm_points(indexes: Dict[str, dict], sentiment: dict, news: List[dict]
         return build_rule_points(indexes, sentiment, news, darts)
 
 
-def save_intraday_snapshot(indexes: Dict[str, dict], news: List[dict], darts: List[dict], sentiment: dict, points: List[str], watchpoint: str) -> dict:
+def save_intraday_snapshot(
+    indexes: Dict[str, dict],
+    news: List[dict],
+    darts: List[dict],
+    sentiment: dict,
+    points: List[str],
+    watchpoint: str,
+    day_over_day: List[str],
+    sector_rotation: dict,
+    reliability: dict,
+    heatmap: dict,
+) -> dict:
     now = datetime.now(KST)
     stamp = now.strftime("%Y-%m-%d-%H%M")
     hour_start = now.replace(minute=0, second=0, microsecond=0)
     hour_end = hour_start.replace(minute=59, second=59)
 
     payload = {
+        "schema_version": "1.1",
         "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
         "window_start": hour_start.strftime("%Y-%m-%d %H:%M:%S"),
         "window_end": hour_end.strftime("%Y-%m-%d %H:%M:%S"),
@@ -364,6 +565,10 @@ def save_intraday_snapshot(indexes: Dict[str, dict], news: List[dict], darts: Li
         "sentiment": sentiment,
         "key_points": points,
         "watchpoint": watchpoint,
+        "day_over_day": day_over_day,
+        "sector_rotation": sector_rotation,
+        "reliability": reliability,
+        "heatmap": heatmap,
     }
 
     (INTRADAY_DATA_DIR / f"{stamp}.json").write_text(
@@ -446,6 +651,10 @@ def render_live_html(payload: dict) -> None:
         market=payload.get("market_signals", {}),
         key_points=payload.get("key_points", []),
         watchpoint=payload.get("watchpoint", ""),
+        day_over_day=payload.get("day_over_day", []),
+        sector_rotation=payload.get("sector_rotation", {}),
+        reliability=payload.get("reliability", {}),
+        heatmap=payload.get("heatmap", {}),
         news_events=news_events,
         dart_events=dart_events,
         pages_url=resolve_pages_url(),
@@ -454,12 +663,35 @@ def render_live_html(payload: dict) -> None:
 
 
 def main() -> None:
+    history = load_intraday_history(limit=400)
     indexes = fetch_market_signals()
     news_events = score_news_events(fetch_naver_news(limit=20))
     dart_events = score_dart_events(fetch_dart_events(limit=40))
     sentiment = build_sentiment(indexes, news_events, dart_events)
     points, watchpoint = build_llm_points(indexes, sentiment, news_events, dart_events)
-    payload = save_intraday_snapshot(indexes, news_events, dart_events, sentiment, points, watchpoint)
+    preview_payload = {
+        "timestamp": datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S"),
+        "market_signals": indexes,
+        "events": {"news": news_events, "dart": dart_events, "news_count": len(news_events), "dart_count": len(dart_events)},
+        "sentiment": sentiment,
+    }
+    day_over_day = build_day_over_day_comments(preview_payload, history)
+    sector_rotation = detect_sector_rotation(news_events, dart_events)
+    reliability = compute_reliability(history)
+    heatmap = build_timeline_heatmap(preview_payload, history)
+
+    payload = save_intraday_snapshot(
+        indexes,
+        news_events,
+        dart_events,
+        sentiment,
+        points,
+        watchpoint,
+        day_over_day,
+        sector_rotation,
+        reliability,
+        heatmap,
+    )
     render_live_html(payload)
     send_discord_intraday(payload)
     print("Generated:", INTRADAY_DATA_DIR / "latest.json")

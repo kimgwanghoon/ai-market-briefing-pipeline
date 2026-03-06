@@ -18,11 +18,14 @@
 | `main.py` | 지수 수집 → AI 브리핑 생성 → HTML 렌더링 → Discord 알림 실행 |
 | `intraday.py` | 장중(08:30~15:30) 뉴스/공시/시장신호 하이브리드 스냅샷 생성 |
 | `cleanup_json.py` | 30일 초과 JSON 데이터 정리 스크립트 |
+| `weekly_report.py` | 주간 리포트(JSON/HTML) 생성 및 알림 전송 |
 | `template.html` | 브리핑 페이지 HTML 템플릿 |
 | `template_live.html` | 장중 라이브 페이지 HTML 템플릿 (`public/live.html`) |
+| `template_weekly.html` | 주간 리포트 HTML 템플릿 (`public/weekly.html`) |
 | `.github/workflows/main.yml` | 평일 오전/오후 자동 실행 및 GitHub Pages 배포 |
 | `.github/workflows/intraday.yml` | 장중 매시 실행 및 intraday 데이터 배포 |
 | `.github/workflows/cleanup-data.yml` | 평일 00:00(KST) JSON 정리 실행 |
+| `.github/workflows/weekly-report.yml` | 토요일 09:00(KST) 주간 리포트 생성/배포 |
 | `requirements.txt` | Python 의존성 |
 | `public/data/*.json` | 실행 스냅샷 누적 데이터 (히스토리/대시보드용) |
 
@@ -49,3 +52,4 @@ DART_API_KEY=your_opendart_api_key
 - `main.yml`: 평일 08:00 / 18:00(KST) 데일리 브리핑
 - `intraday.yml`: 평일 08:30~15:30(KST) 매시 장중 하이브리드 스냅샷
 - `cleanup-data.yml`: 평일 00:00(KST) 30일 초과 JSON 자동 정리
+- `weekly-report.yml`: 토요일 09:00(KST) 주간 시장 리포트 생성/발송
