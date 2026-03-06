@@ -33,6 +33,10 @@ DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
 DART_API_KEY = os.getenv("DART_API_KEY", "").strip()
 
 
+def bold_filter(text: str) -> str:
+    return re.sub(r"\*+([^*]+)\*+", r"<strong>\1</strong>", text)
+
+
 def parse_snapshot_dt(snapshot: dict) -> datetime:
     try:
         return KST.localize(datetime.strptime(snapshot.get("timestamp", ""), "%Y-%m-%d %H:%M:%S"))
@@ -622,6 +626,7 @@ def send_discord_intraday(payload: dict) -> None:
 
 def render_live_html(payload: dict) -> None:
     env = Environment(loader=FileSystemLoader(str(BASE_DIR)))
+    env.filters["bold"] = bold_filter
     template = env.get_template("template_live.html")
 
     sentiment = payload.get("sentiment", {})

@@ -241,17 +241,17 @@
       <p class="score">{{ sentiment.label }} · {{ sentiment.score }}점 (신뢰도 {{ sentiment.confidence }}%)</p>
       <ol class="summary">
         {% for point in key_points %}
-          <li>{{ point }}</li>
+          <li>{{ point | bold | safe }}</li>
         {% endfor %}
       </ol>
-      <p class="watch">{{ watchpoint }}</p>
+      <p class="watch">{{ watchpoint | bold | safe }}</p>
     </section>
 
     <section class="card">
       <h2 class="section-title">전일 대비 자동 코멘트</h2>
       <ol class="summary">
         {% for line in day_over_day %}
-          <li>{{ line }}</li>
+          <li>{{ line | bold | safe }}</li>
         {% endfor %}
       </ol>
     </section>
