@@ -19,6 +19,7 @@
 | `intraday.py` | 장중(08:30~15:30) 뉴스/공시/시장신호 하이브리드 스냅샷 생성 |
 | `cleanup_json.py` | 30일 초과 JSON 데이터 정리 스크립트 |
 | `template.html` | 브리핑 페이지 HTML 템플릿 |
+| `template_live.html` | 장중 라이브 페이지 HTML 템플릿 (`public/live.html`) |
 | `.github/workflows/main.yml` | 평일 오전/오후 자동 실행 및 GitHub Pages 배포 |
 | `.github/workflows/intraday.yml` | 장중 매시 실행 및 intraday 데이터 배포 |
 | `.github/workflows/cleanup-data.yml` | 평일 00:00(KST) JSON 정리 실행 |

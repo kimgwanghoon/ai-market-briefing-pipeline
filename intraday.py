@@ -7,6 +7,7 @@ from typing import Dict, List, Tuple
 
 import pytz
 import requests
+from jinja2 import Environment, FileSystemLoader
 from openai import OpenAI
 
 from main import get_index_data, get_korean_index_data, resolve_pages_url
@@ -414,6 +415,44 @@ def send_discord_intraday(payload: dict) -> None:
         pass
 
 
+def render_live_html(payload: dict) -> None:
+    env = Environment(loader=FileSystemLoader(str(BASE_DIR)))
+    template = env.get_template("template_live.html")
+
+    sentiment = payload.get("sentiment", {})
+    label_map = {"bullish": "우호", "neutral": "중립", "bearish": "경계"}
+    sentiment_view = {
+        "label": label_map.get(sentiment.get("label", "neutral"), "중립"),
+        "score": sentiment.get("score", 0),
+        "confidence": sentiment.get("confidence", 0),
+    }
+
+    news_events = sorted(
+        payload.get("events", {}).get("news", []),
+        key=lambda x: abs(x.get("impact_score", 0)),
+        reverse=True,
+    )[:8]
+    dart_events = sorted(
+        payload.get("events", {}).get("dart", []),
+        key=lambda x: abs(x.get("impact_score", 0)),
+        reverse=True,
+    )[:8]
+
+    html = template.render(
+        generated_at=payload.get("timestamp", ""),
+        window_start=payload.get("window_start", ""),
+        window_end=payload.get("window_end", ""),
+        sentiment=sentiment_view,
+        market=payload.get("market_signals", {}),
+        key_points=payload.get("key_points", []),
+        watchpoint=payload.get("watchpoint", ""),
+        news_events=news_events,
+        dart_events=dart_events,
+        pages_url=resolve_pages_url(),
+    )
+    (OUTPUT_DIR / "live.html").write_text(html, encoding="utf-8")
+
+
 def main() -> None:
     indexes = fetch_market_signals()
     news_events = score_news_events(fetch_naver_news(limit=20))
@@ -421,6 +460,7 @@ def main() -> None:
     sentiment = build_sentiment(indexes, news_events, dart_events)
     points, watchpoint = build_llm_points(indexes, sentiment, news_events, dart_events)
     payload = save_intraday_snapshot(indexes, news_events, dart_events, sentiment, points, watchpoint)
+    render_live_html(payload)
     send_discord_intraday(payload)
     print("Generated:", INTRADAY_DATA_DIR / "latest.json")
 

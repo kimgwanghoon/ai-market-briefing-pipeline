@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Market Pulse</title>
+  <meta name="description" content="장중 시장 분위기" />
+  <meta property="og:title" content="Live Market Pulse" />
+  <meta property="og:description" content="장중 뉴스/공시/시장신호 기반 분위기" />
+  <style>
+    :root {
+      --bg-a: #f8fafc;
+      --bg-b: #e2e8f0;
+      --card: #ffffff;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: #dbe4ef;
+      --accent: #0f766e;
+      --accent-soft: #ccfbf1;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 88% 10%, #bae6fd 0, transparent 34%),
+        radial-gradient(circle at 8% 92%, #fee2e2 0, transparent 28%),
+        linear-gradient(160deg, var(--bg-a), var(--bg-b));
+      min-height: 100vh;
+    }
+
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 36px 16px 64px;
+    }
+
+    .badge {
+      display: inline-flex;
+      padding: 8px 16px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    h1 {
+      margin: 14px 0 8px;
+      font-size: clamp(1.7rem, 4vw, 2.4rem);
+      line-height: 1.25;
+    }
+
+    .meta {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .top-links {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .top-links a {
+      text-decoration: none;
+      color: var(--accent);
+      font-size: 0.88rem;
+      font-weight: 700;
+      border: 1px solid #99f6e4;
+      background: #f0fdfa;
+      border-radius: 999px;
+      padding: 6px 10px;
+    }
+
+    .card {
+      margin-top: 18px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      padding: 20px;
+    }
+
+    .section-title {
+      font-size: 1.03rem;
+      font-weight: 800;
+      margin: 0 0 12px;
+      color: var(--accent);
+    }
+
+    .score {
+      font-size: 1.3rem;
+      font-weight: 800;
+      margin: 0 0 10px;
+    }
+
+    .summary {
+      margin: 0;
+      padding-left: 22px;
+      line-height: 1.7;
+    }
+
+    .summary li { margin-bottom: 8px; }
+
+    .watch {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-left: 4px solid var(--accent);
+      background: #f0fdfa;
+      border-radius: 8px;
+      font-weight: 600;
+      line-height: 1.6;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    @media (max-width: 760px) {
+      .grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .item {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #f8fafc;
+    }
+
+    .name { margin: 0 0 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .price { margin: 0; font-weight: 750; }
+    .change { margin: 3px 0 0; font-size: 0.88rem; font-weight: 700; }
+
+    .event-list {
+      margin: 0;
+      padding-left: 18px;
+      line-height: 1.6;
+    }
+
+    .event-list li { margin-bottom: 8px; }
+    .event-list a { color: #0f766e; text-decoration: none; }
+    .event-list a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <span class="badge">LIVE MARKET PULSE</span>
+    <h1>장중 시장 분위기 모니터</h1>
+    <p class="meta">집계 구간: {{ window_start }} ~ {{ window_end }} / 생성 시각: {{ generated_at }} (KST)</p>
+    <div class="top-links">
+      <a href="index.html">데일리 브리핑 보기</a>
+      <a href="{{ pages_url }}">Pages 홈</a>
+    </div>
+
+    <section class="card">
+      <h2 class="section-title">하이브리드 센티먼트</h2>
+      <p class="score">{{ sentiment.label }} · {{ sentiment.score }}점 (신뢰도 {{ sentiment.confidence }}%)</p>
+      <ol class="summary">
+        {% for point in key_points %}
+          <li>{{ point }}</li>
+        {% endfor %}
+      </ol>
+      <p class="watch">{{ watchpoint }}</p>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">시장 신호</h2>
+      <div class="grid">
+        {% for name in ['kospi', 'kosdaq', 'sp500', 'nasdaq', 'vix', 'usdkrw', 'us10y', 'ewy'] %}
+          <article class="item">
+            <p class="name">{{ name }}</p>
+            <p class="price">{{ market[name].price }}</p>
+            <p class="change" style="color: {{ market[name].color }}">{{ market[name].change }}</p>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">주요 뉴스 이벤트</h2>
+      <ol class="event-list">
+        {% for event in news_events[:6] %}
+          <li>
+            <a href="{{ event.url }}" target="_blank" rel="noopener noreferrer">{{ event.title }}</a>
+            ({{ event.source }}, 점수 {{ event.impact_score }})
+          </li>
+        {% endfor %}
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">주요 공시 이벤트</h2>
+      <ol class="event-list">
+        {% for event in dart_events[:6] %}
+          <li>
+            <a href="{{ event.url }}" target="_blank" rel="noopener noreferrer">{{ event.corp_name }} {{ event.title }}</a>
+            (점수 {{ event.impact_score }})
+          </li>
+        {% endfor %}
+      </ol>
+    </section>
+  </main>
+</body>
+</html>
