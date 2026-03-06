@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Market Pulse</title>
+  <meta name="description" content="장중 시장 분위기" />
+  <meta property="og:title" content="Live Market Pulse" />
+  <meta property="og:description" content="장중 뉴스/공시/시장신호 기반 분위기" />
+  <style>
+    :root {
+      --bg-a: #f8fafc;
+      --bg-b: #e2e8f0;
+      --card: #ffffff;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: #dbe4ef;
+      --accent: #0f766e;
+      --accent-soft: #ccfbf1;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 88% 10%, #bae6fd 0, transparent 34%),
+        radial-gradient(circle at 8% 92%, #fee2e2 0, transparent 28%),
+        linear-gradient(160deg, var(--bg-a), var(--bg-b));
+      min-height: 100vh;
+    }
+
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 36px 16px 64px;
+    }
+
+    .badge {
+      display: inline-flex;
+      padding: 8px 16px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    h1 {
+      margin: 14px 0 8px;
+      font-size: clamp(1.7rem, 4vw, 2.4rem);
+      line-height: 1.25;
+    }
+
+    .meta {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .top-links {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .top-links a {
+      text-decoration: none;
+      color: var(--accent);
+      font-size: 0.88rem;
+      font-weight: 700;
+      border: 1px solid #99f6e4;
+      background: #f0fdfa;
+      border-radius: 999px;
+      padding: 6px 10px;
+    }
+
+    .card {
+      margin-top: 18px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      padding: 20px;
+    }
+
+    .section-title {
+      font-size: 1.03rem;
+      font-weight: 800;
+      margin: 0 0 12px;
+      color: var(--accent);
+    }
+
+    .score {
+      font-size: 1.3rem;
+      font-weight: 800;
+      margin: 0 0 10px;
+    }
+
+    .summary {
+      margin: 0;
+      padding-left: 22px;
+      line-height: 1.7;
+    }
+
+    .summary li { margin-bottom: 8px; }
+
+    .watch {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-left: 4px solid var(--accent);
+      background: #f0fdfa;
+      border-radius: 8px;
+      font-weight: 600;
+      line-height: 1.6;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    @media (max-width: 760px) {
+      .grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .item {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #f8fafc;
+    }
+
+    .name { margin: 0 0 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .price { margin: 0; font-weight: 750; }
+    .change { margin: 3px 0 0; font-size: 0.88rem; font-weight: 700; }
+
+    .event-list {
+      margin: 0;
+      padding-left: 18px;
+      line-height: 1.6;
+    }
+
+    .event-list li { margin-bottom: 8px; }
+    .event-list a { color: #0f766e; text-decoration: none; }
+    .event-list a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <span class="badge">LIVE MARKET PULSE</span>
+    <h1>장중 시장 분위기 모니터</h1>
+    <p class="meta">집계 구간: 2026-03-06 14:00:00 ~ 2026-03-06 14:59:59 / 생성 시각: 2026-03-06 14:46:14 (KST)</p>
+    <div class="top-links">
+      <a href="index.html">데일리 브리핑 보기</a>
+      <a href="https://kimgwanghoon.github.io/ai-market-briefing-pipeline">Pages 홈</a>
+    </div>
+
+    <section class="card">
+      <h2 class="section-title">하이브리드 센티먼트</h2>
+      <p class="score">경계 · -41.0점 (신뢰도 73%)</p>
+      <ol class="summary">
+        
+          <li>**코스피**는 6.48포인트 하락하여 5,577.42를 기록하며 전반적인 **하락세**를 보이고 있습니다.</li>
+        
+          <li>같은 시점에서 **VIX 지수**는 2.60포인트 상승하여 23.75를 기록, 이는 투자자들이 **불확실성**에 대응하고 있음을 나타냅니다.</li>
+        
+          <li>반면 **코스닥**은 33.87포인트 상승하며 1,150.28에 거래되고 있는데, 이는 **반도체기판株**의 긍정적인 실적 전망이 영향을 미친 것으로 보입니다.</li>
+        
+      </ol>
+      <p class="watch">오늘의 핵심 관전 포인트: **중동 리스크**와 관련된 삼성전자의 약세가 이어지는지 주목할 필요가 있습니다.</p>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">시장 신호</h2>
+      <div class="grid">
+        
+          <article class="item">
+            <p class="name">kospi</p>
+            <p class="price">5,577.42</p>
+            <p class="change" style="color: #3b82f6">▼ 6.48 (-0.12%)</p>
+          </article>
+        
+          <article class="item">
+            <p class="name">kosdaq</p>
+            <p class="price">1,150.28</p>
+            <p class="change" style="color: #ef4444">▲ 33.87 (+3.03%)</p>
+          </article>
+        
+          <article class="item">
+            <p class="name">sp500</p>
+            <p class="price">6,830.71</p>
+            <p class="change" style="color: #3b82f6">▼ 38.79 (-0.56%)</p>
+          </article>
+        
+          <article class="item">
+            <p class="name">nasdaq</p>
+            <p class="price">22,748.99</p>
+            <p class="change" style="color: #3b82f6">▼ 58.49 (-0.26%)</p>
+          </article>
+        
+          <article class="item">
+            <p class="name">vix</p>
+            <p class="price">23.75</p>
+            <p class="change" style="color: #ef4444">▲ 2.60 (+12.29%)</p>
+          </article>
+        
+          <article class="item">
+            <p class="name">usdkrw</p>
+            <p class="price">1,470.98</p>
+            <p class="change" style="color: #ef4444">▲ 10.23 (+0.70%)</p>
+          </article>
+        
+          <article class="item">
+            <p class="name">us10y</p>
+            <p class="price">4.15</p>
+            <p class="change" style="color: #ef4444">▲ 0.07 (+1.62%)</p>
+          </article>
+        
+          <article class="item">
+            <p class="name">ewy</p>
+            <p class="price">125.74</p>
+            <p class="change" style="color: #3b82f6">▼ 8.63 (-6.42%)</p>
+          </article>
+        
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">주요 뉴스 이벤트</h2>
+      <ol class="event-list">
+        
+          <li>
+            <a href="https://finance.naver.com/news/news_read.naver?article_id=0002609618&office_id=016&mode=mainnews&type=&date=2026-03-06&page=1" target="_blank" rel="noopener noreferrer">급락장에 KRX 추격하는 NXT…‘코스피 정규장’ 거래대금 50% 육박 [투자360]</a>
+            (헤럴드경제, 점수 -3)
+          </li>
+        
+          <li>
+            <a href="https://finance.naver.com/news/news_read.naver?article_id=0001244180&office_id=215&mode=mainnews&type=&date=2026-03-06&page=1" target="_blank" rel="noopener noreferrer">반도체기판株, 역대급 실적 쏜다...AI 낙수효과</a>
+            (한국경제TV, 점수 2)
+          </li>
+        
+          <li>
+            <a href="https://finance.naver.com/news/news_read.naver?article_id=0000478660&office_id=629&mode=mainnews&type=&date=2026-03-06&page=1" target="_blank" rel="noopener noreferrer">중동 리스크에 삼성전자 3%대 하락…SK하이닉스도 동반 약세</a>
+            (더팩트, 점수 -2)
+          </li>
+        
+          <li>
+            <a href="https://finance.naver.com/news/news_read.naver?article_id=0005487262&office_id=014&mode=mainnews&type=&date=2026-03-06&page=1" target="_blank" rel="noopener noreferrer">"영업익 4238% 급증" 한화비전 목표가 '12만원'…S-Oil, 정제 마진 초강세에 '15만원' 상향 [株토피아]</a>
+            (파이낸셜뉴스, 점수 2)
+          </li>
+        
+          <li>
+            <a href="https://finance.naver.com/news/news_read.naver?article_id=0008810288&office_id=421&mode=mainnews&type=&date=2026-03-06&page=1" target="_blank" rel="noopener noreferrer">개미들 사흘간 삼전·SK하닉 5조 끌어 모았다…"실적 빵빵, 줍줍 타임"</a>
+            (뉴스1, 점수 2)
+          </li>
+        
+          <li>
+            <a href="https://finance.naver.com/news/news_read.naver?article_id=0006229667&office_id=018&mode=mainnews&type=&date=2026-03-06&page=1" target="_blank" rel="noopener noreferrer">주태영 이데일리ON 파트너 “중동 리스크 속 반도체·2차전지 주목”</a>
+            (이데일리, 점수 -2)
+          </li>
+        
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">주요 공시 이벤트</h2>
+      <ol class="event-list">
+        
+          <li>
+            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260306900624" target="_blank" rel="noopener noreferrer">와이엠 현금ㆍ현물배당결정              </a>
+            (점수 2)
+          </li>
+        
+          <li>
+            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260306000440" target="_blank" rel="noopener noreferrer">한솔로지스틱스 [첨부정정]의결권대리행사권유참고서류</a>
+            (점수 -1)
+          </li>
+        
+          <li>
+            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260306900665" target="_blank" rel="noopener noreferrer">에스투더블유 [기재정정]주식매수선택권행사              </a>
+            (점수 -1)
+          </li>
+        
+          <li>
+            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260306900688" target="_blank" rel="noopener noreferrer">KS인더스트리 [기재정정]소송등의판결ㆍ결정              </a>
+            (점수 -1)
+          </li>
+        
+          <li>
+            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260306900558" target="_blank" rel="noopener noreferrer">엠게임 [기재정정]매출액또는손익구조30%(대규모법인은15%)이상변동              </a>
+            (점수 1)
+          </li>
+        
+          <li>
+            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260306800631" target="_blank" rel="noopener noreferrer">덴티움 [기재정정]주주총회소집결의              </a>
+            (점수 -1)
+          </li>
+        
+      </ol>
+    </section>
+  </main>
+</body>
+</html>
