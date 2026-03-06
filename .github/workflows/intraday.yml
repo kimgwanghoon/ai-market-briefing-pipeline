@@ -1,0 +1,45 @@
+name: Intraday Sentiment Pipeline
+
+on:
+  schedule:
+    - cron: "30 23 * * 0-4"
+    - cron: "30 0-6 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  intraday:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip && pip install -r requirements.txt
+
+      - name: Generate intraday snapshot
+        env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          DART_API_KEY: ${{ secrets.DART_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          GITHUB_PAGES_URL: ${{ secrets.GITHUB_PAGES_URL }}
+          GENERATE_AI_IMAGE: false
+        run: python intraday.py
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          branch: gh-pages
+          keep_files: true
+          allow_empty_commit: true
