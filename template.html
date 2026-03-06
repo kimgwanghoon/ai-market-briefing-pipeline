@@ -7,7 +7,7 @@
   <meta name="description" content="{{ comic_headline }}" />
   <meta property="og:title" content="{{ edition_title }}" />
   <meta property="og:description" content="{{ comic_headline }}" />
-  <meta property="og:image" content="{{ cover_image }}" />
+  <meta property="og:image" content="cover.png" />
   <style>
     :root {
       --bg-a: #f8fafc;
@@ -318,7 +318,7 @@
     </section>
 
     <section class="cover-section">
-      <img class="cover" src="{{ cover_image }}" alt="시장 브리핑 커버" />
+      <img class="cover" src="cover.png" onerror="this.onerror=null;this.src='cover.svg';" alt="시장 브리핑 커버" />
     </section>
 
     <section class="risk-section">
