@@ -40,6 +40,20 @@ def env_flag(name: str, default: bool = False) -> bool:
 
 GENERATE_AI_IMAGE = env_flag("GENERATE_AI_IMAGE", default=True)
 
+
+def resolve_pages_url() -> str:
+    custom = GITHUB_PAGES_URL.strip()
+    if custom:
+        return custom
+
+    owner = os.getenv("GITHUB_REPOSITORY_OWNER", "").strip().lower()
+    repository = os.getenv("GITHUB_REPOSITORY", "").strip()
+    repo_name = repository.split("/")[-1].strip() if repository else ""
+
+    if owner and repo_name:
+        return f"https://{owner}.github.io/{repo_name}"
+    return "https://github.com"
+
 KST = pytz.timezone("Asia/Seoul")
 NOW_KST = datetime.now(KST)
 CURRENT_TIME_STR = NOW_KST.strftime("%Y-%m-%d %H:%M:%S")
@@ -679,6 +693,7 @@ def send_discord_alert(headline: str, summary_items: List[str], indexes: dict) -
         return
 
     body_text = "\n".join([re.sub(r"\*+", "", s) for s in summary_items])
+    pages_url = resolve_pages_url()
 
     embed_fields = [
         {"name": "KOSPI", "value": f"{indexes['kospi']['price']} ({indexes['kospi']['change']})", "inline": True},
@@ -700,7 +715,7 @@ def send_discord_alert(headline: str, summary_items: List[str], indexes: dict) -
                 "color": 5763714,
                 "fields": embed_fields,
                 "description": f"**📰 {headline}**\n\n{body_text}",
-                "url": GITHUB_PAGES_URL or "https://github.com",
+                "url": pages_url,
             }
         ]
     }

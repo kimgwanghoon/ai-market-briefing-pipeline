@@ -34,5 +34,5 @@ GENERATE_AI_IMAGE=true
 
 - `AI_API_KEY`: OpenAI 요약/헤드라인/이미지 생성용 (없으면 fallback 모드)
 - `DISCORD_WEBHOOK_URL`: 선택값, 설정 시 Discord 웹훅 전송
-- `GITHUB_PAGES_URL`: 선택값, Discord 메시지 URL
+- `GITHUB_PAGES_URL`: 선택값, Discord 메시지 URL (미설정 시 GitHub Actions 환경 변수로 자동 추론)
 - `GENERATE_AI_IMAGE`: `false`면 이미지 API 호출 없이 기존 커버 유지
