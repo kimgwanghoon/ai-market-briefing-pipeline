@@ -34,6 +34,7 @@ jobs:
       - name: Generate page
         env:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           GITHUB_PAGES_URL: ${{ secrets.GITHUB_PAGES_URL }}
           GENERATE_AI_IMAGE: ${{ github.event_name != 'push' }}
         run: python main.py
@@ -46,60 +47,3 @@ jobs:
           branch: gh-pages
           keep_files: true
           allow_empty_commit: true
-
-      - name: Notify Discord on completion
-        if: ${{ success() && secrets.DISCORD_WEBHOOK_URL != '' }}
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          GITHUB_PAGES_URL: ${{ secrets.GITHUB_PAGES_URL }}
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          import requests
-
-
-          latest_path = Path("public/data/latest.json")
-          if not latest_path.exists():
-              raise SystemExit("latest.json not found")
-
-          data = json.loads(latest_path.read_text(encoding="utf-8"))
-          indexes = data.get("indexes", {})
-
-          def idx(name: str) -> str:
-              item = indexes.get(name, {})
-              return f"{item.get('price', 'N/A')} ({item.get('change', '-')})"
-
-          summary_items = data.get("summary_items", [])
-          clean_summary = []
-          for item in summary_items:
-              text = str(item).replace("**", "").strip()
-              if not text or text.startswith("["):
-                  continue
-              clean_summary.append(text)
-
-          highlight = clean_summary[-1] if clean_summary else "핵심 관전 포인트 생성 실패"
-
-          payload = {
-              "embeds": [
-                  {
-                      "title": f"✅ 워크플로우 완료: {data.get('edition_title', 'Market Briefing')}",
-                      "color": 5763714,
-                      "url": os.getenv("GITHUB_PAGES_URL") or "https://github.com",
-                      "description": f"**📰 {data.get('headline', '헤드라인 없음')}**\n\n💡 {highlight}",
-                      "fields": [
-                          {"name": "KOSPI", "value": idx("kospi"), "inline": True},
-                          {"name": "KOSDAQ", "value": idx("kosdaq"), "inline": True},
-                          {"name": "EWY", "value": idx("ewy"), "inline": True},
-                          {"name": "S&P 500", "value": idx("sp500"), "inline": True},
-                          {"name": "NASDAQ", "value": idx("nasdaq"), "inline": True},
-                          {"name": "VIX", "value": idx("vix"), "inline": True},
-                      ],
-                  }
-              ]
-          }
-
-          requests.post(os.environ["DISCORD_WEBHOOK_URL"], json=payload, timeout=10)
-          PY
