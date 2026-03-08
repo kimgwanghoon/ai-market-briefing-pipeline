@@ -149,31 +149,191 @@
     .event-list li { margin-bottom: 8px; }
     .event-list a { color: #0f766e; text-decoration: none; }
     .event-list a:hover { text-decoration: underline; }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 760px) {
+      .split { grid-template-columns: 1fr; }
+    }
+
+    .tiny-list {
+      margin: 0;
+      padding-left: 18px;
+      line-height: 1.6;
+    }
+
+    .tiny-list li { margin-bottom: 6px; }
+
+    .metric {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .heatmap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .heatmap table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .heatmap th,
+    .heatmap td {
+      border: 1px solid var(--line);
+      padding: 6px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .timeline {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    @media (max-width: 760px) {
+      .timeline { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
+    .timeline-item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      background: #f8fafc;
+      text-align: center;
+    }
+
+    .timeline-time {
+      margin: 0 0 4px;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .timeline-score {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
   <main class="page">
     <span class="badge">LIVE MARKET PULSE</span>
     <h1>장중 시장 분위기 모니터</h1>
-    <p class="meta">집계 구간: 2026-03-06 15:00:00 ~ 2026-03-06 15:59:59 / 생성 시각: 2026-03-06 15:46:39 (KST)</p>
+    <p class="meta">집계 구간: 2026-03-09 08:00:00 ~ 2026-03-09 08:59:59 / 생성 시각: 2026-03-09 08:40:14 (KST)</p>
     <div class="top-links">
       <a href="index.html">데일리 브리핑 보기</a>
-      <a href="https://kimgwanghoon.github.io/ai-market-briefing-pipeline">Pages 홈</a>
     </div>
 
     <section class="card">
       <h2 class="section-title">하이브리드 센티먼트</h2>
-      <p class="score">경계 · -33.7점 (신뢰도 68%)</p>
+      <p class="score">경계 · -35.9점 (신뢰도 70%)</p>
       <ol class="summary">
         
-          <li>**코스피**와 **코스닥**이 각각 **0.02%**와 **3.43%** 상승하며 긍정적인 흐름을 보이는 반면, **미국 주요 지수**인 **S&P 500**, **다우**, **나스닥**은 하락세를 지속하고 있습니다.</li>
+          <li>현재 <strong>코스피</strong>와 <strong>코스닥</strong>은 각각 5,584.87포인트와 1,154.67포인트에서 변화가 없는 <strong>보합세</strong>를 보이고 있으며, 이는 투자자들의 <strong>관망세</strong>를 반영하고 있습니다.</li>
         
-          <li>국제 시장에서 **VIX** 지수가 **12.29%** 상승하며 **시장 불확실성**이 커지고 있는 가운데, **USD/KRW** 환율이 상승세를 보여 외환 시장의 **변동성**도 증가하고 있음을 나타냅니다.</li>
+          <li>반면, <strong>미국 시장</strong>은 <strong>S&P 500</strong>, <strong>다우지수</strong>, <strong>나스닥</strong>이 모두 하락하며 전반적인 <strong>부정적 감정</strong>을 드러내고 있어, 국내 시장에 영향을 미칠 가능성이 큽니다.</li>
         
-          <li>**반도체 관련 주식**에 대한 긍정적인 실적 전망에도 불구하고, **중동 리스크**와 같은 외부 요인이 **주가에 하방 압력**을 가하고 있는 상황입니다.</li>
+          <li>또한, 최근 <strong>유상증자</strong> 관련 뉴스가 잇따르면서 일부 기업들이 긍정적인 성과를 내기 어려울 것으로 보이며, 이는 <strong>변동성</strong>을 더욱 키울 수 있는 요소로 작용할 것입니다.</li>
         
       </ol>
-      <p class="watch">오늘의 핵심 관전 포인트: 오늘은 **글로벌 경제 리스크**와 **국내 실적 발표**가 주가에 미치는 영향을 주의 깊게 살펴봐야 합니다.</p>
+      <p class="watch">오늘의 핵심 관전 포인트: 글로벌 시장의 하락세와 유상증자 뉴스가 국내 시장에 미치는 영향을 주의 깊게 살펴보아야 합니다.</p>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">전일 대비 자동 코멘트</h2>
+      <ol class="summary">
+        
+          <li>전일 동일 시간 데이터가 없어 <strong>당일 흐름 중심</strong>으로 판단합니다.</li>
+        
+          <li>리스크 지표의 절대 수준과 방향을 우선 확인하세요.</li>
+        
+          <li>이벤트 누적이 쌓이면 비교 코멘트 정확도가 높아집니다.</li>
+        
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">섹터 회전 탐지</h2>
+      <div class="split">
+        <div>
+          <p class="metric">강세 전개 후보</p>
+          <ol class="tiny-list">
+            
+              <li>금융 (12.5)</li>
+            
+              <li>방산 (2.0)</li>
+            
+          </ol>
+        </div>
+        <div>
+          <p class="metric">약세/경계 후보</p>
+          <ol class="tiny-list">
+            
+              <li>2차전지 (0)</li>
+            
+              <li>바이오 (0)</li>
+            
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">신뢰도 점검</h2>
+      <p class="metric">평가 표본 0건</p>
+      <p class="metric">Hit Rate: N/A / False Alarm: N/A</p>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">히트맵 / 타임라인</h2>
+      <div class="heatmap">
+        <table>
+          <thead>
+            <tr>
+              <th>일자</th>
+              
+                <th>08:30</th>
+              
+                <th>09:30</th>
+              
+                <th>10:30</th>
+              
+                <th>11:30</th>
+              
+                <th>12:30</th>
+              
+                <th>13:30</th>
+              
+                <th>14:30</th>
+              
+                <th>15:30</th>
+              
+            </tr>
+          </thead>
+          <tbody>
+            
+          </tbody>
+        </table>
+      </div>
+      <div class="timeline">
+        
+          <article class="timeline-item">
+            <p class="timeline-time">03-09 08:40</p>
+            <p class="timeline-score">-35.9</p>
+          </article>
+        
+      </div>
     </section>
 
     <section class="card">
@@ -183,49 +343,49 @@
           <article class="item">
             <p class="name">kospi</p>
             <p class="price">5,584.87</p>
-            <p class="change" style="color: #ef4444">▲ 0.97 (+0.02%)</p>
+            <p class="change" style="color: #6b7280">- 0.00 (+0.00%)</p>
           </article>
         
           <article class="item">
             <p class="name">kosdaq</p>
             <p class="price">1,154.67</p>
-            <p class="change" style="color: #ef4444">▲ 38.26 (+3.43%)</p>
+            <p class="change" style="color: #6b7280">- 0.00 (+0.00%)</p>
           </article>
         
           <article class="item">
             <p class="name">sp500</p>
-            <p class="price">6,830.71</p>
-            <p class="change" style="color: #3b82f6">▼ 38.79 (-0.56%)</p>
+            <p class="price">6,740.02</p>
+            <p class="change" style="color: #3b82f6">▼ 90.69 (-1.33%)</p>
           </article>
         
           <article class="item">
             <p class="name">nasdaq</p>
-            <p class="price">22,748.99</p>
-            <p class="change" style="color: #3b82f6">▼ 58.49 (-0.26%)</p>
+            <p class="price">22,387.68</p>
+            <p class="change" style="color: #3b82f6">▼ 361.31 (-1.59%)</p>
           </article>
         
           <article class="item">
             <p class="name">vix</p>
-            <p class="price">23.75</p>
-            <p class="change" style="color: #ef4444">▲ 2.60 (+12.29%)</p>
+            <p class="price">29.49</p>
+            <p class="change" style="color: #ef4444">▲ 5.74 (+24.17%)</p>
           </article>
         
           <article class="item">
             <p class="name">usdkrw</p>
-            <p class="price">1,475.07</p>
-            <p class="change" style="color: #ef4444">▲ 14.32 (+0.98%)</p>
+            <p class="price">1,481.09</p>
+            <p class="change" style="color: #ef4444">▲ 1.58 (+0.11%)</p>
           </article>
         
           <article class="item">
             <p class="name">us10y</p>
-            <p class="price">4.15</p>
-            <p class="change" style="color: #ef4444">▲ 0.07 (+1.62%)</p>
+            <p class="price">4.13</p>
+            <p class="change" style="color: #3b82f6">▼ 0.01 (-0.31%)</p>
           </article>
         
           <article class="item">
             <p class="name">ewy</p>
-            <p class="price">125.74</p>
-            <p class="change" style="color: #3b82f6">▼ 8.63 (-6.42%)</p>
+            <p class="price">126.73</p>
+            <p class="change" style="color: #ef4444">▲ 0.99 (+0.79%)</p>
           </article>
         
       </div>
@@ -236,33 +396,33 @@
       <ol class="event-list">
         
           <li>
-            <a href="https://finance.naver.com/news/news_read.naver?article_id=0002609618&office_id=016&mode=mainnews&type=&date=2026-03-06&page=1" target="_blank" rel="noopener noreferrer">급락장에 KRX 추격하는 NXT…‘코스피 정규장’ 거래대금 50% 육박 [투자360]</a>
-            (헤럴드경제, 점수 -3)
+            <a href="https://finance.naver.com/news/news_read.naver?article_id=0005259654&office_id=015&mode=mainnews&type=&date=2026-03-09&page=1" target="_blank" rel="noopener noreferrer">삼전·SK하닉 7%대 '급락' 개미들 철렁…프리마켓서 무슨 일이</a>
+            (한국경제, 점수 -3)
           </li>
         
           <li>
-            <a href="https://finance.naver.com/news/news_read.naver?article_id=0001244180&office_id=215&mode=mainnews&type=&date=2026-03-06&page=1" target="_blank" rel="noopener noreferrer">반도체기판株, 역대급 실적 쏜다...AI 낙수효과</a>
-            (한국경제TV, 점수 2)
+            <a href="https://finance.naver.com/news/news_read.naver?article_id=0005731096&office_id=277&mode=mainnews&type=&date=2026-03-09&page=1" target="_blank" rel="noopener noreferrer">"전쟁·지표·실적…이번주 증시 흔들 3가지 변수"[굿모닝 증시]</a>
+            (아시아경제, 점수 2)
           </li>
         
           <li>
-            <a href="https://finance.naver.com/news/news_read.naver?article_id=0000478660&office_id=629&mode=mainnews&type=&date=2026-03-06&page=1" target="_blank" rel="noopener noreferrer">중동 리스크에 삼성전자 3%대 하락…SK하이닉스도 동반 약세</a>
-            (더팩트, 점수 -2)
+            <a href="https://finance.naver.com/news/news_read.naver?article_id=0006230593&office_id=018&mode=mainnews&type=&date=2026-03-09&page=1" target="_blank" rel="noopener noreferrer">코스피, 급락 뒤 반등 나왔지만…”V자보다 W자 재시험 열어둬야”</a>
+            (이데일리, 점수 -2)
           </li>
         
           <li>
-            <a href="https://finance.naver.com/news/news_read.naver?article_id=0005487262&office_id=014&mode=mainnews&type=&date=2026-03-06&page=1" target="_blank" rel="noopener noreferrer">"영업익 4238% 급증" 한화비전 목표가 '12만원'…S-Oil, 정제 마진 초강세에 '15만원' 상향 [株토피아]</a>
-            (파이낸셜뉴스, 점수 2)
+            <a href="https://finance.naver.com/news/news_read.naver?article_id=0006230564&office_id=018&mode=mainnews&type=&date=2026-03-09&page=1" target="_blank" rel="noopener noreferrer">코츠테크놀로지, 방산 수출 증가에 매출 성장 본격화-iM</a>
+            (이데일리, 점수 2)
           </li>
         
           <li>
-            <a href="https://finance.naver.com/news/news_read.naver?article_id=0005487397&office_id=014&mode=mainnews&type=&date=2026-03-06&page=1" target="_blank" rel="noopener noreferrer">"삼성전자·SK하이닉스 던질때 아니다".. 코스피 7000 전망치 올린 골드만삭스</a>
-            (파이낸셜뉴스, 점수 0)
+            <a href="https://finance.naver.com/news/news_read.naver?article_id=0005731050&office_id=277&mode=mainnews&type=&date=2026-03-09&page=1" target="_blank" rel="noopener noreferrer">"헥토파이낸셜, 스테이블코인 정산 인프라 허브로 성장성 부각"[클릭 e종목]</a>
+            (아시아경제, 점수 2)
           </li>
         
           <li>
-            <a href="https://finance.naver.com/news/news_read.naver?article_id=0005326419&office_id=008&mode=mainnews&type=&date=2026-03-06&page=1" target="_blank" rel="noopener noreferrer">거래시간 연장·조직구조 개편…변곡점 선 한국거래소</a>
-            (머니투데이, 점수 0)
+            <a href="https://finance.naver.com/news/news_read.naver?article_id=0001146773&office_id=366&mode=mainnews&type=&date=2026-03-09&page=1" target="_blank" rel="noopener noreferrer">국장 급등락 속에…개미들 ‘빚투’는 33조원 역대 최대</a>
+            (조선비즈, 점수 2)
           </li>
         
       </ol>
@@ -273,33 +433,33 @@
       <ol class="event-list">
         
           <li>
-            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260306000578" target="_blank" rel="noopener noreferrer">애머릿지 [기재정정]주요사항보고서(유상증자결정)</a>
+            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260309001065" target="_blank" rel="noopener noreferrer">블루산업개발 [기재정정]주요사항보고서(유상증자결정)</a>
             (점수 -5)
           </li>
         
           <li>
-            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260306900864" target="_blank" rel="noopener noreferrer">에이치시티 매출액또는손익구조30%(대규모법인은15%)미만변동(자율공시)              </a>
-            (점수 2)
+            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260309001062" target="_blank" rel="noopener noreferrer">티웨이항공 [기재정정]주요사항보고서(유상증자결정)</a>
+            (점수 -5)
           </li>
         
           <li>
-            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260306000634" target="_blank" rel="noopener noreferrer">신한서부티엔디리츠 [기재정정]주주총회소집공고</a>
+            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260309800025" target="_blank" rel="noopener noreferrer">티웨이항공 유상증자신주발행가액(안내공시)              </a>
+            (점수 -4)
+          </li>
+        
+          <li>
+            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260309001072" target="_blank" rel="noopener noreferrer">티웨이항공 [기재정정]투자설명서</a>
             (점수 -1)
           </li>
         
           <li>
-            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260306000611" target="_blank" rel="noopener noreferrer">GS파워 [기재정정]증권신고서(채무증권)</a>
+            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260306001022" target="_blank" rel="noopener noreferrer">리드코프 [기재정정]주주총회소집공고</a>
             (점수 -1)
           </li>
         
           <li>
-            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260306000030" target="_blank" rel="noopener noreferrer">삼성자산운용 [기재정정]일괄신고서(집합투자증권-신탁형)(삼성KODEX미국AI광통신네트워크증권상장지수투자신탁[주식])</a>
+            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260306001038" target="_blank" rel="noopener noreferrer">신보2024제24차유동화전문유한회사 [기재정정]사업보고서(유동화전문회사) (2025.11)</a>
             (점수 -1)
-          </li>
-        
-          <li>
-            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260306000633" target="_blank" rel="noopener noreferrer">심텍 임원ㆍ주요주주특정증권등소유상황보고서</a>
-            (점수 0)
           </li>
         
       </ol>
