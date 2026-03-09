@@ -10,7 +10,7 @@ import requests
 from jinja2 import Environment, FileSystemLoader
 from openai import OpenAI
 
-from main import get_index_data, get_korean_index_data, resolve_pages_url
+from main import get_batch_index_data, get_index_data, get_korean_index_data, resolve_pages_url
 
 try:
     from dotenv import load_dotenv
@@ -89,6 +89,151 @@ def parse_price(value: str) -> float:
         return float(cleaned)
     except ValueError:
         return float("nan")
+
+
+def parse_change_percent(change: str) -> float:
+    match = re.search(r"\(([+-]?\d+(?:\.\d+)?)%\)", str(change))
+    if not match:
+        return float("nan")
+    try:
+        return float(match.group(1))
+    except ValueError:
+        return float("nan")
+
+
+def aggregate_event_score(events: List[dict], limit: int = 8) -> float:
+    ordered = sorted(events, key=lambda x: abs(float(x.get("impact_score", 0))), reverse=True)[:limit]
+    total = 0.0
+    for idx, event in enumerate(ordered):
+        weight = max(0.35, 1 - idx * 0.1)
+        total += float(event.get("impact_score", 0)) * weight
+    return clamp(total, -18, 18)
+
+
+def average(values: List[float]) -> float:
+    valid = [value for value in values if value == value]
+    if not valid:
+        return float("nan")
+    return sum(valid) / len(valid)
+
+
+def raw_score_label(score: float) -> str:
+    if score >= 16:
+        return "bullish"
+    if score <= -16:
+        return "bearish"
+    return "neutral"
+
+
+def normalize_sentiment_score(raw_score: float) -> float:
+    return round(clamp((raw_score + 100) / 2, 0, 100), 1)
+
+
+def describe_display_score(display_score: float) -> dict:
+    if display_score >= 80:
+        return {
+            "label": "강한 우호",
+            "range_key": "strong_bullish",
+            "range_rule": "80~100은 강한 우호 구간",
+            "interpretation": "상승 심리와 위험선호가 강한 상태입니다.",
+        }
+    if display_score >= 60:
+        return {
+            "label": "우호",
+            "range_key": "bullish",
+            "range_rule": "60~79.9는 우호 구간",
+            "interpretation": "전반적으로 우호적이지만 추가 확인이 필요한 상태입니다.",
+        }
+    if display_score >= 40:
+        return {
+            "label": "중립",
+            "range_key": "neutral",
+            "range_rule": "40~59.9는 중립 구간",
+            "interpretation": "상승·하락 신호가 혼재한 상태입니다.",
+        }
+    if display_score >= 20:
+        return {
+            "label": "경계",
+            "range_key": "caution",
+            "range_rule": "20~39.9는 경계 구간",
+            "interpretation": "약세 압력과 변동성 우려가 우세한 상태입니다.",
+        }
+    return {
+        "label": "강한 경계",
+        "range_key": "strong_caution",
+        "range_rule": "0~19.9는 강한 경계 구간",
+        "interpretation": "위험회피 심리가 강한 변동성 확대 상태입니다.",
+    }
+
+
+def display_score_color(display_score: float) -> str:
+    if display_score >= 80:
+        return "#fecaca"
+    if display_score >= 60:
+        return "#fee2e2"
+    if display_score <= 19.9:
+        return "#bfdbfe"
+    if display_score <= 39.9:
+        return "#dbeafe"
+    return "#e2e8f0"
+
+
+def get_snapshot_raw_score(item: dict) -> float:
+    sentiment = item.get("sentiment", {})
+    if "raw_score" in sentiment:
+        return float(sentiment.get("raw_score", 0))
+    return float(sentiment.get("score", 0))
+
+
+def get_snapshot_display_score(item: dict) -> float:
+    sentiment = item.get("sentiment", {})
+    if "raw_score" in sentiment:
+        return float(sentiment.get("score", 50))
+    return normalize_sentiment_score(float(sentiment.get("score", 0)))
+
+
+def format_score_breakdown(score_breakdown: dict) -> str:
+    return (
+        f"시장 {score_breakdown.get('market', 0)} / "
+        f"뉴스 {score_breakdown.get('news', 0)} / "
+        f"공시 {score_breakdown.get('dart', 0)} / "
+        f"섹터 {score_breakdown.get('sector', 0)}"
+    )
+
+
+def build_confidence_tooltip(confidence: int, data_quality: dict) -> List[str]:
+    if confidence >= 80:
+        level_text = "데이터 커버리지가 높은 상태입니다."
+    elif confidence >= 60:
+        level_text = "기본 데이터는 충분하지만 일부 확인 신호가 제한적일 수 있습니다."
+    elif confidence >= 40:
+        level_text = "참고용 해석은 가능하지만 추가 확인이 필요합니다."
+    else:
+        level_text = "데이터가 부족해 보수적으로 해석해야 합니다."
+    return [
+        "신뢰도 안내",
+        "신뢰도는 예측 적중률이 아니라, 현재 점수 계산에 사용된 데이터의 충실도를 의미합니다.",
+        f"현재 신뢰도: {confidence}%",
+        f"해석: {level_text}",
+        f"기준: {data_quality.get('basis', '데이터 기준 없음')}",
+        "주의: 이 값이 미래 방향 적중률을 직접 뜻하지는 않습니다.",
+    ]
+
+
+def bucket_time_to_slot(dt: datetime, slots: List[str], tolerance_minutes: int = 35) -> str | None:
+    current_minutes = dt.hour * 60 + dt.minute
+    best_slot = None
+    best_gap = None
+    for slot in slots:
+        hour, minute = [int(part) for part in slot.split(":")]
+        slot_minutes = hour * 60 + minute
+        gap = abs(current_minutes - slot_minutes)
+        if best_gap is None or gap < best_gap:
+            best_slot = slot
+            best_gap = gap
+    if best_gap is None or best_gap > tolerance_minutes:
+        return None
+    return best_slot
 
 
 def fetch_market_signals() -> Dict[str, dict]:
@@ -189,13 +334,15 @@ def fetch_dart_events(limit: int = 30) -> List[dict]:
 def score_news_events(events: List[dict]) -> List[dict]:
     positive = {
         "실적": 2,
-        "최대": 2,
+        "최대": 1,
         "수주": 3,
         "흑자": 2,
         "상향": 2,
         "반등": 1,
         "매수": 1,
         "성장": 2,
+        "증가": 1,
+        "확대": 1,
     }
     negative = {
         "유상증자": 4,
@@ -206,6 +353,8 @@ def score_news_events(events: List[dict]) -> List[dict]:
         "횡령": 5,
         "리스크": 2,
         "감소": 1,
+        "부진": 2,
+        "축소": 1,
     }
 
     scored: List[dict] = []
@@ -226,6 +375,7 @@ def score_dart_events(events: List[dict]) -> List[dict]:
         "자사주": 2,
         "배당": 2,
         "합병": 1,
+        "투자판단": 1,
     }
     negative = {
         "유상증자": 4,
@@ -233,7 +383,7 @@ def score_dart_events(events: List[dict]) -> List[dict]:
         "신주인수권부사채": 3,
         "감사의견": 3,
         "불성실": 3,
-        "정정": 1,
+        "정정": 0,
     }
 
     scored: List[dict] = []
@@ -248,59 +398,83 @@ def score_dart_events(events: List[dict]) -> List[dict]:
 
 
 def market_reaction_score(indexes: Dict[str, dict]) -> float:
-    score = 0.0
-    for key in ["kospi", "kosdaq", "sp500", "dow", "nasdaq", "ewy"]:
-        trend = indexes.get(key, {}).get("trend")
-        if trend == "상승":
-            score += 2
-        elif trend == "하락":
-            score -= 2
-
-    vix_trend = indexes.get("vix", {}).get("trend")
-    usd_trend = indexes.get("usdkrw", {}).get("trend")
-    rate_trend = indexes.get("us10y", {}).get("trend")
-
-    if vix_trend == "상승":
-        score -= 2
-    elif vix_trend == "하락":
-        score += 1
-
-    if usd_trend == "상승":
-        score -= 2
-    elif usd_trend == "하락":
-        score += 1
-
-    if rate_trend == "상승":
-        score -= 1
-    elif rate_trend == "하락":
-        score += 1
-
-    return score
+    components = {
+        "kospi": 1.4,
+        "kosdaq": 1.5,
+        "sp500": 0.9,
+        "dow": 0.7,
+        "nasdaq": 1.0,
+        "ewy": 0.8,
+        "vix": -1.2,
+        "usdkrw": -1.0,
+        "us10y": -0.8,
+    }
+    total = 0.0
+    for key, weight in components.items():
+        change_pct = parse_change_percent(indexes.get(key, {}).get("change", ""))
+        if change_pct != change_pct:
+            continue
+        total += clamp(change_pct * weight, -3.0, 3.0)
+    return round(clamp(total, -12, 12), 2)
 
 
-def build_sentiment(indexes: Dict[str, dict], news: List[dict], darts: List[dict]) -> dict:
-    news_score = sum(event.get("impact_score", 0) for event in news)
-    dart_score = sum(event.get("impact_score", 0) for event in darts)
-    market_score = market_reaction_score(indexes)
+def build_data_quality(indexes: Dict[str, dict], news: List[dict], darts: List[dict], sector_rotation: dict) -> dict:
+    live_indexes = 0
+    for item in indexes.values():
+        pct_change = parse_change_percent(item.get("change", ""))
+        if pct_change == pct_change:
+            live_indexes += 1
 
-    total = market_score * 3 + news_score * 0.7 + dart_score * 1.0
-    total = clamp(total, -100, 100)
-
-    if total >= 18:
-        label = "bullish"
-    elif total <= -18:
-        label = "bearish"
-    else:
-        label = "neutral"
-
-    confidence = int(clamp(45 + abs(total) * 0.7, 35, 95))
+    event_count = len(news) + len(darts)
+    sector_confirmed = sum(1 for item in sector_rotation.get("scores", []) if item.get("price_confirmed"))
+    coverage = clamp((live_indexes / 9) * 45 + min(event_count, 12) * 3 + min(sector_confirmed, 4) * 4, 35, 95)
     return {
-        "score": round(total, 2),
-        "label": label,
-        "confidence": confidence,
+        "live_indexes": live_indexes,
+        "event_count": event_count,
+        "sector_confirmed": sector_confirmed,
+        "score": int(round(coverage)),
+        "basis": f"지표 {live_indexes}/9, 이벤트 {event_count}건, 섹터확인 {sector_confirmed}건",
+    }
+
+
+def build_sentiment(indexes: Dict[str, dict], news: List[dict], darts: List[dict], sector_rotation: dict) -> dict:
+    news_score = aggregate_event_score(news)
+    dart_score = aggregate_event_score(darts, limit=10)
+    market_score = market_reaction_score(indexes)
+    sector_score = average([float(item.get("final_score", 0)) for item in sector_rotation.get("scores", [])[:3]])
+    if sector_score != sector_score:
+        sector_score = 0.0
+
+    total = market_score * 0.9 + news_score * 0.55 + dart_score * 0.75 + sector_score * 0.8
+    total = clamp(total, -100, 100)
+    raw_label = raw_score_label(total)
+    display_score = normalize_sentiment_score(total)
+    display_meta = describe_display_score(display_score)
+    data_quality = build_data_quality(indexes, news, darts, sector_rotation)
+    score_breakdown = {
+        "market": round(market_score, 2),
+        "news": round(news_score, 2),
+        "dart": round(dart_score, 2),
+        "sector": round(sector_score, 2),
+    }
+
+    return {
+        "raw_score": round(total, 2),
+        "score": display_score,
+        "raw_label": raw_label,
+        "label": display_meta["label"],
+        "range_key": display_meta["range_key"],
+        "range_rule": display_meta["range_rule"],
+        "interpretation": display_meta["interpretation"],
+        "confidence": data_quality["score"],
         "market_score": round(market_score, 2),
         "news_score": round(news_score, 2),
         "dart_score": round(dart_score, 2),
+        "sector_score": round(sector_score, 2),
+        "score_breakdown": score_breakdown,
+        "tooltip_breakdown": format_score_breakdown(score_breakdown),
+        "data_quality": data_quality,
+        "confidence_tooltip": build_confidence_tooltip(data_quality["score"], data_quality),
     }
 
 
@@ -315,7 +489,7 @@ def find_previous_snapshot(current_dt: datetime, history: List[dict]) -> dict | 
         if item_dt.strftime("%H:%M") != target_slot:
             continue
         gap = abs((item_dt - target).total_seconds())
-        if closest is None or gap < closest_gap:
+        if closest is None or closest_gap is None or gap < closest_gap:
             closest = item
             closest_gap = gap
 
@@ -363,84 +537,207 @@ def build_day_over_day_comments(current_payload: dict, history: List[dict]) -> L
 
 
 def detect_sector_rotation(news: List[dict], darts: List[dict]) -> dict:
-    sector_keywords = {
-        "반도체": ["반도체", "메모리", "하이닉스", "삼성전자", "soxx"],
-        "2차전지": ["2차전지", "배터리", "전기차", "양극재", "음극재"],
-        "바이오": ["바이오", "제약", "임상", "신약"],
-        "금융": ["은행", "보험", "증권", "금융", "배당"],
-        "에너지": ["유가", "정유", "가스", "에너지"],
-        "방산": ["방산", "미사일", "천궁", "수출"],
+    sector_map = {
+        "반도체": {
+            "keywords": ["반도체", "메모리", "하이닉스", "삼성전자", "hbm", "soxx"],
+            "tickers": {"삼성전자": "005930.KS", "SK하이닉스": "000660.KS"},
+        },
+        "2차전지": {
+            "keywords": ["2차전지", "배터리", "전기차", "양극재", "음극재", "리튬"],
+            "tickers": {"LG에너지솔루션": "373220.KS", "삼성SDI": "006400.KS"},
+        },
+        "바이오": {
+            "keywords": ["바이오", "제약", "임상", "신약", "의약품"],
+            "tickers": {"삼성바이오로직스": "207940.KS", "셀트리온": "068270.KS"},
+        },
+        "금융": {
+            "keywords": ["은행", "보험", "증권", "금융", "배당"],
+            "tickers": {"KB금융": "105560.KS", "신한지주": "055550.KS"},
+        },
+        "에너지": {
+            "keywords": ["유가", "정유", "가스", "에너지", "원유"],
+            "tickers": {"SK이노베이션": "096770.KS", "S-Oil": "010950.KS"},
+        },
+        "방산": {
+            "keywords": ["방산", "미사일", "천궁", "수출", "군수"],
+            "tickers": {"한화에어로스페이스": "012450.KS", "한국항공우주": "047810.KS"},
+        },
     }
 
-    sector_scores = {name: 0 for name in sector_keywords}
-    for event in [*news, *darts]:
-        text = f"{event.get('title', '')} {event.get('corp_name', '')}".lower()
-        impact = float(event.get("impact_score", 0))
-        for sector, keywords in sector_keywords.items():
-            if any(keyword.lower() in text for keyword in keywords):
-                sector_scores[sector] += impact if impact != 0 else 0.5
+    ticker_map = {}
+    for meta in sector_map.values():
+        ticker_map.update(meta["tickers"])
+    price_signals = get_batch_index_data(ticker_map)
 
-    ordered = sorted(sector_scores.items(), key=lambda x: x[1], reverse=True)
-    strong = [{"sector": name, "score": round(score, 2)} for name, score in ordered[:2]]
-    weak = [{"sector": name, "score": round(score, 2)} for name, score in ordered[-2:]]
+    scored = []
+    for sector, meta in sector_map.items():
+        event_score = 0.0
+        mentions = 0
+        positive_count = 0
+        negative_count = 0
+        matched_titles = []
+
+        for event in [*news, *darts]:
+            text = f"{event.get('title', '')} {event.get('corp_name', '')}".lower()
+            if not any(keyword.lower() in text for keyword in meta["keywords"]):
+                continue
+            impact = float(event.get("impact_score", 0))
+            mentions += 1
+            event_score += impact
+            if impact > 0:
+                positive_count += 1
+            elif impact < 0:
+                negative_count += 1
+            if len(matched_titles) < 3:
+                matched_titles.append(event.get("title", ""))
+
+        pct_moves = []
+        reps = []
+        for label, ticker in meta["tickers"].items():
+            pct = parse_change_percent(price_signals.get(label, {}).get("change", ""))
+            if pct == pct:
+                pct_moves.append(pct)
+                reps.append(f"{label} {pct:+.2f}%")
+
+        price_confirmation = average(pct_moves)
+        if price_confirmation != price_confirmation:
+            price_confirmation = 0.0
+        breadth = positive_count - negative_count
+        final_score = event_score * 0.65 + price_confirmation * 1.6 + breadth * 0.8
+        confidence = int(clamp(35 + min(mentions, 4) * 10 + (10 if pct_moves else 0), 35, 90))
+
+        scored.append(
+            {
+                "sector": sector,
+                "mentions": mentions,
+                "event_score": round(event_score, 2),
+                "price_confirmation": round(price_confirmation, 2),
+                "breadth": breadth,
+                "final_score": round(final_score, 2),
+                "confidence": confidence,
+                "price_confirmed": bool(pct_moves),
+                "representatives": reps,
+                "matched_titles": matched_titles,
+            }
+        )
+
+    ordered = sorted(scored, key=lambda x: x["final_score"], reverse=True)
+    strong = [item for item in ordered if item["final_score"] >= 1][:3]
+    weak = [item for item in sorted(scored, key=lambda x: x["final_score"]) if item["final_score"] <= -1][:3]
     return {
-        "scores": [{"sector": name, "score": round(score, 2)} for name, score in ordered],
+        "scores": ordered,
         "strong": strong,
         "weak": weak,
+        "basis": "이벤트 점수 + 대표 종목 수익률 확인 결합",
     }
 
 
 def compute_reliability(history: List[dict]) -> dict:
     if len(history) < 6:
-        return {"evaluated": 0, "hit_rate": "N/A", "false_alarm_rate": "N/A"}
+        return {
+            "evaluated": 0,
+            "hit_rate": "N/A",
+            "false_alarm_rate": "N/A",
+            "by_label": {"bullish": "N/A", "bearish": "N/A", "neutral": "N/A"},
+            "basis": "표본 부족",
+        }
 
     ordered = sorted(history, key=parse_snapshot_dt)
     evaluated = 0
     hit = 0
     false_alarm = 0
+    label_stats = {
+        "bullish": {"evaluated": 0, "hit": 0},
+        "bearish": {"evaluated": 0, "hit": 0},
+        "neutral": {"evaluated": 0, "hit": 0},
+    }
 
     for i in range(len(ordered) - 1):
         current = ordered[i].get("sentiment", {})
-        next_item = ordered[i + 1].get("sentiment", {})
-        current_label = current.get("label", "neutral")
-        next_score = float(next_item.get("score", 0))
+        current_market = ordered[i].get("market_signals", {})
+        next_market = ordered[i + 1].get("market_signals", {})
+        current_label = current.get("raw_label", current.get("label", "neutral"))
+        current_pct = average(
+            [
+                parse_change_percent(current_market.get("kospi", {}).get("change", "")),
+                parse_change_percent(current_market.get("kosdaq", {}).get("change", "")),
+            ]
+        )
+        next_pct = average(
+            [
+                parse_change_percent(next_market.get("kospi", {}).get("change", "")),
+                parse_change_percent(next_market.get("kosdaq", {}).get("change", "")),
+            ]
+        )
+        if current_pct != current_pct or next_pct != next_pct:
+            continue
+        forward_move = next_pct - current_pct
         evaluated += 1
+        label_stats.setdefault(current_label, {"evaluated": 0, "hit": 0})
+        label_stats[current_label]["evaluated"] += 1
 
         if current_label == "bullish":
-            if next_score >= 0:
+            if forward_move >= 0.15:
                 hit += 1
+                label_stats[current_label]["hit"] += 1
             else:
                 false_alarm += 1
         elif current_label == "bearish":
-            if next_score <= 0:
+            if forward_move <= -0.15:
                 hit += 1
+                label_stats[current_label]["hit"] += 1
             else:
                 false_alarm += 1
         else:
-            if -10 <= next_score <= 10:
+            if abs(forward_move) < 0.2:
                 hit += 1
+                label_stats[current_label]["hit"] += 1
+            else:
+                false_alarm += 1
 
     if evaluated == 0:
-        return {"evaluated": 0, "hit_rate": "N/A", "false_alarm_rate": "N/A"}
+        return {
+            "evaluated": 0,
+            "hit_rate": "N/A",
+            "false_alarm_rate": "N/A",
+            "by_label": {"bullish": "N/A", "bearish": "N/A", "neutral": "N/A"},
+            "basis": "후행 수익률 계산 불가",
+        }
+
+    by_label = {}
+    for label, stats in label_stats.items():
+        if stats["evaluated"] == 0:
+            by_label[label] = "N/A"
+            continue
+        by_label[label] = f"{round((stats['hit'] / stats['evaluated']) * 100, 1)}%"
 
     hit_rate = round((hit / evaluated) * 100, 1)
     false_alarm_rate = round((false_alarm / evaluated) * 100, 1)
-    return {"evaluated": evaluated, "hit_rate": f"{hit_rate}%", "false_alarm_rate": f"{false_alarm_rate}%"}
+    return {
+        "evaluated": evaluated,
+        "hit_rate": f"{hit_rate}%",
+        "false_alarm_rate": f"{false_alarm_rate}%",
+        "by_label": by_label,
+        "basis": "현재 시그널 이후 다음 슬롯의 KOSPI/KOSDAQ 변동률 개선 여부 기준",
+    }
 
 
 def build_timeline_heatmap(current_payload: dict, history: List[dict]) -> dict:
     merged = [current_payload, *history]
-    recent = sorted(merged, key=parse_snapshot_dt)[-40:]
+    recent = sorted(merged, key=parse_snapshot_dt)[-60:]
     slots = ["08:30", "09:30", "10:30", "11:30", "12:30", "13:30", "14:30", "15:30"]
 
     day_map: Dict[str, Dict[str, float]] = {}
     for item in recent:
         dt = parse_snapshot_dt(item)
         day_key = dt.strftime("%m-%d")
-        slot_key = dt.strftime("%H:%M")
-        if slot_key not in slots:
+        slot_key = bucket_time_to_slot(dt, slots)
+        if slot_key is None:
             continue
-        day_map.setdefault(day_key, {})[slot_key] = float(item.get("sentiment", {}).get("score", 0))
+        existing = day_map.setdefault(day_key, {}).get(slot_key)
+        score = get_snapshot_raw_score(item)
+        if existing is None or abs(score) >= abs(existing):
+            day_map.setdefault(day_key, {})[slot_key] = score
 
     days = sorted(day_map.keys())[-5:]
     rows = []
@@ -449,32 +746,48 @@ def build_timeline_heatmap(current_payload: dict, history: List[dict]) -> dict:
         for slot in slots:
             score = day_map[day].get(slot)
             if score is None:
-                row["scores"].append({"slot": slot, "text": "-", "color": "#e2e8f0"})
+                row["scores"].append({"slot": slot, "text": "-", "color": "#f8fafc", "state": "missing"})
                 continue
-            if score >= 18:
-                color = "#fecaca"
-            elif score <= -18:
-                color = "#bfdbfe"
-            else:
-                color = "#e2e8f0"
-            row["scores"].append({"slot": slot, "text": f"{score:.0f}", "color": color})
+            display_score = normalize_sentiment_score(score)
+            row["scores"].append(
+                {
+                    "slot": slot,
+                    "text": f"{display_score:.0f}",
+                    "color": display_score_color(display_score),
+                    "state": describe_display_score(display_score)["range_key"],
+                }
+            )
         rows.append(row)
 
     timeline = [
         {
             "time": parse_snapshot_dt(item).strftime("%m-%d %H:%M"),
-            "score": float(item.get("sentiment", {}).get("score", 0)),
+            "score": get_snapshot_display_score(item),
+            "label": describe_display_score(get_snapshot_display_score(item))["label"],
+            "color": display_score_color(get_snapshot_display_score(item)),
         }
         for item in recent[-12:]
     ]
-    return {"slots": slots, "rows": rows, "timeline": timeline}
+    return {
+        "slots": slots,
+        "rows": rows,
+        "timeline": timeline,
+        "legend": [
+            {"name": "강한 우호 80+", "color": "#fecaca"},
+            {"name": "우호 60~79", "color": "#fee2e2"},
+            {"name": "중립 40~59", "color": "#e2e8f0"},
+            {"name": "경계 20~39", "color": "#dbeafe"},
+            {"name": "강한 경계 0~19", "color": "#bfdbfe"},
+            {"name": "결측", "color": "#f8fafc"},
+        ],
+    }
 
 
 def build_rule_points(indexes: Dict[str, dict], sentiment: dict, news: List[dict], darts: List[dict]) -> Tuple[List[str], str]:
-    label_kr = {"bullish": "우호", "neutral": "중립", "bearish": "경계"}[sentiment["label"]]
+    breakdown = sentiment.get("score_breakdown", {})
     point1 = (
-        f"하이브리드 점수는 **{sentiment['score']}점({label_kr})**으로, "
-        f"시장 반응 점수 {sentiment['market_score']}와 이벤트 점수 {sentiment['news_score'] + sentiment['dart_score']:.1f}를 반영했습니다."
+        f"하이브리드 점수는 **{sentiment['score']}점({sentiment['label']})**으로, "
+        f"시장 {breakdown.get('market', 0)}, 뉴스 {breakdown.get('news', 0)}, 공시 {breakdown.get('dart', 0)}, 섹터확인 {breakdown.get('sector', 0)}를 반영했습니다."
     )
     point2 = (
         f"리스크 축은 **VIX {indexes['vix']['price']} ({indexes['vix']['change']})**, "
@@ -494,7 +807,7 @@ def build_rule_points(indexes: Dict[str, dict], sentiment: dict, news: List[dict
     watchpoint = (
         "오늘의 **핵심 관전 포인트**: "
         f"**VIX**와 **달러원**이 동반 상승하면 방어 비중을 늘리고, "
-        "두 지표가 안정되면 주도 섹터 눌림 구간을 분할 점검하세요."
+        "두 지표가 안정되면 가격 확인이 붙는 주도 섹터 눌림 구간을 분할 점검하세요."
     )
     return [point1, point2, point3], watchpoint
 
@@ -525,7 +838,7 @@ def build_llm_points(indexes: Dict[str, dict], sentiment: dict, news: List[dict]
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
         )
-        raw = res.choices[0].message.content.strip()
+        raw = (res.choices[0].message.content or "").strip()
         lines = [line.strip() for line in raw.split("\n") if line.strip()]
         points = [line.lstrip("-").strip() for line in lines if line.startswith("-")][:3]
         watchpoint = next((line for line in lines if line.startswith("오늘의 핵심 관전 포인트")), "")
@@ -554,7 +867,7 @@ def save_intraday_snapshot(
     hour_end = hour_start.replace(minute=59, second=59)
 
     payload = {
-        "schema_version": "1.1",
+        "schema_version": "1.2",
         "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
         "window_start": hour_start.strftime("%Y-%m-%d %H:%M:%S"),
         "window_end": hour_end.strftime("%Y-%m-%d %H:%M:%S"),
@@ -573,6 +886,7 @@ def save_intraday_snapshot(
         "sector_rotation": sector_rotation,
         "reliability": reliability,
         "heatmap": heatmap,
+        "validation_basis": reliability.get("basis", ""),
     }
 
     (INTRADAY_DATA_DIR / f"{stamp}.json").write_text(
@@ -592,7 +906,6 @@ def send_discord_intraday(payload: dict) -> None:
 
     sentiment = payload["sentiment"]
     signals = payload["market_signals"]
-    label_map = {"bullish": "우호", "neutral": "중립", "bearish": "경계"}
 
     def idx(name: str) -> str:
         item = signals.get(name, {})
@@ -605,7 +918,7 @@ def send_discord_intraday(payload: dict) -> None:
         description = f"{description}\n\n{watchpoint}"
 
     embed = {
-        "title": f"⏱️ 장중 시장 분위기 {label_map.get(sentiment['label'], '중립')} ({sentiment['score']}점)",
+        "title": f"⏱️ 장중 시장 분위기 {sentiment.get('label', '중립')} ({sentiment.get('score', 50)}점)",
         "description": description,
         "color": 5763714,
         "url": resolve_pages_url(),
@@ -630,11 +943,17 @@ def render_live_html(payload: dict) -> None:
     template = env.get_template("template_live.html")
 
     sentiment = payload.get("sentiment", {})
-    label_map = {"bullish": "우호", "neutral": "중립", "bearish": "경계"}
     sentiment_view = {
-        "label": label_map.get(sentiment.get("label", "neutral"), "중립"),
-        "score": sentiment.get("score", 0),
+        "label": sentiment.get("label", "중립"),
+        "score": sentiment.get("score", 50),
+        "raw_score": sentiment.get("raw_score", 0),
         "confidence": sentiment.get("confidence", 0),
+        "breakdown": sentiment.get("score_breakdown", {"market": 0, "news": 0, "dart": 0, "sector": 0}),
+        "data_quality_basis": sentiment.get("data_quality", {}).get("basis", ""),
+        "range_rule": sentiment.get("range_rule", "40~59.9는 중립 구간"),
+        "interpretation": sentiment.get("interpretation", "상승·하락 신호가 혼재한 상태입니다."),
+        "tooltip_breakdown": sentiment.get("tooltip_breakdown", "시장 0 / 뉴스 0 / 공시 0 / 섹터 0"),
+        "confidence_tooltip": sentiment.get("confidence_tooltip", []),
     }
 
     news_events = sorted(
@@ -672,7 +991,8 @@ def main() -> None:
     indexes = fetch_market_signals()
     news_events = score_news_events(fetch_naver_news(limit=20))
     dart_events = score_dart_events(fetch_dart_events(limit=40))
-    sentiment = build_sentiment(indexes, news_events, dart_events)
+    sector_rotation = detect_sector_rotation(news_events, dart_events)
+    sentiment = build_sentiment(indexes, news_events, dart_events, sector_rotation)
     points, watchpoint = build_llm_points(indexes, sentiment, news_events, dart_events)
     preview_payload = {
         "timestamp": datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S"),
@@ -681,7 +1001,6 @@ def main() -> None:
         "sentiment": sentiment,
     }
     day_over_day = build_day_over_day_comments(preview_payload, history)
-    sector_rotation = detect_sector_rotation(news_events, dart_events)
     reliability = compute_reliability(history)
     heatmap = build_timeline_heatmap(preview_payload, history)
 

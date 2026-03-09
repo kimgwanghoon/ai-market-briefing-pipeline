@@ -96,9 +96,97 @@
     }
 
     .score {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
       font-size: 1.3rem;
       font-weight: 800;
       margin: 0 0 10px;
+    }
+
+    .score-text {
+      margin: 0;
+    }
+
+    .tooltip {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tooltip-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      border: 1px solid #99f6e4;
+      background: #f0fdfa;
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 800;
+      cursor: help;
+    }
+
+    .tooltip-panel {
+      position: absolute;
+      left: 0;
+      top: calc(100% + 8px);
+      z-index: 10;
+      width: min(320px, calc(100vw - 48px));
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.98);
+      box-shadow: 0 16px 36px rgba(15, 23, 42, 0.14);
+      color: var(--ink);
+      font-size: 0.82rem;
+      line-height: 1.55;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-4px);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+
+    .tooltip:hover .tooltip-panel,
+    .tooltip:focus-within .tooltip-panel {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .tooltip-panel p {
+      margin: 0 0 6px;
+    }
+
+    .tooltip-panel p:last-child {
+      margin-bottom: 0;
+    }
+
+    .tooltip-title {
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    .breakdown {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 0 0 10px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .breakdown li {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #f8fafc;
+      font-size: 0.84rem;
+      color: var(--muted);
     }
 
     .summary {
@@ -174,6 +262,13 @@
       font-size: 0.9rem;
     }
 
+    .metric-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
     .heatmap {
       overflow-x: auto;
       border: 1px solid var(--line);
@@ -224,6 +319,30 @@
       font-size: 0.95rem;
       font-weight: 700;
     }
+
+    .legend {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 0 0 10px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .legend li {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      border: 1px solid var(--line);
+    }
   </style>
 </head>
 <body>
@@ -237,7 +356,40 @@
 
     <section class="card">
       <h2 class="section-title">하이브리드 센티먼트</h2>
-      <p class="score">{{ sentiment.label }} · {{ sentiment.score }}점 (신뢰도 {{ sentiment.confidence }}%)</p>
+      <div class="score">
+        <p class="score-text">{{ sentiment.label }} · {{ sentiment.score }}점</p>
+        <span class="tooltip" tabindex="0">
+          <span class="tooltip-button">i</span>
+          <span class="tooltip-panel">
+            <p class="tooltip-title">점수 해석 기준</p>
+            <p>점수는 0~100 범위이며, 50이 중립 기준입니다.</p>
+            <p>50보다 높을수록 우호적이고, 낮을수록 방어적입니다.</p>
+            <p>현재 점수: {{ sentiment.score }}점</p>
+            <p>현재 구간: {{ sentiment.label }}</p>
+            <p>해석: {{ sentiment.interpretation }}</p>
+            <p>기준: {{ sentiment.range_rule }}</p>
+            <p>세부 반영: {{ sentiment.tooltip_breakdown }}</p>
+          </span>
+        </span>
+      </div>
+      <ul class="breakdown">
+        <li>시장 {{ sentiment.breakdown.market }}</li>
+        <li>뉴스 {{ sentiment.breakdown.news }}</li>
+        <li>공시 {{ sentiment.breakdown.dart }}</li>
+        <li>섹터 {{ sentiment.breakdown.sector }}</li>
+      </ul>
+      <div class="metric metric-line">
+        <span>신뢰도 {{ sentiment.confidence }}%</span>
+        <span class="tooltip" tabindex="0">
+          <span class="tooltip-button">i</span>
+          <span class="tooltip-panel">
+            {% for line in sentiment.confidence_tooltip %}
+              <p{% if loop.first %} class="tooltip-title"{% endif %}>{{ line }}</p>
+            {% endfor %}
+          </span>
+        </span>
+        <span>산정 근거: {{ sentiment.data_quality_basis }}</span>
+      </div>
       <ol class="summary">
         {% for point in key_points %}
           <li>{{ point | bold | safe }}</li>
@@ -262,7 +414,7 @@
           <p class="metric">강세 전개 후보</p>
           <ol class="tiny-list">
             {% for item in sector_rotation.strong %}
-              <li>{{ item.sector }} ({{ item.score }})</li>
+              <li>{{ item.sector }} ({{ item.final_score }}) · 이벤트 {{ item.event_score }} / 가격 {{ item.price_confirmation }} / 신뢰도 {{ item.confidence }}%</li>
             {% endfor %}
           </ol>
         </div>
@@ -270,21 +422,30 @@
           <p class="metric">약세/경계 후보</p>
           <ol class="tiny-list">
             {% for item in sector_rotation.weak %}
-              <li>{{ item.sector }} ({{ item.score }})</li>
+              <li>{{ item.sector }} ({{ item.final_score }}) · 이벤트 {{ item.event_score }} / 가격 {{ item.price_confirmation }} / 신뢰도 {{ item.confidence }}%</li>
             {% endfor %}
           </ol>
         </div>
       </div>
+      <p class="metric">기준: {{ sector_rotation.basis }}</p>
     </section>
 
     <section class="card">
       <h2 class="section-title">신뢰도 점검</h2>
       <p class="metric">평가 표본 {{ reliability.evaluated }}건</p>
       <p class="metric">Hit Rate: {{ reliability.hit_rate }} / False Alarm: {{ reliability.false_alarm_rate }}</p>
+      <p class="metric">Bullish {{ reliability.by_label.bullish }} / Bearish {{ reliability.by_label.bearish }} / Neutral {{ reliability.by_label.neutral }}</p>
+      <p class="metric">검증 기준: {{ reliability.basis }}</p>
     </section>
 
     <section class="card">
       <h2 class="section-title">히트맵 / 타임라인</h2>
+      <ul class="legend">
+        {% for item in heatmap.legend %}
+          <li><span class="swatch" style="background: {{ item.color }}"></span>{{ item.name }}</li>
+        {% endfor %}
+      </ul>
+      <p class="metric">점수 기준: 80 이상 강한 우호 / 60~79 우호 / 40~59 중립 / 20~39 경계 / 0~19 강한 경계</p>
       <div class="heatmap">
         <table>
           <thead>
@@ -309,9 +470,9 @@
       </div>
       <div class="timeline">
         {% for item in heatmap.timeline %}
-          <article class="timeline-item">
+          <article class="timeline-item" style="background: {{ item.color }}">
             <p class="timeline-time">{{ item.time }}</p>
-            <p class="timeline-score">{{ item.score }}</p>
+            <p class="timeline-score">{{ item.score }} · {{ item.label }}</p>
           </article>
         {% endfor %}
       </div>
