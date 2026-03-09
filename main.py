@@ -436,6 +436,30 @@ def build_risk_trends(snapshot_history: List[dict], current_indexes: dict) -> di
     return trends
 
 
+def build_market_overview(indexes: dict) -> List[dict]:
+    selected = [
+        ("kospi", "KOSPI"),
+        ("kosdaq", "KOSDAQ"),
+        ("sp500", "S&P 500"),
+        ("nasdaq", "NASDAQ"),
+        ("usdkrw", "USD/KRW"),
+        ("vix", "VIX"),
+    ]
+    cards = []
+    for key, label in selected:
+        item = indexes.get(key, {})
+        cards.append(
+            {
+                "key": key,
+                "label": label,
+                "price": item.get("price", "N/A"),
+                "change": item.get("change", "-"),
+                "color": item.get("color", "#64748b"),
+            }
+        )
+    return cards
+
+
 def load_recent_snapshots(limit: int = 7) -> List[dict]:
     snapshots: List[dict] = []
     files = sorted(DATA_DIR.glob("*.json"), reverse=True)
@@ -680,6 +704,7 @@ def render_html(
         comic_headline=headline,
         summary_items=summary_items,
         cover_image=cover_image,
+        market_overview=build_market_overview(indexes),
         risk_trends=risk_trends,
         snapshot_count=snapshot_count,
         **indexes,

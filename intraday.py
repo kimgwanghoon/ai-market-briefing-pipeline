@@ -10,7 +10,7 @@ import requests
 from jinja2 import Environment, FileSystemLoader
 from openai import OpenAI
 
-from main import get_batch_index_data, get_index_data, get_korean_index_data, resolve_pages_url
+from main import build_market_overview, get_batch_index_data, get_index_data, get_korean_index_data, resolve_pages_url
 
 try:
     from dotenv import load_dotenv
@@ -972,6 +972,7 @@ def render_live_html(payload: dict) -> None:
         window_start=payload.get("window_start", ""),
         window_end=payload.get("window_end", ""),
         sentiment=sentiment_view,
+        market_overview=build_market_overview(payload.get("market_signals", {})),
         market=payload.get("market_signals", {}),
         key_points=payload.get("key_points", []),
         watchpoint=payload.get("watchpoint", ""),

@@ -207,14 +207,14 @@
       line-height: 1.6;
     }
 
-    .grid {
+    .market-overview-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 10px;
     }
 
     @media (max-width: 760px) {
-      .grid { grid-template-columns: repeat(2, 1fr); }
+      .market-overview-grid { grid-template-columns: repeat(2, 1fr); }
     }
 
     .item {
@@ -479,16 +479,8 @@
     </section>
 
     <section class="card">
-      <h2 class="section-title">시장 신호</h2>
-      <div class="grid">
-        {% for name in ['kospi', 'kosdaq', 'sp500', 'nasdaq', 'vix', 'usdkrw', 'us10y', 'ewy'] %}
-          <article class="item">
-            <p class="name">{{ name }}</p>
-            <p class="price">{{ market[name].price }}</p>
-            <p class="change" style="color: {{ market[name].color }}">{{ market[name].change }}</p>
-          </article>
-        {% endfor %}
-      </div>
+      <h2 class="section-title">핵심 시장 신호</h2>
+      {% include "template_market_cards.html" %}
     </section>
 
     <section class="card">

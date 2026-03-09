@@ -119,31 +119,14 @@
       box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
     }
 
-    .market-group {
-      margin-bottom: 24px;
-    }
-
-    .market-group:last-child {
-      margin-bottom: 0;
-    }
-
-    .market-label {
-      font-size: 0.85rem;
-      font-weight: 700;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 12px;
-    }
-
-    .indexes {
+    .market-overview-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 12px;
     }
 
     @media (max-width: 600px) {
-      .indexes {
+      .market-overview-grid {
         grid-template-columns: repeat(2, 1fr);
       }
     }
@@ -294,49 +277,8 @@
     </header>
 
     <section class="indexes-section">
-      <h3 class="section-title">📊 주요 지수</h3>
-      
-      <div class="market-group">
-        <p class="market-label">🇰🇷 한국 시장</p>
-        <div class="indexes">
-          <div class="item">
-            <p class="name">KOSPI</p>
-            <p class="price">{{ kospi.price }}</p>
-            <p class="change" style="color: {{ kospi.color }}">{{ kospi.change }}</p>
-          </div>
-          <div class="item">
-            <p class="name">KOSDAQ</p>
-            <p class="price">{{ kosdaq.price }}</p>
-            <p class="change" style="color: {{ kosdaq.color }}">{{ kosdaq.change }}</p>
-          </div>
-          <div class="item">
-            <p class="name">EWY</p>
-            <p class="price">{{ ewy.price }}</p>
-            <p class="change" style="color: {{ ewy.color }}">{{ ewy.change }}</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="market-group">
-        <p class="market-label">🇺🇸 미국 시장</p>
-        <div class="indexes">
-          <div class="item">
-            <p class="name">S&P 500</p>
-            <p class="price">{{ sp500.price }}</p>
-            <p class="change" style="color: {{ sp500.color }}">{{ sp500.change }}</p>
-          </div>
-          <div class="item">
-            <p class="name">DOW</p>
-            <p class="price">{{ dow.price }}</p>
-            <p class="change" style="color: {{ dow.color }}">{{ dow.change }}</p>
-          </div>
-          <div class="item">
-            <p class="name">NASDAQ</p>
-            <p class="price">{{ nasdaq.price }}</p>
-            <p class="change" style="color: {{ nasdaq.color }}">{{ nasdaq.change }}</p>
-          </div>
-        </div>
-      </div>
+      <h3 class="section-title">📊 주요 지수 및 리스크 신호</h3>
+      {% include "template_market_cards.html" %}
     </section>
 
     <section class="cover-section">
