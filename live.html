@@ -96,9 +96,97 @@
     }
 
     .score {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
       font-size: 1.3rem;
       font-weight: 800;
       margin: 0 0 10px;
+    }
+
+    .score-text {
+      margin: 0;
+    }
+
+    .tooltip {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tooltip-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      border: 1px solid #99f6e4;
+      background: #f0fdfa;
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 800;
+      cursor: help;
+    }
+
+    .tooltip-panel {
+      position: absolute;
+      left: 0;
+      top: calc(100% + 8px);
+      z-index: 10;
+      width: min(320px, calc(100vw - 48px));
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.98);
+      box-shadow: 0 16px 36px rgba(15, 23, 42, 0.14);
+      color: var(--ink);
+      font-size: 0.82rem;
+      line-height: 1.55;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-4px);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+
+    .tooltip:hover .tooltip-panel,
+    .tooltip:focus-within .tooltip-panel {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .tooltip-panel p {
+      margin: 0 0 6px;
+    }
+
+    .tooltip-panel p:last-child {
+      margin-bottom: 0;
+    }
+
+    .tooltip-title {
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    .breakdown {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 0 0 10px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .breakdown li {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #f8fafc;
+      font-size: 0.84rem;
+      color: var(--muted);
     }
 
     .summary {
@@ -119,14 +207,14 @@
       line-height: 1.6;
     }
 
-    .grid {
+    .market-overview-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 10px;
     }
 
     @media (max-width: 760px) {
-      .grid { grid-template-columns: repeat(2, 1fr); }
+      .market-overview-grid { grid-template-columns: repeat(2, 1fr); }
     }
 
     .item {
@@ -172,6 +260,13 @@
       margin: 0 0 8px;
       color: var(--muted);
       font-size: 0.9rem;
+    }
+
+    .metric-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
     .heatmap {
@@ -224,30 +319,97 @@
       font-size: 0.95rem;
       font-weight: 700;
     }
+
+    .legend {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 0 0 10px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .legend li {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      border: 1px solid var(--line);
+    }
   </style>
 </head>
 <body>
   <main class="page">
     <span class="badge">LIVE MARKET PULSE</span>
     <h1>장중 시장 분위기 모니터</h1>
-    <p class="meta">집계 구간: 2026-03-09 15:00:00 ~ 2026-03-09 15:59:59 / 생성 시각: 2026-03-09 15:48:10 (KST)</p>
+    <p class="meta">집계 구간: 2026-03-10 08:00:00 ~ 2026-03-10 08:59:59 / 생성 시각: 2026-03-10 08:42:16 (KST)</p>
     <div class="top-links">
       <a href="index.html">데일리 브리핑 보기</a>
     </div>
 
     <section class="card">
       <h2 class="section-title">하이브리드 센티먼트</h2>
-      <p class="score">경계 · -40.1점 (신뢰도 73%)</p>
+      <div class="score">
+        <p class="score-text">중립 · 55.6점</p>
+        <span class="tooltip" tabindex="0">
+          <span class="tooltip-button">i</span>
+          <span class="tooltip-panel">
+            <p class="tooltip-title">점수 해석 기준</p>
+            <p>점수는 0~100 범위이며, 50이 중립 기준입니다.</p>
+            <p>50보다 높을수록 우호적이고, 낮을수록 방어적입니다.</p>
+            <p>현재 점수: 55.6점</p>
+            <p>현재 구간: 중립</p>
+            <p>해석: 상승·하락 신호가 혼재한 상태입니다.</p>
+            <p>기준: 40~59.9는 중립 구간</p>
+            <p>세부 반영: 시장 9.34 / 뉴스 4.2 / 공시 0.0 / 섹터 0.7</p>
+          </span>
+        </span>
+      </div>
+      <ul class="breakdown">
+        <li>시장 9.34</li>
+        <li>뉴스 4.2</li>
+        <li>공시 0.0</li>
+        <li>섹터 0.7</li>
+      </ul>
+      <div class="metric metric-line">
+        <span>신뢰도 81%</span>
+        <span class="tooltip" tabindex="0">
+          <span class="tooltip-button">i</span>
+          <span class="tooltip-panel">
+            
+              <p class="tooltip-title">신뢰도 안내</p>
+            
+              <p>신뢰도는 예측 적중률이 아니라, 현재 점수 계산에 사용된 데이터의 충실도를 의미합니다.</p>
+            
+              <p>현재 신뢰도: 81%</p>
+            
+              <p>해석: 데이터 커버리지가 높은 상태입니다.</p>
+            
+              <p>기준: 지표 9/9, 이벤트 60건, 섹터확인 0건</p>
+            
+              <p>주의: 이 값이 미래 방향 적중률을 직접 뜻하지는 않습니다.</p>
+            
+          </span>
+        </span>
+        <span>산정 근거: 지표 9/9, 이벤트 60건, 섹터확인 0건</span>
+      </div>
       <ol class="summary">
         
-          <li><strong>코스피</strong>와 <strong>코스닥</strong>이 각각 ▼5.96%와 ▼4.54%로 급락하며 <strong>하락세</strong>를 이어가고 있습니다. 이는 <strong>유가 폭등</strong>과 연관된 외부 요인의 영향을 받고 있으며, 시장의 <strong>sentiment</strong> 또한 -40.1로 심각한 <strong>bearish</strong> 신호를 나타내고 있습니다.</li>
+          <li><strong>KOSPI</strong>와 <strong>KOSDAQ</strong> 지수는 모두 <strong>보합세</strong>를 보이며 시장의 방향성이 불확실한 상황입니다.</li>
         
-          <li><strong>VIX</strong> 지수가 24.17% 상승하며 <strong>변동성</strong>이 확대되고 있으며, 이에 따라 투자자들은 <strong>방어주</strong>를 찾는 데 더욱 집중하고 있습니다. 최근 <strong>매매 공포</strong>가 확산되었으며, <strong>반대매매</strong>가 발생할 가능성이 높아지고 있습니다.</li>
+          <li>반면, <strong>미국 시장</strong>은 <strong>상승</strong>세를 이어가고 있으며, 특히 <strong>S&P 500</strong>과 <strong>나스닥</strong>이 각각 <strong>0.83%</strong> 및 <strong>1.38%</strong> 오름세를 기록했습니다.</li>
         
-          <li><strong>전 세계 주식시장</strong>도 동반 하락 중인 상황에서 우리나라 증시의 <strong>서킷브레이커</strong> 발동이 우려되고 있습니다.</li>
+          <li><strong>원익IPS</strong>가 삼성과 SK의 <strong>메모리 투자 확대</strong>로 주목받으며 목표가를 상향 조정받았으나, 반도체 주가는 여전히 <strong>하락 리스크</strong>를 안고 있어 주의가 필요합니다.</li>
         
       </ol>
-      <p class="watch">오늘의 핵심 관전 포인트: 오는 달에 있을 <strong>경제 지표 발표</strong>가 시장 반전의 기회를 만들어낼지 주목해야 합니다.</p>
+      <p class="watch">오늘의 핵심 관전 포인트: <strong>상승과 하락 신호가 혼재된 중립적 시장 상황에서 투자자들의 선택이 중요합니다.</strong></p>
     </section>
 
     <section class="card">
@@ -270,9 +432,7 @@
           <p class="metric">강세 전개 후보</p>
           <ol class="tiny-list">
             
-              <li>금융 (2.0)</li>
-            
-              <li>반도체 (1.0)</li>
+              <li>에너지 (1.45) · 이벤트 1.0 / 가격 0.0 / 신뢰도 75%</li>
             
           </ol>
         </div>
@@ -280,23 +440,38 @@
           <p class="metric">약세/경계 후보</p>
           <ol class="tiny-list">
             
-              <li>방산 (0)</li>
-            
-              <li>에너지 (-0.5)</li>
-            
           </ol>
         </div>
       </div>
+      <p class="metric">기준: 이벤트 점수 + 대표 종목 수익률 확인 결합</p>
     </section>
 
     <section class="card">
       <h2 class="section-title">신뢰도 점검</h2>
       <p class="metric">평가 표본 0건</p>
       <p class="metric">Hit Rate: N/A / False Alarm: N/A</p>
+      <p class="metric">Bullish N/A / Bearish N/A / Neutral N/A</p>
+      <p class="metric">검증 기준: 표본 부족</p>
     </section>
 
     <section class="card">
       <h2 class="section-title">히트맵 / 타임라인</h2>
+      <ul class="legend">
+        
+          <li><span class="swatch" style="background: #fecaca"></span>강한 우호 80+</li>
+        
+          <li><span class="swatch" style="background: #fee2e2"></span>우호 60~79</li>
+        
+          <li><span class="swatch" style="background: #e2e8f0"></span>중립 40~59</li>
+        
+          <li><span class="swatch" style="background: #dbeafe"></span>경계 20~39</li>
+        
+          <li><span class="swatch" style="background: #bfdbfe"></span>강한 경계 0~19</li>
+        
+          <li><span class="swatch" style="background: #f8fafc"></span>결측</li>
+        
+      </ul>
+      <p class="metric">점수 기준: 80 이상 강한 우호 / 60~79 우호 / 40~59 중립 / 20~39 경계 / 0~19 강한 경계</p>
       <div class="heatmap">
         <table>
           <thead>
@@ -323,72 +498,81 @@
           </thead>
           <tbody>
             
+              <tr>
+                <td>03-10</td>
+                
+                  <td style="background: #e2e8f0">56</td>
+                
+                  <td style="background: #f8fafc">-</td>
+                
+                  <td style="background: #f8fafc">-</td>
+                
+                  <td style="background: #f8fafc">-</td>
+                
+                  <td style="background: #f8fafc">-</td>
+                
+                  <td style="background: #f8fafc">-</td>
+                
+                  <td style="background: #f8fafc">-</td>
+                
+                  <td style="background: #f8fafc">-</td>
+                
+              </tr>
+            
           </tbody>
         </table>
       </div>
       <div class="timeline">
         
-          <article class="timeline-item">
-            <p class="timeline-time">03-09 15:48</p>
-            <p class="timeline-score">-40.1</p>
+          <article class="timeline-item" style="background: #e2e8f0">
+            <p class="timeline-time">03-10 08:42</p>
+            <p class="timeline-score">55.6 · 중립</p>
           </article>
         
       </div>
     </section>
 
     <section class="card">
-      <h2 class="section-title">시장 신호</h2>
-      <div class="grid">
-        
-          <article class="item">
-            <p class="name">kospi</p>
-            <p class="price">5,251.87</p>
-            <p class="change" style="color: #3b82f6">▼ 333.00 (-5.96%)</p>
-          </article>
-        
-          <article class="item">
-            <p class="name">kosdaq</p>
-            <p class="price">1,102.28</p>
-            <p class="change" style="color: #3b82f6">▼ 52.39 (-4.54%)</p>
-          </article>
-        
-          <article class="item">
-            <p class="name">sp500</p>
-            <p class="price">6,740.02</p>
-            <p class="change" style="color: #3b82f6">▼ 90.69 (-1.33%)</p>
-          </article>
-        
-          <article class="item">
-            <p class="name">nasdaq</p>
-            <p class="price">22,387.68</p>
-            <p class="change" style="color: #3b82f6">▼ 361.31 (-1.59%)</p>
-          </article>
-        
-          <article class="item">
-            <p class="name">vix</p>
-            <p class="price">29.49</p>
-            <p class="change" style="color: #ef4444">▲ 5.74 (+24.17%)</p>
-          </article>
-        
-          <article class="item">
-            <p class="name">usdkrw</p>
-            <p class="price">1,492.86</p>
-            <p class="change" style="color: #ef4444">▲ 13.35 (+0.90%)</p>
-          </article>
-        
-          <article class="item">
-            <p class="name">us10y</p>
-            <p class="price">4.13</p>
-            <p class="change" style="color: #3b82f6">▼ 0.01 (-0.31%)</p>
-          </article>
-        
-          <article class="item">
-            <p class="name">ewy</p>
-            <p class="price">126.73</p>
-            <p class="change" style="color: #ef4444">▲ 0.99 (+0.79%)</p>
-          </article>
-        
-      </div>
+      <h2 class="section-title">핵심 시장 신호</h2>
+      <div class="market-overview-grid">
+  
+    <article class="item market-card">
+      <p class="name">KOSPI</p>
+      <p class="price">5,251.87</p>
+      <p class="change" style="color: #6b7280">- 0.00 (+0.00%)</p>
+    </article>
+  
+    <article class="item market-card">
+      <p class="name">KOSDAQ</p>
+      <p class="price">1,102.28</p>
+      <p class="change" style="color: #6b7280">- 0.00 (+0.00%)</p>
+    </article>
+  
+    <article class="item market-card">
+      <p class="name">S&P 500</p>
+      <p class="price">6,795.99</p>
+      <p class="change" style="color: #ef4444">▲ 55.97 (+0.83%)</p>
+    </article>
+  
+    <article class="item market-card">
+      <p class="name">NASDAQ</p>
+      <p class="price">22,695.95</p>
+      <p class="change" style="color: #ef4444">▲ 308.27 (+1.38%)</p>
+    </article>
+  
+    <article class="item market-card">
+      <p class="name">USD/KRW</p>
+      <p class="price">1,465.92</p>
+      <p class="change" style="color: #3b82f6">▼ 13.59 (-0.92%)</p>
+    </article>
+  
+    <article class="item market-card">
+      <p class="name">VIX</p>
+      <p class="price">25.50</p>
+      <p class="change" style="color: #3b82f6">▼ 3.99 (-13.53%)</p>
+    </article>
+  
+</div>
     </section>
 
     <section class="card">
@@ -396,33 +580,33 @@
       <ol class="event-list">
         
           <li>
-            <a href="https://finance.naver.com/news/news_read.naver?article_id=0005647312&office_id=009&mode=mainnews&type=&date=2026-03-09&page=1" target="_blank" rel="noopener noreferrer">“내일 또 폭락하면 어쩌지”…급락에 버틸 ‘방어주’ 찾는 방법은</a>
-            (매일경제, 점수 -3)
+            <a href="https://finance.naver.com/news/news_read.naver?article_id=0006231416&office_id=018&mode=mainnews&type=&date=2026-03-10&page=1" target="_blank" rel="noopener noreferrer">원익IPS, 삼성·SK 메모리 투자 확대 수혜…목표가 16만원 상향-키움</a>
+            (이데일리, 점수 3)
           </li>
         
           <li>
-            <a href="https://finance.naver.com/news/news_read.naver?article_id=0006230982&office_id=018&mode=mainnews&type=&date=2026-03-09&page=1" target="_blank" rel="noopener noreferrer">유가 폭등에 亞증시 일제히 급락…코스피 또 서킷브레이커</a>
-            (이데일리, 점수 -3)
+            <a href="https://finance.naver.com/news/news_read.naver?article_id=0006231423&office_id=018&mode=mainnews&type=&date=2026-03-10&page=1" target="_blank" rel="noopener noreferrer">“급락한 반도체株 ‘비정상의 정상화’ 기대…삼성전자·하이닉스 비중 확대 기회”</a>
+            (이데일리, 점수 -2)
           </li>
         
           <li>
-            <a href="https://finance.naver.com/news/news_read.naver?article_id=0001146927&office_id=366&mode=mainnews&type=&date=2026-03-09&page=1" target="_blank" rel="noopener noreferrer">10% 널뛰는 장세에 사상 최대 ‘빚투’… 대규모 반대매매 공포 확산</a>
-            (조선비즈, 점수 2)
+            <a href="https://finance.naver.com/news/news_read.naver?article_id=0005731772&office_id=277&mode=mainnews&type=&date=2026-03-10&page=1" target="_blank" rel="noopener noreferrer">"상신이디피, ESS 확대 수혜…가장 먼저 턴어라운드"[클릭 e종목]</a>
+            (아시아경제, 점수 1)
           </li>
         
           <li>
-            <a href="https://finance.naver.com/news/news_read.naver?article_id=0001133253&office_id=417&mode=mainnews&type=&date=2026-03-09&page=1" target="_blank" rel="noopener noreferrer">코스피, 개인 4.2조 매수도 역부족…삼전·하이닉스 10% 뚝[티타임]</a>
-            (동행미디어 시대, 점수 1)
+            <a href="https://finance.naver.com/news/news_read.naver?article_id=0005731771&office_id=277&mode=mainnews&type=&date=2026-03-10&page=1" target="_blank" rel="noopener noreferrer">유가 잡히자 美 증시↑…한국도 반등 전망[굿모닝 증시]</a>
+            (아시아경제, 점수 1)
           </li>
         
           <li>
-            <a href="https://finance.naver.com/news/news_read.naver?article_id=0005327285&office_id=008&mode=mainnews&type=&date=2026-03-09&page=1" target="_blank" rel="noopener noreferrer">변동성 있어도, 국장 거래대금은 더↑···증권사 이익 전망도↑</a>
-            (머니투데이, 점수 0)
+            <a href="https://finance.naver.com/news/news_read.naver?article_id=0005260179&office_id=015&mode=mainnews&type=&date=2026-03-10&page=1" target="_blank" rel="noopener noreferrer">"전쟁 마무리 수순" 트럼프 말에 미장 반등…코스피도 오를까 [오늘장 미리보기]</a>
+            (한국경제, 점수 1)
           </li>
         
           <li>
-            <a href="https://finance.naver.com/news/news_read.naver?article_id=0006231053&office_id=018&mode=mainnews&type=&date=2026-03-09&page=1" target="_blank" rel="noopener noreferrer">코스피 5000선은 '강력한 지지선'...중동발 변동성, 주도주 비중 확대 기회[어쨌든 경제]</a>
-            (이데일리, 점수 0)
+            <a href="https://finance.naver.com/news/news_read.naver?article_id=0006231413&office_id=018&mode=mainnews&type=&date=2026-03-10&page=1" target="_blank" rel="noopener noreferrer">"韓증시 반등 기대"…트럼프 '전쟁 마무리' 언급</a>
+            (이데일리, 점수 1)
           </li>
         
       </ol>
@@ -433,33 +617,33 @@
       <ol class="event-list">
         
           <li>
-            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260309900665" target="_blank" rel="noopener noreferrer">이랜시스 매출액또는손익구조30%(대규모법인은15%)이상변동              </a>
-            (점수 2)
+            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260310001970" target="_blank" rel="noopener noreferrer">삼양엔씨켐 임원ㆍ주요주주특정증권등소유상황보고서</a>
+            (점수 0)
           </li>
         
           <li>
-            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260309001502" target="_blank" rel="noopener noreferrer">아모레퍼시픽홀딩스 [기재정정]의결권대리행사권유참고서류</a>
-            (점수 -1)
+            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260310001962" target="_blank" rel="noopener noreferrer">하스코 주주총회소집공고</a>
+            (점수 0)
           </li>
         
           <li>
-            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260309001495" target="_blank" rel="noopener noreferrer">스푼랩스 [기재정정]감사보고서 (2022.12)</a>
-            (점수 -1)
+            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260310001956" target="_blank" rel="noopener noreferrer">씨어스테크놀로지 주요사항보고서(무상증자결정)</a>
+            (점수 0)
           </li>
         
           <li>
-            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260309001493" target="_blank" rel="noopener noreferrer">스푼랩스 [기재정정]감사보고서 (2021.12)</a>
-            (점수 -1)
+            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260310900148" target="_blank" rel="noopener noreferrer">씨어스테크놀로지 주권매매거래정지              (무상증자)</a>
+            (점수 0)
           </li>
         
           <li>
-            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260309001491" target="_blank" rel="noopener noreferrer">스푼랩스 [기재정정]감사보고서 (2020.12)</a>
-            (점수 -1)
+            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260310001959" target="_blank" rel="noopener noreferrer">대한항공 투자설명서</a>
+            (점수 0)
           </li>
         
           <li>
-            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260309001488" target="_blank" rel="noopener noreferrer">아모레퍼시픽 [기재정정]의결권대리행사권유참고서류</a>
-            (점수 -1)
+            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260310900046" target="_blank" rel="noopener noreferrer">코스닥시장본부 기타시장안내(금일NXT경쟁매매대상종목지정으로인한KRX시간외단일가매매제외종목안내(코스닥시장))              </a>
+            (점수 0)
           </li>
         
       </ol>
