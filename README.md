@@ -53,3 +53,9 @@ DART_API_KEY=your_opendart_api_key
 - `intraday.yml`: 평일 08:30~15:30(KST) 매시 장중 하이브리드 스냅샷
 - `cleanup-data.yml`: 평일 00:00(KST) 30일 초과 JSON 자동 정리
 - `weekly-report.yml`: 토요일 09:00(KST) 주간 시장 리포트 생성/발송
+
+## 장중 점수 모델
+
+- `intraday.py`는 `시장/뉴스/공시/섹터` 4개 컴포넌트를 결합해 raw 점수(-100~100)를 만들고, 이를 표시 점수(0~100)로 변환합니다.
+- 최근 intraday 히스토리를 기반으로 컴포넌트 분포를 robust 정규화(중앙값/MAD)하고, 그리드 서치로 가중치를 보정합니다.
+- 산출 결과에는 `model_version`, `weights`, `normalized_components`, `calibration_metric`, `calibration_samples`를 함께 기록합니다.

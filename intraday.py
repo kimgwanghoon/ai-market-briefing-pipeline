@@ -117,6 +117,35 @@ def average(values: List[float]) -> float:
     return sum(valid) / len(valid)
 
 
+def percentile(values: List[float], ratio: float) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    if len(ordered) == 1:
+        return ordered[0]
+    pos = clamp(ratio, 0.0, 1.0) * (len(ordered) - 1)
+    low = int(pos)
+    high = min(low + 1, len(ordered) - 1)
+    weight = pos - low
+    return ordered[low] * (1 - weight) + ordered[high] * weight
+
+
+def robust_median_scale(values: List[float]) -> Tuple[float, float]:
+    valid = [value for value in values if value == value]
+    if not valid:
+        return 0.0, 1.0
+    med = percentile(valid, 0.5)
+    deviations = [abs(value - med) for value in valid]
+    mad = percentile(deviations, 0.5)
+    scale = mad * 1.4826
+    if scale < 0.35:
+        mean = sum(valid) / len(valid)
+        variance = sum((value - mean) ** 2 for value in valid) / max(1, len(valid) - 1)
+        std = variance ** 0.5
+        scale = std if std >= 0.35 else 1.0
+    return med, scale
+
+
 def raw_score_label(score: float) -> str:
     if score >= 16:
         return "bullish"
@@ -437,7 +466,179 @@ def build_data_quality(indexes: Dict[str, dict], news: List[dict], darts: List[d
     }
 
 
-def build_sentiment(indexes: Dict[str, dict], news: List[dict], darts: List[dict], sector_rotation: dict) -> dict:
+def extract_snapshot_components(snapshot: dict) -> dict:
+    sentiment = snapshot.get("sentiment", {})
+    breakdown = sentiment.get("score_breakdown", {})
+    market = breakdown.get("market", sentiment.get("market_score", 0))
+    news = breakdown.get("news", sentiment.get("news_score", 0))
+    dart = breakdown.get("dart", sentiment.get("dart_score", 0))
+    sector = breakdown.get("sector", sentiment.get("sector_score", 0))
+    return {
+        "market": float(market or 0),
+        "news": float(news or 0),
+        "dart": float(dart or 0),
+        "sector": float(sector or 0),
+    }
+
+
+def build_component_stats(history: List[dict]) -> dict:
+    buckets = {"market": [], "news": [], "dart": [], "sector": []}
+    for item in history:
+        components = extract_snapshot_components(item)
+        for key in buckets:
+            value = float(components.get(key, 0))
+            if value == value:
+                buckets[key].append(value)
+
+    stats = {}
+    for key, values in buckets.items():
+        if not values:
+            stats[key] = {"median": 0.0, "scale": 1.0, "p02": -1.0, "p98": 1.0}
+            continue
+        med, scale = robust_median_scale(values)
+        p02 = percentile(values, 0.02)
+        p98 = percentile(values, 0.98)
+        if p02 == p98:
+            p02 = med - scale
+            p98 = med + scale
+        stats[key] = {
+            "median": round(med, 4),
+            "scale": round(scale, 4),
+            "p02": round(p02, 4),
+            "p98": round(p98, 4),
+        }
+    return stats
+
+
+def normalize_component(value: float, stat: dict) -> float:
+    lower = float(stat.get("p02", -1.0))
+    upper = float(stat.get("p98", 1.0))
+    bounded = clamp(value, lower, upper)
+    median = float(stat.get("median", 0.0))
+    scale = max(0.35, float(stat.get("scale", 1.0)))
+    return round(clamp((bounded - median) / scale, -3.0, 3.0), 4)
+
+
+def infer_forward_label(current: dict, next_item: dict) -> str | None:
+    current_market = current.get("market_signals", {})
+    next_market = next_item.get("market_signals", {})
+    current_pct = average(
+        [
+            parse_change_percent(current_market.get("kospi", {}).get("change", "")),
+            parse_change_percent(current_market.get("kosdaq", {}).get("change", "")),
+        ]
+    )
+    next_pct = average(
+        [
+            parse_change_percent(next_market.get("kospi", {}).get("change", "")),
+            parse_change_percent(next_market.get("kosdaq", {}).get("change", "")),
+        ]
+    )
+    if current_pct != current_pct or next_pct != next_pct:
+        return None
+    move = next_pct - current_pct
+    if move >= 0.15:
+        return "bullish"
+    if move <= -0.15:
+        return "bearish"
+    return "neutral"
+
+
+def label_from_raw_score(score: float) -> str:
+    if score >= 16:
+        return "bullish"
+    if score <= -16:
+        return "bearish"
+    return "neutral"
+
+
+def evaluate_weight_set(history: List[dict], stats: dict, weights: dict) -> Tuple[float, dict]:
+    if len(history) < 8:
+        return 0.0, {"accuracy": 0.0, "false_alarm": 0.0, "samples": 0}
+
+    ordered = sorted(history, key=parse_snapshot_dt)
+    total = 0
+    correct = 0
+    false_alarm = 0
+    for idx in range(len(ordered) - 1):
+        current = ordered[idx]
+        next_item = ordered[idx + 1]
+        target = infer_forward_label(current, next_item)
+        if target is None:
+            continue
+
+        comps = extract_snapshot_components(current)
+        normalized = {
+            key: normalize_component(float(comps[key]), stats[key])
+            for key in ["market", "news", "dart", "sector"]
+        }
+        raw = 25 * (
+            normalized["market"] * weights["market"]
+            + normalized["news"] * weights["news"]
+            + normalized["dart"] * weights["dart"]
+            + normalized["sector"] * weights["sector"]
+        )
+        predicted = label_from_raw_score(raw)
+        total += 1
+        if predicted == target:
+            correct += 1
+        if predicted != "neutral" and predicted != target:
+            false_alarm += 1
+
+    if total == 0:
+        return 0.0, {"accuracy": 0.0, "false_alarm": 0.0, "samples": 0}
+
+    accuracy = correct / total
+    false_rate = false_alarm / total
+    metric = accuracy - false_rate * 0.25
+    return metric, {"accuracy": round(accuracy, 4), "false_alarm": round(false_rate, 4), "samples": total}
+
+
+def calibrate_weights(history: List[dict], stats: dict) -> dict:
+    default_weights = {"market": 0.35, "news": 0.2, "dart": 0.25, "sector": 0.2}
+    if len(history) < 24:
+        return {
+            "weights": default_weights,
+            "metric": 0.0,
+            "accuracy": 0.0,
+            "false_alarm": 0.0,
+            "samples": 0,
+            "mode": "default_short_history",
+        }
+
+    best_weights = default_weights
+    best_metric, best_detail = evaluate_weight_set(history, stats, default_weights)
+
+    grid = [0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
+    for market in grid:
+        for news in grid:
+            for dart in grid:
+                sector = 1.0 - market - news - dart
+                if sector < 0.1 or sector > 0.4:
+                    continue
+                weights = {
+                    "market": round(market, 3),
+                    "news": round(news, 3),
+                    "dart": round(dart, 3),
+                    "sector": round(sector, 3),
+                }
+                metric, detail = evaluate_weight_set(history, stats, weights)
+                if metric > best_metric:
+                    best_metric = metric
+                    best_weights = weights
+                    best_detail = detail
+
+    return {
+        "weights": best_weights,
+        "metric": round(best_metric, 4),
+        "accuracy": best_detail.get("accuracy", 0.0),
+        "false_alarm": best_detail.get("false_alarm", 0.0),
+        "samples": best_detail.get("samples", 0),
+        "mode": "calibrated_grid_search",
+    }
+
+
+def build_sentiment(indexes: Dict[str, dict], news: List[dict], darts: List[dict], sector_rotation: dict, calibration: dict) -> dict:
     news_score = aggregate_event_score(news)
     dart_score = aggregate_event_score(darts, limit=10)
     market_score = market_reaction_score(indexes)
@@ -445,7 +646,21 @@ def build_sentiment(indexes: Dict[str, dict], news: List[dict], darts: List[dict
     if sector_score != sector_score:
         sector_score = 0.0
 
-    total = market_score * 0.9 + news_score * 0.55 + dart_score * 0.75 + sector_score * 0.8
+    stats = calibration.get("stats", {})
+    weights = calibration.get("weights", {"market": 0.35, "news": 0.2, "dart": 0.25, "sector": 0.2})
+    normalized = {
+        "market": normalize_component(market_score, stats.get("market", {})),
+        "news": normalize_component(news_score, stats.get("news", {})),
+        "dart": normalize_component(dart_score, stats.get("dart", {})),
+        "sector": normalize_component(sector_score, stats.get("sector", {})),
+    }
+
+    total = 25 * (
+        normalized["market"] * float(weights.get("market", 0.35))
+        + normalized["news"] * float(weights.get("news", 0.2))
+        + normalized["dart"] * float(weights.get("dart", 0.25))
+        + normalized["sector"] * float(weights.get("sector", 0.2))
+    )
     total = clamp(total, -100, 100)
     raw_label = raw_score_label(total)
     display_score = normalize_sentiment_score(total)
@@ -471,6 +686,11 @@ def build_sentiment(indexes: Dict[str, dict], news: List[dict], darts: List[dict
         "news_score": round(news_score, 2),
         "dart_score": round(dart_score, 2),
         "sector_score": round(sector_score, 2),
+        "normalized_components": normalized,
+        "weights": weights,
+        "model_version": calibration.get("model_version", "v2.0-calibrated"),
+        "calibration_metric": calibration.get("metric", 0.0),
+        "calibration_samples": calibration.get("samples", 0),
         "score_breakdown": score_breakdown,
         "tooltip_breakdown": format_score_breakdown(score_breakdown),
         "data_quality": data_quality,
@@ -860,6 +1080,7 @@ def save_intraday_snapshot(
     sector_rotation: dict,
     reliability: dict,
     heatmap: dict,
+    calibration: dict,
 ) -> dict:
     now = datetime.now(KST)
     stamp = now.strftime("%Y-%m-%d-%H%M")
@@ -886,6 +1107,7 @@ def save_intraday_snapshot(
         "sector_rotation": sector_rotation,
         "reliability": reliability,
         "heatmap": heatmap,
+        "calibration": calibration,
         "validation_basis": reliability.get("basis", ""),
     }
 
@@ -989,11 +1211,22 @@ def render_live_html(payload: dict) -> None:
 
 def main() -> None:
     history = load_intraday_history(limit=400)
+    stats = build_component_stats(history)
+    calibration_result = calibrate_weights(history, stats)
+    calibration = {
+        "stats": stats,
+        "weights": calibration_result.get("weights", {"market": 0.35, "news": 0.2, "dart": 0.25, "sector": 0.2}),
+        "metric": calibration_result.get("metric", 0.0),
+        "samples": calibration_result.get("samples", 0),
+        "model_version": "v2.0-calibrated",
+        "mode": calibration_result.get("mode", "default"),
+    }
+
     indexes = fetch_market_signals()
     news_events = score_news_events(fetch_naver_news(limit=20))
     dart_events = score_dart_events(fetch_dart_events(limit=40))
     sector_rotation = detect_sector_rotation(news_events, dart_events)
-    sentiment = build_sentiment(indexes, news_events, dart_events, sector_rotation)
+    sentiment = build_sentiment(indexes, news_events, dart_events, sector_rotation, calibration)
     points, watchpoint = build_llm_points(indexes, sentiment, news_events, dart_events)
     preview_payload = {
         "timestamp": datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S"),
@@ -1016,6 +1249,7 @@ def main() -> None:
         sector_rotation,
         reliability,
         heatmap,
+        calibration,
     )
     render_live_html(payload)
     send_discord_intraday(payload)
