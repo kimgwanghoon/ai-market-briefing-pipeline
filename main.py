@@ -647,13 +647,35 @@ def generate_ai_briefing(
         )
         headline = headline_response.choices[0].message.content.strip()
 
-        image_prompt = f"""
-Webtoon style 4-panel comic about Korean stock market: {headline}
-Style: clean line art, soft colors, expressive bull and bear characters.
-Layout: 2x2 grid.
-IMPORTANT: Do NOT include any text in the image. No text bubbles.
-Show: bull and bear characters, up/down arrows, charts, stock market icons, Korean flag colors.
-""".strip()
+        kospi_chg = parse_change_percent(kospi.get("change", ""))
+        vix_val = parse_price_value(vix.get("price", "0"))
+        if kospi_chg == kospi_chg and kospi_chg > 0.5:
+            _chart_dir = "rising strongly upward with confident momentum"
+            _figure = "a powerful bull figure charging forward and upward"
+            _palette = "vibrant greens, warm golds, bright sky blue"
+            _mood = "optimistic, energetic upward momentum, morning sunlight"
+        elif kospi_chg == kospi_chg and kospi_chg < -0.5:
+            _chart_dir = "falling sharply downward under heavy pressure"
+            _figure = "a bear figure pressing down with weight and gravity"
+            _palette = "deep reds, cool steel blues, dramatic dark contrast"
+            _mood = "tense, declining pressure, heavy atmosphere, storm clouds"
+        else:
+            _chart_dir = "moving sideways with mixed and uncertain signals"
+            _figure = "a bull and bear figure in cautious standoff, neither dominating"
+            _palette = "muted grey-blues, soft amber accents, balanced neutral tones"
+            _mood = "balanced uncertainty, quiet observation, overcast diffused light"
+        _tension = " Extreme volatility, sharp spikes in the chart." if (vix_val == vix_val and vix_val > 25) else ""
+
+        image_prompt = (
+            f"Professional editorial illustration for a Korean stock market daily briefing. "
+            f"Main visual: A bold stock chart line {_chart_dir}, rendered as the dominant graphic element. "
+            f"Background: Yeouido financial district skyline silhouette at dusk or dawn. "
+            f"Foreground: {_figure}, abstract circuit-board patterns blending into financial charts. "
+            f"Mood: {_mood}.{_tension} "
+            f"Color palette: {_palette}. "
+            f"Style: modern flat editorial illustration, cinematic depth, professional magazine cover quality. "
+            f"No text, no numbers, no labels anywhere in the image."
+        )
 
         image_file = get_existing_cover_file() or "cover.svg"
         if GENERATE_AI_IMAGE:
