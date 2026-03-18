@@ -873,6 +873,9 @@ def compute_reliability(history: List[dict]) -> dict:
     }
 
     for i in range(len(ordered) - 1):
+        time_gap_minutes = abs((parse_snapshot_dt(ordered[i + 1]) - parse_snapshot_dt(ordered[i])).total_seconds()) / 60
+        if time_gap_minutes < 30:
+            continue
         current = ordered[i].get("sentiment", {})
         current_market = ordered[i].get("market_signals", {})
         next_market = ordered[i + 1].get("market_signals", {})
@@ -979,6 +982,17 @@ def build_timeline_heatmap(current_payload: dict, history: List[dict]) -> dict:
             )
         rows.append(row)
 
+    seen_slot_keys: set = set()
+    deduped_timeline = []
+    for item in reversed(recent):
+        dt = parse_snapshot_dt(item)
+        slot = bucket_time_to_slot(dt, slots, tolerance_minutes=35)
+        slot_key = (dt.strftime("%m-%d"), slot or dt.strftime("%H"))
+        if slot_key not in seen_slot_keys:
+            seen_slot_keys.add(slot_key)
+            deduped_timeline.append(item)
+    deduped_timeline = list(reversed(deduped_timeline))[-12:]
+
     timeline = [
         {
             "time": parse_snapshot_dt(item).strftime("%m-%d %H:%M"),
@@ -986,7 +1000,7 @@ def build_timeline_heatmap(current_payload: dict, history: List[dict]) -> dict:
             "label": describe_display_score(get_snapshot_display_score(item))["label"],
             "color": display_score_color(get_snapshot_display_score(item)),
         }
-        for item in recent[-12:]
+        for item in deduped_timeline
     ]
     return {
         "slots": slots,
