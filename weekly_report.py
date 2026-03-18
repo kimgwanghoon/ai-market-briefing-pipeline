@@ -59,9 +59,9 @@ def build_week_summary(snapshots: List[dict]) -> dict:
     score_max = round(max(scores), 2)
     score_min = round(min(scores), 2)
 
-    if score_avg >= 18:
+    if score_avg >= 60:
         label = "우호"
-    elif score_avg <= -18:
+    elif score_avg < 40:
         label = "경계"
     else:
         label = "중립"

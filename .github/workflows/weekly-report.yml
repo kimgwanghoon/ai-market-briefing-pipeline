@@ -25,6 +25,21 @@ jobs:
       - name: Install dependencies
         run: python -m pip install --upgrade pip && pip install -r requirements.txt
 
+      - name: Restore data from gh-pages
+        run: |
+          mkdir -p public/data/intraday public/data/reports
+          git fetch origin gh-pages --depth=1 2>/dev/null || true
+          git checkout FETCH_HEAD -- data/intraday 2>/dev/null || true
+          git checkout FETCH_HEAD -- data/reports 2>/dev/null || true
+          if [ -d data/intraday ]; then
+            cp -r data/intraday/. public/data/intraday/
+            echo "Restored $(ls public/data/intraday/*.json 2>/dev/null | wc -l) intraday files"
+          fi
+          if [ -d data/reports ]; then
+            cp -r data/reports/. public/data/reports/
+            echo "Restored $(ls public/data/reports/*.json 2>/dev/null | wc -l) report files"
+          fi
+
       - name: Generate weekly report
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
