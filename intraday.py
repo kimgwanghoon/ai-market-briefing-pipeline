@@ -155,7 +155,7 @@ def raw_score_label(score: float) -> str:
 
 
 def normalize_sentiment_score(raw_score: float) -> float:
-    return round(clamp((raw_score + 100) / 2, 0, 100), 1)
+    return round(clamp((raw_score + 75) / 1.5, 0, 100), 1)
 
 
 def describe_display_score(display_score: float) -> dict:
@@ -386,9 +386,24 @@ def score_news_events(events: List[dict]) -> List[dict]:
         "축소": 1,
     }
 
+    compound_negative = {
+        "실적 부진": 3,
+        "실적악화": 3,
+        "최대 적자": 4,
+        "최대낙폭": 3,
+        "매출 감소": 2,
+        "수익 감소": 2,
+    }
+
     scored: List[dict] = []
     for event in events:
-        score, tags = score_text(event.get("title", ""), positive, negative)
+        title = event.get("title", "")
+        score, tags = score_text(title, positive, negative)
+        lowered = title.lower()
+        for phrase, weight in compound_negative.items():
+            if phrase in lowered:
+                score -= weight
+                tags.append(f"-{phrase}")
         event_copy = dict(event)
         event_copy["impact_score"] = score
         event_copy["tags"] = tags
@@ -415,10 +430,21 @@ def score_dart_events(events: List[dict]) -> List[dict]:
         "정정": 0,
     }
 
+    compound_negative = {
+        "유상증자 결정": 4,
+        "횡령 혐의": 5,
+        "감사의견 거절": 5,
+    }
+
     scored: List[dict] = []
     for event in events:
         target = f"{event.get('corp_name', '')} {event.get('title', '')}"
         score, tags = score_text(target, positive, negative)
+        lowered = target.lower()
+        for phrase, weight in compound_negative.items():
+            if phrase in lowered:
+                score -= weight
+                tags.append(f"-{phrase}")
         event_copy = dict(event)
         event_copy["impact_score"] = score
         event_copy["tags"] = tags
@@ -537,9 +563,9 @@ def infer_forward_label(current: dict, next_item: dict) -> str | None:
     if current_pct != current_pct or next_pct != next_pct:
         return None
     move = next_pct - current_pct
-    if move >= 0.15:
+    if move >= 0.3:
         return "bullish"
-    if move <= -0.15:
+    if move <= -0.3:
         return "bearish"
     return "neutral"
 
@@ -590,13 +616,13 @@ def evaluate_weight_set(history: List[dict], stats: dict, weights: dict) -> Tupl
 
     accuracy = correct / total
     false_rate = false_alarm / total
-    metric = accuracy - false_rate * 0.25
+    metric = accuracy - false_rate * 0.5
     return metric, {"accuracy": round(accuracy, 4), "false_alarm": round(false_rate, 4), "samples": total}
 
 
 def calibrate_weights(history: List[dict], stats: dict) -> dict:
     default_weights = {"market": 0.35, "news": 0.2, "dart": 0.25, "sector": 0.2}
-    if len(history) < 24:
+    if len(history) < 60:
         return {
             "weights": default_weights,
             "metric": 0.0,
@@ -606,8 +632,14 @@ def calibrate_weights(history: List[dict], stats: dict) -> dict:
             "mode": "default_short_history",
         }
 
+    ordered = sorted(history, key=parse_snapshot_dt)
+    split = max(8, int(len(ordered) * 0.7))
+    train_history = ordered[:split]
+    val_history = ordered[split:]
+    train_stats = build_component_stats(train_history)
+
     best_weights = default_weights
-    best_metric, best_detail = evaluate_weight_set(history, stats, default_weights)
+    best_metric, best_detail = evaluate_weight_set(val_history, train_stats, default_weights)
 
     grid = [0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
     for market in grid:
@@ -622,7 +654,7 @@ def calibrate_weights(history: List[dict], stats: dict) -> dict:
                     "dart": round(dart, 3),
                     "sector": round(sector, 3),
                 }
-                metric, detail = evaluate_weight_set(history, stats, weights)
+                metric, detail = evaluate_weight_set(val_history, train_stats, weights)
                 if metric > best_metric:
                     best_metric = metric
                     best_weights = weights
@@ -823,7 +855,10 @@ def detect_sector_rotation(news: List[dict], darts: List[dict]) -> dict:
         if price_confirmation != price_confirmation:
             price_confirmation = 0.0
         breadth = positive_count - negative_count
-        final_score = event_score * 0.65 + price_confirmation * 1.6 + breadth * 0.8
+        event_norm = clamp(event_score / 8.0, -1.0, 1.0)
+        price_norm = clamp(price_confirmation / 3.0, -1.0, 1.0)
+        breadth_norm = clamp(breadth / 3.0, -1.0, 1.0)
+        final_score = round((event_norm * 0.4 + price_norm * 0.4 + breadth_norm * 0.2) * 5, 2)
         confidence = int(clamp(35 + min(mentions, 4) * 10 + (10 if pct_moves else 0), 35, 90))
 
         scored.append(
@@ -900,19 +935,19 @@ def compute_reliability(history: List[dict]) -> dict:
         label_stats[current_label]["evaluated"] += 1
 
         if current_label == "bullish":
-            if forward_move >= 0.15:
+            if forward_move >= 0.3:
                 hit += 1
                 label_stats[current_label]["hit"] += 1
             else:
                 false_alarm += 1
         elif current_label == "bearish":
-            if forward_move <= -0.15:
+            if forward_move <= -0.3:
                 hit += 1
                 label_stats[current_label]["hit"] += 1
             else:
                 false_alarm += 1
         else:
-            if abs(forward_move) < 0.2:
+            if abs(forward_move) < 0.35:
                 hit += 1
                 label_stats[current_label]["hit"] += 1
             else:
@@ -1051,18 +1086,52 @@ def build_llm_points(indexes: Dict[str, dict], sentiment: dict, news: List[dict]
         return build_rule_points(indexes, sentiment, news, darts)
 
     client = OpenAI(api_key=OPENAI_API_KEY)
+
+    kospi = indexes.get("kospi", {})
+    kosdaq = indexes.get("kosdaq", {})
+    vix = indexes.get("vix", {})
+    usdkrw = indexes.get("usdkrw", {})
+
+    market_summary = (
+        f"KOSPI {kospi.get('price','N/A')} ({kospi.get('change','-')}), "
+        f"KOSDAQ {kosdaq.get('price','N/A')} ({kosdaq.get('change','-')}), "
+        f"VIX {vix.get('price','N/A')} ({vix.get('change','-')}), "
+        f"달러원 {usdkrw.get('price','N/A')} ({usdkrw.get('change','-')})"
+    )
+
     top_news = sorted(news, key=lambda x: abs(x.get("impact_score", 0)), reverse=True)[:3]
     top_dart = sorted(darts, key=lambda x: abs(x.get("impact_score", 0)), reverse=True)[:3]
 
-    prompt = (
-        "당신은 20년차 시장 애널리스트입니다. 아래 데이터를 바탕으로 장중 브리핑 3줄과 마지막 관전포인트 1줄을 작성하세요.\n"
-        "- 모든 문장은 근거 기반으로 작성\n"
-        "- 핵심 키워드에 **굵게** 표시\n"
+    news_lines = "\n".join(f"- [{e.get('impact_score',0):+}] {e.get('title','')}" for e in top_news)
+    dart_lines = "\n".join(f"- [{e.get('impact_score',0):+}] {e.get('corp_name','')} {e.get('title','')}" for e in top_dart) or "없음"
+
+    score_info = (
+        f"센티먼트 {sentiment.get('score',50)}점 ({sentiment.get('label','중립')}), "
+        f"시장 {sentiment.get('score_breakdown',{}).get('market',0)}, "
+        f"뉴스 {sentiment.get('score_breakdown',{}).get('news',0)}, "
+        f"공시 {sentiment.get('score_breakdown',{}).get('dart',0)}, "
+        f"섹터 {sentiment.get('score_breakdown',{}).get('sector',0)}"
+    )
+
+    system_msg = (
+        "당신은 한국 주식시장 전문 애널리스트입니다. "
+        "데이터 기반으로 간결하고 실용적인 장중 브리핑을 작성합니다. "
+        "과장 표현 금지, 숫자 근거 필수, 불확실한 내용은 단정하지 않습니다."
+    )
+
+    user_msg = (
+        f"현재 장중 데이터:\n"
+        f"[시장 지수] {market_summary}\n"
+        f"[센티먼트] {score_info}\n"
+        f"[주요 뉴스]\n{news_lines}\n"
+        f"[주요 공시]\n{dart_lines}\n\n"
+        "위 데이터를 바탕으로 장중 브리핑 3줄과 핵심 관전 포인트 1줄을 작성하세요.\n"
+        "규칙:\n"
+        "- 각 줄은 반드시 구체적 수치 1개 이상 포함\n"
+        "- 한 줄당 40~70자 내외\n"
+        "- 핵심 키워드는 **굵게** 표시 (1~2개)\n"
         "- 마지막 줄은 반드시 '오늘의 핵심 관전 포인트:'로 시작\n"
-        f"- sentiment: {sentiment}\n"
-        f"- indexes: {indexes}\n"
-        f"- top_news: {top_news}\n"
-        f"- top_dart: {top_dart}\n\n"
+        "- 과장·단정 금지, 확인된 수치만 근거로 사용\n\n"
         "출력 형식:\n"
         "- ...\n- ...\n- ...\n오늘의 핵심 관전 포인트: ..."
     )
@@ -1070,7 +1139,11 @@ def build_llm_points(indexes: Dict[str, dict], sentiment: dict, news: List[dict]
     try:
         res = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": user_msg},
+            ],
+            temperature=0.4,
         )
         raw = (res.choices[0].message.content or "").strip()
         lines = [line.strip() for line in raw.split("\n") if line.strip()]

@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import json
@@ -55,14 +56,9 @@ def resolve_pages_url() -> str:
     return "https://github.com"
 
 KST = pytz.timezone("Asia/Seoul")
-NOW_KST = datetime.now(KST)
-CURRENT_TIME_STR = NOW_KST.strftime("%Y-%m-%d %H:%M:%S")
-IS_MORNING = NOW_KST.hour < 12
-EDITION_TITLE = (
-    "Morning Briefing: 간밤의 미장 & 국장 프리뷰"
-    if IS_MORNING
-    else "Evening Briefing: 오늘 국장 마감 & 미장 프리뷰"
-)
+CURRENT_TIME_STR = ""
+IS_MORNING = True
+EDITION_TITLE = ""
 
 
 def bold_filter(text: str) -> str:
@@ -97,7 +93,8 @@ def get_korean_index_data(market_type: str) -> dict:
             "color": color,
             "trend": trend,
         }
-    except Exception:
+    except Exception as exc:
+        logging.warning("get_korean_index_data(%s) failed: %s", market_type, exc)
         return default
 
 
@@ -137,8 +134,8 @@ def get_index_data(ticker: str) -> dict:
                     "color": color,
                     "trend": trend,
                 }
-    except Exception:
-        pass
+    except Exception as exc:
+        logging.warning("get_index_data(%s) Yahoo Finance API failed: %s", ticker, exc)
 
     for wait_seconds in (0, 1, 2):
         if wait_seconds:
@@ -170,7 +167,8 @@ def get_index_data(ticker: str) -> dict:
                 "color": color,
                 "trend": trend,
             }
-        except Exception:
+        except Exception as exc:
+            logging.warning("get_index_data(%s) yfinance retry failed: %s", ticker, exc)
             continue
 
     return default
@@ -752,6 +750,16 @@ def send_discord_alert(headline: str, summary_items: List[str], indexes: dict) -
 
 
 def main() -> None:
+    global CURRENT_TIME_STR, IS_MORNING, EDITION_TITLE
+    now_kst = datetime.now(KST)
+    CURRENT_TIME_STR = now_kst.strftime("%Y-%m-%d %H:%M:%S")
+    IS_MORNING = now_kst.hour < 12
+    EDITION_TITLE = (
+        "Morning Briefing: 간밤의 미장 & 국장 프리뷰"
+        if IS_MORNING
+        else "Evening Briefing: 오늘 국장 마감 & 미장 프리뷰"
+    )
+
     previous_snapshots = load_recent_snapshots(limit=7)
 
     indexes = {
