@@ -31,6 +31,16 @@ jobs:
       - name: Install dependencies
         run: python -m pip install --upgrade pip && pip install -r requirements.txt
 
+      - name: Restore snapshot history from gh-pages
+        run: |
+          mkdir -p public/data
+          git fetch origin gh-pages --depth=1 2>/dev/null || true
+          git checkout FETCH_HEAD -- data 2>/dev/null || true
+          if [ -d data ]; then
+            cp -r data/. public/data/
+            echo "Restored $(ls public/data/*.json 2>/dev/null | wc -l) snapshot files"
+          fi
+
       - name: Generate page
         env:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
