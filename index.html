@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Morning Briefing: 간밤의 미장 & 국장 프리뷰</title>
+  <title>Evening Briefing: 오늘 국장 마감 & 미장 프리뷰</title>
   <meta name="description" content="핵심 지수 점검" />
-  <meta property="og:title" content="Morning Briefing: 간밤의 미장 & 국장 프리뷰" />
+  <meta property="og:title" content="Evening Briefing: 오늘 국장 마감 & 미장 프리뷰" />
   <meta property="og:description" content="핵심 지수 점검" />
-  <meta property="og:image" content="cover.png" />
+  <meta property="og:image" content="cover.svg" />
   <style>
     :root {
       --bg-a: #f8fafc;
@@ -44,6 +44,21 @@
     .header {
       text-align: center;
       margin-bottom: 32px;
+      border-top: 4px solid;
+      border-image: linear-gradient(90deg, #0f766e, #2563eb, #7c3aed) 1;
+      padding-top: 24px;
+    }
+
+    .hero-focus {
+      display: inline-block;
+      margin: 12px 0 0;
+      padding: 8px 20px;
+      background: linear-gradient(135deg, #f0fdfa, #e0f2fe);
+      border: 1px solid #99f6e4;
+      border-radius: 999px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--accent);
     }
 
     .badge {
@@ -137,6 +152,12 @@
       padding: 14px 16px;
       background: #f8fafc;
       text-align: center;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
     }
 
     .name {
@@ -207,6 +228,79 @@
       color: #134e4a;
     }
 
+    .news-section {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    .news-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .news-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .news-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .news-item:first-child {
+      padding-top: 0;
+    }
+
+    .news-rank {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .news-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .news-title {
+      margin: 0 0 4px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    .news-title a {
+      color: var(--ink);
+      text-decoration: none;
+    }
+
+    .news-title a:hover {
+      color: var(--accent);
+    }
+
+    .news-meta {
+      margin: 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
     .risk-section {
       background: var(--card);
       border: 1px solid var(--line);
@@ -263,16 +357,76 @@
       font-size: 0.85rem;
       text-align: center;
     }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-a: #0f172a;
+        --bg-b: #1e293b;
+        --card: #1e293b;
+        --ink: #e2e8f0;
+        --muted: #94a3b8;
+        --line: #334155;
+        --accent: #2dd4bf;
+        --accent-soft: #134e4a;
+      }
+
+      body {
+        background:
+          radial-gradient(circle at 88% 10%, rgba(14, 165, 233, 0.15) 0, transparent 34%),
+          radial-gradient(circle at 8% 92%, rgba(239, 68, 68, 0.1) 0, transparent 28%),
+          linear-gradient(160deg, var(--bg-a), var(--bg-b));
+      }
+
+      .item, .risk-item {
+        background: #0f172a;
+      }
+
+      .headline {
+        background: #134e4a;
+        border-left-color: var(--accent);
+      }
+
+      .hero-focus {
+        background: linear-gradient(135deg, #134e4a, #0c4a6e);
+        border-color: #2dd4bf;
+        color: #2dd4bf;
+      }
+
+      .quick-links a {
+        background: #134e4a;
+        border-color: #2dd4bf;
+        color: #2dd4bf;
+      }
+
+      .summary strong {
+        color: #5eead4;
+      }
+
+      .news-title a {
+        color: var(--ink);
+      }
+
+      .news-title a:hover {
+        color: var(--accent);
+      }
+
+      .cover {
+        border-color: var(--line);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+      }
+    }
   </style>
 </head>
 <body>
   <main class="page">
     <header class="header">
       <span class="badge">AUTOMATED BRIEFING</span>
-      <h1>Morning Briefing: 간밤의 미장 & 국장 프리뷰</h1>
-      <p class="time">생성 시각(KST): 2026-04-10 08:14:51</p>
+      <h1>Evening Briefing: 오늘 국장 마감 & 미장 프리뷰</h1>
+      <p class="hero-focus">핵심 지수 점검</p>
+      <p class="time">생성 시각(KST): 2026-04-10 15:29:34</p>
       <div class="quick-links">
         <a href="live.html">장중 보기</a>
+        <a href="weekly.html">주간 리포트</a>
       </div>
     </header>
 
@@ -280,59 +434,108 @@
       <h3 class="section-title">📊 주요 지수 및 리스크 신호</h3>
       <div class="market-overview-grid">
   
-    <article class="item market-card">
+    <article class="item market-card" style="border-left: 3px solid #ef4444">
       <p class="name">KOSPI</p>
-      <p class="price">5,778.01</p>
-      <p class="change" style="color: #6b7280">- 0.00 (+0.00%)</p>
+      <p class="price">5,858.72</p>
+      <p class="change" style="color: #ef4444; font-size: 0.95rem;">▲ 80.71 (+1.40%)</p>
     </article>
   
-    <article class="item market-card">
+    <article class="item market-card" style="border-left: 3px solid #ef4444">
       <p class="name">KOSDAQ</p>
-      <p class="price">1,076.00</p>
-      <p class="change" style="color: #6b7280">- 0.00 (+0.00%)</p>
+      <p class="price">1,094.16</p>
+      <p class="change" style="color: #ef4444; font-size: 0.95rem;">▲ 18.16 (+1.69%)</p>
     </article>
   
-    <article class="item market-card">
+    <article class="item market-card" style="border-left: 3px solid #ef4444">
       <p class="name">S&P 500</p>
       <p class="price">6,824.66</p>
-      <p class="change" style="color: #ef4444">▲ 41.85 (+0.62%)</p>
+      <p class="change" style="color: #ef4444; font-size: 0.95rem;">▲ 41.85 (+0.62%)</p>
     </article>
   
-    <article class="item market-card">
+    <article class="item market-card" style="border-left: 3px solid #ef4444">
       <p class="name">NASDAQ</p>
       <p class="price">22,822.42</p>
-      <p class="change" style="color: #ef4444">▲ 187.43 (+0.83%)</p>
+      <p class="change" style="color: #ef4444; font-size: 0.95rem;">▲ 187.43 (+0.83%)</p>
     </article>
   
-    <article class="item market-card">
+    <article class="item market-card" style="border-left: 3px solid #ef4444">
       <p class="name">USD/KRW</p>
-      <p class="price">1,477.60</p>
-      <p class="change" style="color: #3b82f6">▼ 21.53 (-1.44%)</p>
+      <p class="price">1,481.78</p>
+      <p class="change" style="color: #ef4444; font-size: 0.95rem;">▲ 4.18 (+0.28%)</p>
     </article>
   
-    <article class="item market-card">
+    <article class="item market-card" style="border-left: 3px solid #3b82f6">
       <p class="name">VIX</p>
       <p class="price">19.49</p>
-      <p class="change" style="color: #3b82f6">▼ 1.55 (-7.37%)</p>
+      <p class="change" style="color: #3b82f6; font-size: 0.95rem;">▼ 1.55 (-7.37%)</p>
     </article>
   
 </div>
     </section>
 
     <section class="cover-section">
-      <img class="cover" src="cover.png" onerror="this.onerror=null;this.src='cover.svg';" alt="시장 브리핑 커버" />
+      <img class="cover" src="cover.svg" onerror="this.onerror=null;this.src='cover.svg';" alt="시장 브리핑 커버" />
     </section>
+
+    
+    <section class="news-section">
+      <h3 class="section-title">📰 주요 뉴스</h3>
+      <ul class="news-list">
+        
+        <li class="news-item">
+          <span class="news-rank">1</span>
+          <div class="news-content">
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/277/0005747868" target="_blank" rel="noopener">이창용 "현 시점 스태그플레이션 가능성 낮다…초과세수 통한 추경 긍정적"(종합2보)</a></p>
+            <p class="news-meta">아시아경제 · 3분전</p>
+          </div>
+        </li>
+        
+        <li class="news-item">
+          <span class="news-rank">2</span>
+          <div class="news-content">
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/003/0013880713" target="_blank" rel="noopener">금감원, 한화솔루션 유상증자 반려 왜…한화에어로 전철 밟나</a></p>
+            <p class="news-meta">뉴시스 · 4분전</p>
+          </div>
+        </li>
+        
+        <li class="news-item">
+          <span class="news-rank">3</span>
+          <div class="news-content">
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/001/0016014562" target="_blank" rel="noopener">[일문일답] 한은총재 "중동 전쟁 없으면 환율 안정 국면…빠르게 내릴 수도"</a></p>
+            <p class="news-meta">연합뉴스 · 42분전</p>
+          </div>
+        </li>
+        
+        <li class="news-item">
+          <span class="news-rank">4</span>
+          <div class="news-content">
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/629/0000490319" target="_blank" rel="noopener">SK하이닉스, 호실적 기대감 '솔솔'…'200만닉스' 현실 될까</a></p>
+            <p class="news-meta">더팩트 · 44분전</p>
+          </div>
+        </li>
+        
+        <li class="news-item">
+          <span class="news-rank">5</span>
+          <div class="news-content">
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/015/0005273447" target="_blank" rel="noopener">아마존 "2000억달러 규모 AI 투자, 평생 단 한 번의 기회"</a></p>
+            <p class="news-meta">한국경제 · 54분전</p>
+          </div>
+        </li>
+        
+      </ul>
+    </section>
+    
 
     <section class="risk-section">
       <h3 class="section-title">🧭 리스크 대시보드</h3>
       <div class="risk-grid">
         <article class="risk-item">
           <p class="risk-name">VIX</p>
-          <p class="risk-meta">현재 19.49 (▼ 1.55 (-7.37%)) · 최근 대비 <span style="color: #3b82f6">하락</span></p>
+          <p class="risk-meta">현재 19.49 (▼ 1.55 (-7.37%)) · 최근 대비 <span style="color: #6b7280">보합</span></p>
         </article>
         <article class="risk-item">
           <p class="risk-name">USD/KRW</p>
-          <p class="risk-meta">현재 1,477.60 (▼ 21.53 (-1.44%)) · 최근 대비 <span style="color: #3b82f6">하락</span></p>
+          <p class="risk-meta">현재 1,481.78 (▲ 4.18 (+0.28%)) · 최근 대비 <span style="color: #ef4444">상승</span></p>
         </article>
         <article class="risk-item">
           <p class="risk-name">US 10Y</p>
@@ -340,7 +543,7 @@
         </article>
         <article class="risk-item">
           <p class="risk-name">WTI</p>
-          <p class="risk-meta">현재 98.79 (▲ 4.38 (+4.64%)) · 최근 대비 <span style="color: #ef4444">상승</span></p>
+          <p class="risk-meta">현재 98.60 (▲ 0.73 (+0.75%)) · 최근 대비 <span style="color: #3b82f6">하락</span></p>
         </article>
       </div>
       <p class="risk-note">누적 스냅샷 8건 기준으로 직전 기록과 방향을 비교합니다.</p>
@@ -354,7 +557,7 @@
         
         
         
-        <li>국장 지표는 코스피 5,778.01 (- 0.00 (+0.00%)), 코스닥 1,076.00 (- 0.00 (+0.00%))로 집계되었습니다.</li>
+        <li>국장 지표는 코스피 5,858.72 (▲ 80.71 (+1.40%)), 코스닥 1,094.16 (▲ 18.16 (+1.69%))로 집계되었습니다.</li>
         
       
         
@@ -372,7 +575,7 @@
         
         
         
-        <li>리스크 체온계는 VIX 19.49 (▼ 1.55 (-7.37%)), 달러/원 1,477.60 (▼ 21.53 (-1.44%)), 미 10년물 4.29 (▲ 0.00 (+0.05%)), WTI 98.79 (▲ 4.38 (+4.64%))입니다.</li>
+        <li>리스크 체온계는 VIX 19.49 (▼ 1.55 (-7.37%)), 달러/원 1,481.78 (▲ 4.18 (+0.28%)), 미 10년물 4.29 (▲ 0.00 (+0.05%)), WTI 98.60 (▲ 0.73 (+0.75%))입니다.</li>
         
       
         
