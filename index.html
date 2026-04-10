@@ -50,15 +50,30 @@
     }
 
     .hero-focus {
-      display: inline-block;
-      margin: 12px 0 0;
-      padding: 8px 20px;
-      background: linear-gradient(135deg, #f0fdfa, #e0f2fe);
+      margin: 16px auto 0;
+      max-width: 680px;
+      padding: 16px 24px;
+      background: linear-gradient(135deg, #f0fdfa 0%, #e0f2fe 50%, #f5f3ff 100%);
       border: 1px solid #99f6e4;
-      border-radius: 999px;
-      font-size: 0.95rem;
-      font-weight: 700;
+      border-radius: 16px;
+      font-size: clamp(1rem, 2.5vw, 1.25rem);
+      font-weight: 800;
+      color: var(--ink);
+      line-height: 1.5;
+      text-align: center;
+      box-shadow: 0 4px 16px rgba(15, 118, 110, 0.08);
+      position: relative;
+    }
+
+    .hero-focus::before {
+      content: "\201C";
+      position: absolute;
+      top: -8px;
+      left: 16px;
+      font-size: 2.5rem;
       color: var(--accent);
+      opacity: 0.3;
+      line-height: 1;
     }
 
     .badge {
@@ -191,14 +206,7 @@
     }
 
     .headline {
-      margin: 0 0 16px;
-      padding: 12px 16px;
-      background: #f0fdfa;
-      border-left: 5px solid var(--accent);
-      border-radius: 8px;
-      font-size: 1.3rem;
-      font-weight: 700;
-      line-height: 1.4;
+      display: none;
     }
 
     .summary-title {
@@ -381,15 +389,15 @@
         background: #0f172a;
       }
 
-      .headline {
-        background: #134e4a;
-        border-left-color: var(--accent);
+      .hero-focus {
+        background: linear-gradient(135deg, #134e4a 0%, #0c4a6e 50%, #1e1b4b 100%);
+        border-color: #2dd4bf;
+        color: #e2e8f0;
       }
 
-      .hero-focus {
-        background: linear-gradient(135deg, #134e4a, #0c4a6e);
-        border-color: #2dd4bf;
+      .hero-focus::before {
         color: #2dd4bf;
+        opacity: 0.4;
       }
 
       .quick-links a {
@@ -423,7 +431,7 @@
       <span class="badge">AUTOMATED BRIEFING</span>
       <h1>Evening Briefing: 오늘 국장 마감 & 미장 프리뷰</h1>
       <p class="hero-focus">핵심 지수 점검</p>
-      <p class="time">생성 시각(KST): 2026-04-10 15:29:34</p>
+      <p class="time">생성 시각(KST): 2026-04-10 15:39:28</p>
       <div class="quick-links">
         <a href="live.html">장중 보기</a>
         <a href="weekly.html">주간 리포트</a>
@@ -436,14 +444,14 @@
   
     <article class="item market-card" style="border-left: 3px solid #ef4444">
       <p class="name">KOSPI</p>
-      <p class="price">5,858.72</p>
-      <p class="change" style="color: #ef4444; font-size: 0.95rem;">▲ 80.71 (+1.40%)</p>
+      <p class="price">5,858.87</p>
+      <p class="change" style="color: #ef4444; font-size: 0.95rem;">▲ 80.86 (+1.40%)</p>
     </article>
   
     <article class="item market-card" style="border-left: 3px solid #ef4444">
       <p class="name">KOSDAQ</p>
-      <p class="price">1,094.16</p>
-      <p class="change" style="color: #ef4444; font-size: 0.95rem;">▲ 18.16 (+1.69%)</p>
+      <p class="price">1,093.63</p>
+      <p class="change" style="color: #ef4444; font-size: 0.95rem;">▲ 17.63 (+1.64%)</p>
     </article>
   
     <article class="item market-card" style="border-left: 3px solid #ef4444">
@@ -460,8 +468,8 @@
   
     <article class="item market-card" style="border-left: 3px solid #ef4444">
       <p class="name">USD/KRW</p>
-      <p class="price">1,481.78</p>
-      <p class="change" style="color: #ef4444; font-size: 0.95rem;">▲ 4.18 (+0.28%)</p>
+      <p class="price">1,482.59</p>
+      <p class="change" style="color: #ef4444; font-size: 0.95rem;">▲ 4.99 (+0.34%)</p>
     </article>
   
     <article class="item market-card" style="border-left: 3px solid #3b82f6">
@@ -485,40 +493,40 @@
         <li class="news-item">
           <span class="news-rank">1</span>
           <div class="news-content">
-            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/277/0005747868" target="_blank" rel="noopener">이창용 "현 시점 스태그플레이션 가능성 낮다…초과세수 통한 추경 긍정적"(종합2보)</a></p>
-            <p class="news-meta">아시아경제 · 3분전</p>
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/001/0016014714" target="_blank" rel="noopener">코스피, 주말 美·이란 종전협상 앞두고 1.4% 올라 5,850대 마감</a></p>
+            <p class="news-meta">연합뉴스 · 1분전</p>
           </div>
         </li>
         
         <li class="news-item">
           <span class="news-rank">2</span>
           <div class="news-content">
-            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/003/0013880713" target="_blank" rel="noopener">금감원, 한화솔루션 유상증자 반려 왜…한화에어로 전철 밟나</a></p>
-            <p class="news-meta">뉴시스 · 4분전</p>
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/629/0000490341" target="_blank" rel="noopener">한은 금리 7연속 동결…증권가선 '관망' 속 인상론도 고개</a></p>
+            <p class="news-meta">더팩트 · 3분전</p>
           </div>
         </li>
         
         <li class="news-item">
           <span class="news-rank">3</span>
           <div class="news-content">
-            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/001/0016014562" target="_blank" rel="noopener">[일문일답] 한은총재 "중동 전쟁 없으면 환율 안정 국면…빠르게 내릴 수도"</a></p>
-            <p class="news-meta">연합뉴스 · 42분전</p>
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/003/0013880739" target="_blank" rel="noopener">[속보]코스피, 휴전 기대감에 1.40%↑…5850선 마감</a></p>
+            <p class="news-meta">뉴시스 · 6분전</p>
           </div>
         </li>
         
         <li class="news-item">
           <span class="news-rank">4</span>
           <div class="news-content">
-            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/629/0000490319" target="_blank" rel="noopener">SK하이닉스, 호실적 기대감 '솔솔'…'200만닉스' 현실 될까</a></p>
-            <p class="news-meta">더팩트 · 44분전</p>
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/277/0005747868" target="_blank" rel="noopener">이창용 "현 시점 스태그플레이션 가능성 낮다…초과세수 통한 추경 긍정적"(종합2보)</a></p>
+            <p class="news-meta">아시아경제 · 13분전</p>
           </div>
         </li>
         
         <li class="news-item">
           <span class="news-rank">5</span>
           <div class="news-content">
-            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/015/0005273447" target="_blank" rel="noopener">아마존 "2000억달러 규모 AI 투자, 평생 단 한 번의 기회"</a></p>
-            <p class="news-meta">한국경제 · 54분전</p>
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/001/0016014709" target="_blank" rel="noopener">[특징주] 풍산홀딩스, 방산 부문 매각 중단에 급락(종합2보)</a></p>
+            <p class="news-meta">연합뉴스 · 3분전</p>
           </div>
         </li>
         
@@ -535,7 +543,7 @@
         </article>
         <article class="risk-item">
           <p class="risk-name">USD/KRW</p>
-          <p class="risk-meta">현재 1,481.78 (▲ 4.18 (+0.28%)) · 최근 대비 <span style="color: #ef4444">상승</span></p>
+          <p class="risk-meta">현재 1,482.59 (▲ 4.99 (+0.34%)) · 최근 대비 <span style="color: #ef4444">상승</span></p>
         </article>
         <article class="risk-item">
           <p class="risk-name">US 10Y</p>
@@ -543,21 +551,21 @@
         </article>
         <article class="risk-item">
           <p class="risk-name">WTI</p>
-          <p class="risk-meta">현재 98.60 (▲ 0.73 (+0.75%)) · 최근 대비 <span style="color: #3b82f6">하락</span></p>
+          <p class="risk-meta">현재 98.48 (▲ 0.61 (+0.62%)) · 최근 대비 <span style="color: #3b82f6">하락</span></p>
         </article>
       </div>
       <p class="risk-note">누적 스냅샷 8건 기준으로 직전 기록과 방향을 비교합니다.</p>
     </section>
 
     <section class="headline-card">
-      <h2 class="headline">핵심 지수 점검</h2>
+      <h3 class="section-title">📋 AI 브리핑</h3>
       
       
       
         
         
         
-        <li>국장 지표는 코스피 5,858.72 (▲ 80.71 (+1.40%)), 코스닥 1,094.16 (▲ 18.16 (+1.69%))로 집계되었습니다.</li>
+        <li>국장 지표는 코스피 5,858.87 (▲ 80.86 (+1.40%)), 코스닥 1,093.63 (▲ 17.63 (+1.64%))로 집계되었습니다.</li>
         
       
         
@@ -575,7 +583,7 @@
         
         
         
-        <li>리스크 체온계는 VIX 19.49 (▼ 1.55 (-7.37%)), 달러/원 1,481.78 (▲ 4.18 (+0.28%)), 미 10년물 4.29 (▲ 0.00 (+0.05%)), WTI 98.60 (▲ 0.73 (+0.75%))입니다.</li>
+        <li>리스크 체온계는 VIX 19.49 (▼ 1.55 (-7.37%)), 달러/원 1,482.59 (▲ 4.99 (+0.34%)), 미 10년물 4.29 (▲ 0.00 (+0.05%)), WTI 98.48 (▲ 0.61 (+0.62%))입니다.</li>
         
       
         
