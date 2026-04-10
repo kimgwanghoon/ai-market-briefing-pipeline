@@ -3,13 +3,14 @@ import os
 import re
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Tuple
 
 import pytz
 import requests
 import yfinance as yf
+from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader
 from openai import OpenAI
 
@@ -367,7 +368,17 @@ def generate_cover_svg(path: Path, title: str) -> None:
     path.write_text(svg, encoding="utf-8")
 
 
+def _clean_old_covers() -> None:
+    for f in OUTPUT_DIR.glob("cover_*.png"):
+        f.unlink(missing_ok=True)
+    for f in OUTPUT_DIR.glob("cover.png"):
+        f.unlink(missing_ok=True)
+
+
 def get_existing_cover_file() -> str:
+    pngs = sorted(OUTPUT_DIR.glob("cover_*.png"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if pngs:
+        return pngs[0].name
     if (OUTPUT_DIR / "cover.png").exists():
         return "cover.png"
     if (OUTPUT_DIR / "cover.svg").exists():
@@ -456,6 +467,113 @@ def build_market_overview(indexes: dict) -> List[dict]:
             }
         )
     return cards
+
+
+def _news_cutoff(now_kst: datetime) -> datetime:
+    weekday = now_kst.weekday()
+    if now_kst.hour < 12:
+        if weekday == 0:
+            return (now_kst - timedelta(days=2)).replace(hour=0, minute=0, second=0, microsecond=0)
+        else:
+            return (now_kst - timedelta(days=1)).replace(hour=18, minute=0, second=0, microsecond=0)
+    else:
+        return now_kst.replace(hour=9, minute=0, second=0, microsecond=0)
+
+
+def crawl_naver_news(now_kst: datetime, max_articles: int = 30) -> List[dict]:
+    cutoff = _news_cutoff(now_kst)
+    headers = {"User-Agent": "Mozilla/5.0"}
+    articles: List[dict] = []
+
+    for page in range(1, 4):
+        url = f"https://news.naver.com/breakingnews/section/101/258?page={page}"
+        try:
+            res = requests.get(url, headers=headers, timeout=10)
+            res.raise_for_status()
+        except Exception:
+            continue
+
+        soup = BeautifulSoup(res.text, "html.parser")
+        for item in soup.select("li.sa_item"):
+            title_el = item.select_one("a.sa_text_title")
+            if not title_el:
+                continue
+            title = title_el.get_text(strip=True)
+            link = title_el.get("href", "")
+
+            press_el = item.select_one("div.sa_text_press")
+            press = press_el.get_text(strip=True) if press_el else ""
+
+            time_el = item.select_one("div.sa_text_datetime b")
+            time_str = time_el.get_text(strip=True) if time_el else ""
+
+            article_dt = None
+            for fmt in ("%Y.%m.%d. %H:%M", "%Y.%m.%d."):
+                try:
+                    article_dt = KST.localize(datetime.strptime(time_str, fmt))
+                    break
+                except ValueError:
+                    continue
+
+            if article_dt and article_dt < cutoff:
+                continue
+
+            articles.append({
+                "title": title,
+                "link": link,
+                "press": press,
+                "time": time_str,
+                "dt": article_dt,
+            })
+
+        if len(articles) >= max_articles:
+            break
+
+    return articles[:max_articles]
+
+
+def select_top_news(articles: List[dict], max_count: int = 5) -> List[dict]:
+    if not articles or not OPENAI_API_KEY:
+        return articles[:max_count]
+
+    titles_text = "\n".join(
+        f"{i+1}. [{a['press']}] {a['title']}" for i, a in enumerate(articles)
+    )
+
+    client = OpenAI(api_key=OPENAI_API_KEY)
+    try:
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            temperature=0.1,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "증권/경제 뉴스 에디터. 아래 뉴스 목록에서 가장 중요한 뉴스를 최대 5개 선별하라.\n"
+                        "규칙:\n"
+                        "- 시장에 영향을 주는 뉴스를 우선 선택\n"
+                        "- 동일 주제/사건의 중복 기사는 1개만 선택\n"
+                        "- 단순 종목 추천, 광고성 기사 제외\n"
+                        "- 응답은 선택한 기사 번호만 쉼표로 나열 (예: 1,5,8,12,15)"
+                    ),
+                },
+                {"role": "user", "content": titles_text},
+            ],
+        )
+        nums_text = resp.choices[0].message.content.strip()
+        selected_indices = []
+        for token in re.split(r"[,\s]+", nums_text):
+            token = token.strip().rstrip(".")
+            if token.isdigit():
+                idx = int(token) - 1
+                if 0 <= idx < len(articles):
+                    selected_indices.append(idx)
+        if selected_indices:
+            return [articles[i] for i in selected_indices[:max_count]]
+    except Exception as exc:
+        logging.warning("select_top_news LLM failed: %s", exc)
+
+    return articles[:max_count]
 
 
 def load_recent_snapshots(limit: int = 7) -> List[dict]:
@@ -677,7 +795,6 @@ def generate_ai_briefing(
             f"No text, no numbers, no labels anywhere in the image."
         )
 
-        image_file = get_existing_cover_file() or "cover.svg"
         if GENERATE_AI_IMAGE:
             try:
                 image_response = client.images.generate(
@@ -689,14 +806,19 @@ def generate_ai_briefing(
                 )
                 image_url = image_response.data[0].url
                 img_data = requests.get(image_url, timeout=30).content
-                (OUTPUT_DIR / "cover.png").write_bytes(img_data)
-                image_file = "cover.png"
+                _clean_old_covers()
+                now_kst = datetime.now(KST)
+                cover_name = f"cover_{now_kst.strftime('%Y%m%d_%H%M')}.png"
+                (OUTPUT_DIR / cover_name).write_bytes(img_data)
+                image_file = cover_name
             except Exception:
-                if not get_existing_cover_file():
+                image_file = get_existing_cover_file()
+                if not image_file:
                     generate_cover_svg(OUTPUT_DIR / "cover.svg", headline)
                     image_file = "cover.svg"
         else:
-            if not get_existing_cover_file():
+            image_file = get_existing_cover_file()
+            if not image_file:
                 generate_cover_svg(OUTPUT_DIR / "cover.svg", headline)
                 image_file = "cover.svg"
 
@@ -713,6 +835,7 @@ def render_html(
     indexes: dict,
     risk_trends: dict,
     snapshot_count: int,
+    news_items: List[dict] = None,
 ) -> None:
     env = Environment(loader=FileSystemLoader(str(BASE_DIR)))
     env.filters["bold"] = bold_filter
@@ -727,6 +850,7 @@ def render_html(
         market_overview=build_market_overview(indexes),
         risk_trends=risk_trends,
         snapshot_count=snapshot_count,
+        news_items=news_items or [],
         **indexes,
     )
 
@@ -813,7 +937,12 @@ def main() -> None:
     risk_trends = build_risk_trends(previous_snapshots, indexes)
     snapshot_count = len(previous_snapshots) + 1
 
-    render_html(headline, summary_items, cover_image, indexes, risk_trends, snapshot_count)
+    raw_news = crawl_naver_news(now_kst)
+    news_items = select_top_news(raw_news, max_count=5)
+    for item in news_items:
+        item.pop("dt", None)
+
+    render_html(headline, summary_items, cover_image, indexes, risk_trends, snapshot_count, news_items)
     send_discord_alert(headline, summary_items, indexes)
     save_snapshot(headline, summary_items, cover_image, indexes)
 

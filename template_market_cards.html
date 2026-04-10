@@ -1,9 +1,9 @@
 <div class="market-overview-grid">
   {% for card in market_overview %}
-    <article class="item market-card">
+    <article class="item market-card" style="border-left: 3px solid {{ card.color }}">
       <p class="name">{{ card.label }}</p>
       <p class="price">{{ card.price }}</p>
-      <p class="change" style="color: {{ card.color }}">{{ card.change }}</p>
+      <p class="change" style="color: {{ card.color }}; font-size: 0.95rem;">{{ card.change }}</p>
     </article>
   {% endfor %}
 </div>

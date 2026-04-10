@@ -7,7 +7,7 @@
   <meta name="description" content="{{ comic_headline }}" />
   <meta property="og:title" content="{{ edition_title }}" />
   <meta property="og:description" content="{{ comic_headline }}" />
-  <meta property="og:image" content="cover.png" />
+  <meta property="og:image" content="{{ cover_image }}" />
   <style>
     :root {
       --bg-a: #f8fafc;
@@ -44,6 +44,21 @@
     .header {
       text-align: center;
       margin-bottom: 32px;
+      border-top: 4px solid;
+      border-image: linear-gradient(90deg, #0f766e, #2563eb, #7c3aed) 1;
+      padding-top: 24px;
+    }
+
+    .hero-focus {
+      display: inline-block;
+      margin: 12px 0 0;
+      padding: 8px 20px;
+      background: linear-gradient(135deg, #f0fdfa, #e0f2fe);
+      border: 1px solid #99f6e4;
+      border-radius: 999px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--accent);
     }
 
     .badge {
@@ -137,6 +152,12 @@
       padding: 14px 16px;
       background: #f8fafc;
       text-align: center;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
     }
 
     .name {
@@ -207,6 +228,79 @@
       color: #134e4a;
     }
 
+    .news-section {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    .news-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .news-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .news-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .news-item:first-child {
+      padding-top: 0;
+    }
+
+    .news-rank {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .news-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .news-title {
+      margin: 0 0 4px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    .news-title a {
+      color: var(--ink);
+      text-decoration: none;
+    }
+
+    .news-title a:hover {
+      color: var(--accent);
+    }
+
+    .news-meta {
+      margin: 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
     .risk-section {
       background: var(--card);
       border: 1px solid var(--line);
@@ -263,6 +357,64 @@
       font-size: 0.85rem;
       text-align: center;
     }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-a: #0f172a;
+        --bg-b: #1e293b;
+        --card: #1e293b;
+        --ink: #e2e8f0;
+        --muted: #94a3b8;
+        --line: #334155;
+        --accent: #2dd4bf;
+        --accent-soft: #134e4a;
+      }
+
+      body {
+        background:
+          radial-gradient(circle at 88% 10%, rgba(14, 165, 233, 0.15) 0, transparent 34%),
+          radial-gradient(circle at 8% 92%, rgba(239, 68, 68, 0.1) 0, transparent 28%),
+          linear-gradient(160deg, var(--bg-a), var(--bg-b));
+      }
+
+      .item, .risk-item {
+        background: #0f172a;
+      }
+
+      .headline {
+        background: #134e4a;
+        border-left-color: var(--accent);
+      }
+
+      .hero-focus {
+        background: linear-gradient(135deg, #134e4a, #0c4a6e);
+        border-color: #2dd4bf;
+        color: #2dd4bf;
+      }
+
+      .quick-links a {
+        background: #134e4a;
+        border-color: #2dd4bf;
+        color: #2dd4bf;
+      }
+
+      .summary strong {
+        color: #5eead4;
+      }
+
+      .news-title a {
+        color: var(--ink);
+      }
+
+      .news-title a:hover {
+        color: var(--accent);
+      }
+
+      .cover {
+        border-color: var(--line);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+      }
+    }
   </style>
 </head>
 <body>
@@ -270,9 +422,11 @@
     <header class="header">
       <span class="badge">AUTOMATED BRIEFING</span>
       <h1>{{ edition_title }}</h1>
+      <p class="hero-focus">{{ comic_headline }}</p>
       <p class="time">생성 시각(KST): {{ current_time }}</p>
       <div class="quick-links">
         <a href="live.html">장중 보기</a>
+        <a href="weekly.html">주간 리포트</a>
       </div>
     </header>
 
@@ -282,8 +436,25 @@
     </section>
 
     <section class="cover-section">
-      <img class="cover" src="cover.png" onerror="this.onerror=null;this.src='cover.svg';" alt="시장 브리핑 커버" />
+      <img class="cover" src="{{ cover_image }}" onerror="this.onerror=null;this.src='cover.svg';" alt="시장 브리핑 커버" />
     </section>
+
+    {% if news_items %}
+    <section class="news-section">
+      <h3 class="section-title">📰 주요 뉴스</h3>
+      <ul class="news-list">
+        {% for news in news_items %}
+        <li class="news-item">
+          <span class="news-rank">{{ loop.index }}</span>
+          <div class="news-content">
+            <p class="news-title"><a href="{{ news.link }}" target="_blank" rel="noopener">{{ news.title }}</a></p>
+            <p class="news-meta">{{ news.press }} · {{ news.time }}</p>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
 
     <section class="risk-section">
       <h3 class="section-title">🧭 리스크 대시보드</h3>
