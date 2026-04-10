@@ -50,15 +50,30 @@
     }
 
     .hero-focus {
-      display: inline-block;
-      margin: 12px 0 0;
-      padding: 8px 20px;
-      background: linear-gradient(135deg, #f0fdfa, #e0f2fe);
+      margin: 16px auto 0;
+      max-width: 680px;
+      padding: 16px 24px;
+      background: linear-gradient(135deg, #f0fdfa 0%, #e0f2fe 50%, #f5f3ff 100%);
       border: 1px solid #99f6e4;
-      border-radius: 999px;
-      font-size: 0.95rem;
-      font-weight: 700;
+      border-radius: 16px;
+      font-size: clamp(1rem, 2.5vw, 1.25rem);
+      font-weight: 800;
+      color: var(--ink);
+      line-height: 1.5;
+      text-align: center;
+      box-shadow: 0 4px 16px rgba(15, 118, 110, 0.08);
+      position: relative;
+    }
+
+    .hero-focus::before {
+      content: "\201C";
+      position: absolute;
+      top: -8px;
+      left: 16px;
+      font-size: 2.5rem;
       color: var(--accent);
+      opacity: 0.3;
+      line-height: 1;
     }
 
     .badge {
@@ -191,14 +206,7 @@
     }
 
     .headline {
-      margin: 0 0 16px;
-      padding: 12px 16px;
-      background: #f0fdfa;
-      border-left: 5px solid var(--accent);
-      border-radius: 8px;
-      font-size: 1.3rem;
-      font-weight: 700;
-      line-height: 1.4;
+      display: none;
     }
 
     .summary-title {
@@ -381,15 +389,15 @@
         background: #0f172a;
       }
 
-      .headline {
-        background: #134e4a;
-        border-left-color: var(--accent);
+      .hero-focus {
+        background: linear-gradient(135deg, #134e4a 0%, #0c4a6e 50%, #1e1b4b 100%);
+        border-color: #2dd4bf;
+        color: #e2e8f0;
       }
 
-      .hero-focus {
-        background: linear-gradient(135deg, #134e4a, #0c4a6e);
-        border-color: #2dd4bf;
+      .hero-focus::before {
         color: #2dd4bf;
+        opacity: 0.4;
       }
 
       .quick-links a {
@@ -423,7 +431,7 @@
       <span class="badge">AUTOMATED BRIEFING</span>
       <h1>Evening Briefing: 오늘 국장 마감 & 미장 프리뷰</h1>
       <p class="hero-focus">핵심 지수 점검</p>
-      <p class="time">생성 시각(KST): 2026-04-10 15:10:40</p>
+      <p class="time">생성 시각(KST): 2026-04-10 15:37:02</p>
       <div class="quick-links">
         <a href="live.html">장중 보기</a>
         <a href="weekly.html">주간 리포트</a>
@@ -442,8 +450,8 @@
   
     <article class="item market-card" style="border-left: 3px solid #ef4444">
       <p class="name">KOSDAQ</p>
-      <p class="price">1,094.35</p>
-      <p class="change" style="color: #ef4444; font-size: 0.95rem;">▲ 18.35 (+1.71%)</p>
+      <p class="price">1,093.63</p>
+      <p class="change" style="color: #ef4444; font-size: 0.95rem;">▲ 17.63 (+1.64%)</p>
     </article>
   
     <article class="item market-card" style="border-left: 3px solid #ef4444">
@@ -460,8 +468,8 @@
   
     <article class="item market-card" style="border-left: 3px solid #ef4444">
       <p class="name">USD/KRW</p>
-      <p class="price">1,480.78</p>
-      <p class="change" style="color: #ef4444; font-size: 0.95rem;">▲ 3.18 (+0.22%)</p>
+      <p class="price">1,482.48</p>
+      <p class="change" style="color: #ef4444; font-size: 0.95rem;">▲ 4.88 (+0.33%)</p>
     </article>
   
     <article class="item market-card" style="border-left: 3px solid #3b82f6">
@@ -485,40 +493,40 @@
         <li class="news-item">
           <span class="news-rank">1</span>
           <div class="news-content">
-            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/417/0001138460" target="_blank" rel="noopener">분유에 커피·단백질까지…남양유업 '수출 3각 편대'</a></p>
-            <p class="news-meta">동행미디어 시대 · 7분전</p>
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/119/0003079316" target="_blank" rel="noopener">신규자금 30% '고위험 투자'…베일 벗은 국민참여형 국민성장펀드</a></p>
+            <p class="news-meta">데일리안 · 1분전</p>
           </div>
         </li>
         
         <li class="news-item">
           <span class="news-rank">2</span>
           <div class="news-content">
-            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/138/0002224062" target="_blank" rel="noopener">혜인, 50억원 자사주 신탁 해지…95만주 확보</a></p>
-            <p class="news-meta">디지털데일리 · 9분전</p>
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/011/0004609405" target="_blank" rel="noopener">[코스피] 80.86포인트(1.40%) 오른 5858.87 마감</a></p>
+            <p class="news-meta">서울경제 · 1분전</p>
           </div>
         </li>
         
         <li class="news-item">
           <span class="news-rank">3</span>
           <div class="news-content">
-            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/016/0002627911" target="_blank" rel="noopener">“금 쌓고 거래소 키운다”…큰 손 中, 금값 반등 변수 될까 [투자360]</a></p>
-            <p class="news-meta">헤럴드경제 · 9분전</p>
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/011/0004609404" target="_blank" rel="noopener">[코스닥] 17.63포인트(1.64%) 오른 1093.63 마감</a></p>
+            <p class="news-meta">서울경제 · 1분전</p>
           </div>
         </li>
         
         <li class="news-item">
           <span class="news-rank">4</span>
           <div class="news-content">
-            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/016/0002627910" target="_blank" rel="noopener">[단독] 제이지·한화운용 K컬처 투자사, 채용·금융당국 협의 돌입…오는 6월 진용 갖춘다</a></p>
-            <p class="news-meta">헤럴드경제 · 10분전</p>
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/421/0008882829" target="_blank" rel="noopener">코스피,  1.40% 상승한 5858.87 마감…코스닥 1.64%↑(2보)</a></p>
+            <p class="news-meta">뉴스1 · 1분전</p>
           </div>
         </li>
         
         <li class="news-item">
           <span class="news-rank">5</span>
           <div class="news-content">
-            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/648/0000046150" target="_blank" rel="noopener">[기자수첩]글로벌 공급망 삼성바이오, 파업이 갖는 의미</a></p>
-            <p class="news-meta">비즈워치 · 11분전</p>
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/417/0001138474" target="_blank" rel="noopener">[속보] 코스닥, 1093.63 마감… 전 거래일 보다 1.64% 상승</a></p>
+            <p class="news-meta">동행미디어 시대 · 1분전</p>
           </div>
         </li>
         
@@ -535,7 +543,7 @@
         </article>
         <article class="risk-item">
           <p class="risk-name">USD/KRW</p>
-          <p class="risk-meta">현재 1,480.78 (▲ 3.18 (+0.22%)) · 최근 대비 <span style="color: #3b82f6">하락</span></p>
+          <p class="risk-meta">현재 1,482.48 (▲ 4.88 (+0.33%)) · 최근 대비 <span style="color: #ef4444">상승</span></p>
         </article>
         <article class="risk-item">
           <p class="risk-name">US 10Y</p>
@@ -543,21 +551,21 @@
         </article>
         <article class="risk-item">
           <p class="risk-name">WTI</p>
-          <p class="risk-meta">현재 98.62 (▲ 0.75 (+0.77%)) · 최근 대비 <span style="color: #ef4444">상승</span></p>
+          <p class="risk-meta">현재 98.62 (▲ 0.75 (+0.77%)) · 최근 대비 <span style="color: #6b7280">보합</span></p>
         </article>
       </div>
-      <p class="risk-note">누적 스냅샷 3건 기준으로 직전 기록과 방향을 비교합니다.</p>
+      <p class="risk-note">누적 스냅샷 4건 기준으로 직전 기록과 방향을 비교합니다.</p>
     </section>
 
     <section class="headline-card">
-      <h2 class="headline">핵심 지수 점검</h2>
+      <h3 class="section-title">📋 AI 브리핑</h3>
       
       
       
         
         
         
-        <li>국장 지표는 코스피 5,858.87 (▲ 80.86 (+1.40%)), 코스닥 1,094.35 (▲ 18.35 (+1.71%))로 집계되었습니다.</li>
+        <li>국장 지표는 코스피 5,858.87 (▲ 80.86 (+1.40%)), 코스닥 1,093.63 (▲ 17.63 (+1.64%))로 집계되었습니다.</li>
         
       
         
@@ -575,7 +583,7 @@
         
         
         
-        <li>리스크 체온계는 VIX 19.49 (▼ 1.55 (-7.37%)), 달러/원 1,480.78 (▲ 3.18 (+0.22%)), 미 10년물 4.29 (▲ 0.00 (+0.05%)), WTI 98.62 (▲ 0.75 (+0.77%))입니다.</li>
+        <li>리스크 체온계는 VIX 19.49 (▼ 1.55 (-7.37%)), 달러/원 1,482.48 (▲ 4.88 (+0.33%)), 미 10년물 4.29 (▲ 0.00 (+0.05%)), WTI 98.62 (▲ 0.75 (+0.77%))입니다.</li>
         
       
         
