@@ -40,6 +40,9 @@ jobs:
             cp -r data/. public/data/
             echo "Restored $(ls public/data/*.json 2>/dev/null | wc -l) snapshot files"
           fi
+          git ls-tree --name-only FETCH_HEAD 2>/dev/null | grep '^cover_.*\.png$' | while read f; do
+            git checkout FETCH_HEAD -- "$f" 2>/dev/null && cp "$f" public/ && echo "Restored cover: $f" || true
+          done || true
 
       - name: Generate page
         env:
