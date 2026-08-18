@@ -6,6 +6,10 @@ on:
     - cron: "30 0-6 * * 1-5"
   workflow_dispatch:
 
+concurrency:
+  group: market-pages-deploy
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -17,6 +21,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: master
+
+      - name: Checkout published history
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: pages-history
+
+      - name: Restore published data
+        run: if [ -d pages-history/data ]; then mkdir -p public/data && cp -a pages-history/data/. public/data/; fi
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -36,12 +49,16 @@ jobs:
             echo "Restored $(ls public/data/intraday/*.json 2>/dev/null | wc -l) history files"
           fi
 
+      - name: Run quality checks
+        run: python -m compileall -q . && python -m unittest discover -s tests -v
+
       - name: Generate intraday snapshot
         env:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           DART_API_KEY: ${{ secrets.DART_API_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           GITHUB_PAGES_URL: ${{ secrets.GITHUB_PAGES_URL }}
+          OPENAI_TEXT_MODEL: gpt-4o-mini-2024-07-18
           GENERATE_AI_IMAGE: false
         run: python intraday.py
 
@@ -49,7 +66,7 @@ jobs:
         run: mkdir -p intraday_publish/data/intraday && cp public/live.html intraday_publish/live.html && cp -r public/data/intraday/. intraday_publish/data/intraday/
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4.1.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./intraday_publish

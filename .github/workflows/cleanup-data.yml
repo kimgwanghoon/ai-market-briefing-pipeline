@@ -5,6 +5,10 @@ on:
     - cron: "0 15 * * 0-4"
   workflow_dispatch:
 
+concurrency:
+  group: market-pages-deploy
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -29,6 +33,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - name: Test cleanup behavior
+        working-directory: source
+        run: python -m unittest discover -s tests -p "test_cleanup.py" -v
 
       - name: Remove JSON older than 30 days
         run: python source/cleanup_json.py --data-dir gh-pages/data --retention-days 30

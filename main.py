@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import json
+import base64
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -11,8 +12,17 @@ import pytz
 import requests
 import yfinance as yf
 from bs4 import BeautifulSoup
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+from markupsafe import Markup, escape
 from openai import OpenAI
+
+from ai_generation import (
+    DAILY_BRIEFING_SCHEMA,
+    create_structured_completion,
+    render_focus_headline,
+    render_grounded_claim,
+    validate_grounded_claims,
+)
 
 try:
     from dotenv import load_dotenv
@@ -31,6 +41,9 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 OPENAI_API_KEY = os.getenv("AI_API_KEY")
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 GITHUB_PAGES_URL = os.getenv("GITHUB_PAGES_URL", "")
+UP_COLOR = "#b91c1c"
+DOWN_COLOR = "#1d4ed8"
+NEUTRAL_COLOR = "#4b5563"
 
 
 def env_flag(name: str, default: bool = False) -> bool:
@@ -41,6 +54,7 @@ def env_flag(name: str, default: bool = False) -> bool:
 
 
 GENERATE_AI_IMAGE = env_flag("GENERATE_AI_IMAGE", default=True)
+IMAGE_MODEL = os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1-mini").strip() or "gpt-image-1-mini"
 
 
 def resolve_pages_url() -> str:
@@ -62,14 +76,15 @@ IS_MORNING = True
 EDITION_TITLE = ""
 
 
-def bold_filter(text: str) -> str:
-    return re.sub(r"\*+([^*]+)\*+", r"<strong>\1</strong>", text)
+def bold_filter(text: str) -> Markup:
+    escaped = escape(str(text))
+    return Markup(re.sub(r"\*+([^*]+)\*+", r"<strong>\1</strong>", str(escaped)))
 
 
 def get_korean_index_data(market_type: str) -> dict:
     url = f"https://m.stock.naver.com/api/index/{market_type}/basic"
     headers = {"User-Agent": "Mozilla/5.0"}
-    default = {"price": "N/A", "change": "-", "color": "#6b7280", "trend": "보합"}
+    default = {"price": "N/A", "change": "-", "color": NEUTRAL_COLOR, "trend": "보합"}
 
     try:
         res = requests.get(url, headers=headers, timeout=10)
@@ -82,11 +97,11 @@ def get_korean_index_data(market_type: str) -> dict:
         trend_code = data["compareToPreviousPrice"]["code"]
 
         if trend_code in ["1", "2"]:
-            color, sign, trend = "#ef4444", "▲", "상승"
+            color, sign, trend = UP_COLOR, "▲", "상승"
         elif trend_code in ["4", "5"]:
-            color, sign, trend = "#3b82f6", "▼", "하락"
+            color, sign, trend = DOWN_COLOR, "▼", "하락"
         else:
-            color, sign, trend = "#6b7280", "-", "보합"
+            color, sign, trend = NEUTRAL_COLOR, "-", "보합"
 
         return {
             "price": price,
@@ -100,7 +115,7 @@ def get_korean_index_data(market_type: str) -> dict:
 
 
 def get_index_data(ticker: str) -> dict:
-    default = {"price": "N/A", "change": "-", "color": "#6b7280", "trend": "보합"}
+    default = {"price": "N/A", "change": "-", "color": NEUTRAL_COLOR, "trend": "보합"}
 
     try:
         url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
@@ -123,11 +138,11 @@ def get_index_data(ticker: str) -> dict:
                 pct_change = (diff / yesterday_close) * 100
 
                 if diff > 0:
-                    color, sign, trend = "#ef4444", "▲", "상승"
+                    color, sign, trend = UP_COLOR, "▲", "상승"
                 elif diff < 0:
-                    color, sign, trend = "#3b82f6", "▼", "하락"
+                    color, sign, trend = DOWN_COLOR, "▼", "하락"
                 else:
-                    color, sign, trend = "#6b7280", "-", "보합"
+                    color, sign, trend = NEUTRAL_COLOR, "-", "보합"
 
                 return {
                     "price": f"{today_close:,.2f}",
@@ -176,7 +191,7 @@ def get_index_data(ticker: str) -> dict:
 
 
 def get_batch_index_data(ticker_map: dict) -> dict:
-    default = {"price": "N/A", "change": "-", "color": "#6b7280", "trend": "보합"}
+    default = {"price": "N/A", "change": "-", "color": NEUTRAL_COLOR, "trend": "보합"}
     results = {key: default.copy() for key in ticker_map}
 
     symbols = list(ticker_map.values())
@@ -191,6 +206,7 @@ def get_batch_index_data(ticker_map: dict) -> dict:
             auto_adjust=False,
             progress=False,
             threads=False,
+            timeout=12,
         )
         if data.empty:
             return results
@@ -210,11 +226,11 @@ def get_batch_index_data(ticker_map: dict) -> dict:
             pct_change = (diff / yesterday_close) * 100
 
             if diff > 0:
-                color, sign, trend = "#ef4444", "▲", "상승"
+                color, sign, trend = UP_COLOR, "▲", "상승"
             elif diff < 0:
-                color, sign, trend = "#3b82f6", "▼", "하락"
+                color, sign, trend = DOWN_COLOR, "▼", "하락"
             else:
-                color, sign, trend = "#6b7280", "-", "보합"
+                color, sign, trend = NEUTRAL_COLOR, "-", "보합"
 
             results[key] = {
                 "price": f"{today_close:,.2f}",
@@ -228,45 +244,17 @@ def get_batch_index_data(ticker_map: dict) -> dict:
     return results
 
 
-def fallback_summary(
-    kospi: dict,
-    kosdaq: dict,
-    sp500: dict,
-    dow: dict,
-    nasdaq: dict,
-    ewy: dict,
-    vix: dict,
-    usdkrw: dict,
-    us10y: dict,
-    wti: dict,
-) -> Tuple[str, List[str]]:
-    headline = "핵심 지수 점검"
-    summary_items = [
-        f"국장 지표는 코스피 {kospi['price']} ({kospi['change']}), 코스닥 {kosdaq['price']} ({kosdaq['change']})로 집계되었습니다.",
-        f"미장 지표는 S&P500 {sp500['price']} ({sp500['change']}), 다우 {dow['price']} ({dow['change']}), 나스닥 {nasdaq['price']} ({nasdaq['change']}) 흐름입니다.",
-        f"한국 야간지표 EWY는 {ewy['price']} ({ewy['change']})로, 국내 개장 심리에 영향을 줄 수 있습니다.",
-        f"리스크 체온계는 VIX {vix['price']} ({vix['change']}), 달러/원 {usdkrw['price']} ({usdkrw['change']}), 미 10년물 {us10y['price']} ({us10y['change']}), WTI {wti['price']} ({wti['change']})입니다.",
-        "오늘은 지수 레벨보다 변동성 확장 여부를 우선 확인하고, 급등 추격보다 분할 대응 전략이 유효합니다.",
-    ]
-    return headline, summary_items
-
-
-def ensure_bold_keyword(text: str) -> str:
-    if "**" in text:
-        return text
-    match = re.search(r"[A-Za-z0-9가-힣/%+-]+", text)
-    if not match:
-        return text
-    token = match.group(0)
-    return text.replace(token, f"**{token}**", 1)
-
-
 def build_watchpoint_line(vix: dict, usdkrw: dict, us10y: dict) -> str:
+    if all(item.get("price") == "N/A" for item in (vix, usdkrw, us10y)):
+        return (
+            "오늘의 **핵심 관전 포인트**: 시장 데이터 수집이 복구되면 **VIX**와 **달러원**의 방향을 확인하고, "
+            "복구되지 않으면 수치 해석을 보류하세요."
+        )
     return (
         "오늘의 **핵심 관전 포인트**: "
-        f"**VIX**({vix['price']})가 반등하면 단기 변동성 재확대를 염두에 두고, "
+        f"**VIX**({vix['price']})가 반등하면 변동성 확대 여부를 확인하고, "
         f"**미10년물**({us10y['price']})과 **달러원**({usdkrw['price']})이 동반 상승하면 "
-        "고밸류 추격 대신 방어주와 현금 비중을 병행 점검하세요."
+        "금리·환율 부담이 이어지는지 추가 지표로 확인하세요."
     )
 
 
@@ -283,65 +271,16 @@ def build_fallback_section_items(
     wti: dict,
 ) -> Tuple[List[str], List[str]]:
     korea_items = [
-        f"**코스피** {kospi['price']} ({kospi['change']}), **코스닥** {kosdaq['price']} ({kosdaq['change']})를 통해 장초 국내 수급 강도를 먼저 점검하세요.",
-        f"야간 **EWY** {ewy['price']} ({ewy['change']})와 **달러원** {usdkrw['price']} ({usdkrw['change']}) 조합이 개장 직후 위험선호의 방향성을 가늠합니다.",
-        "초반 급등주 추격보다 **거래대금**과 주도 섹터 확산 여부를 확인한 뒤 분할 대응이 합리적입니다.",
+        f"**코스피** {kospi['price']} ({kospi['change']}), **코스닥** {kosdaq['price']} ({kosdaq['change']})로 집계됐으며 결측값은 확인이 필요합니다.",
+        f"**EWY** {ewy['price']} ({ewy['change']})와 **달러원** {usdkrw['price']} ({usdkrw['change']})의 관측 방향을 함께 확인하세요.",
+        "수급과 거래대금 데이터는 제공되지 않았으므로 **지수 관측값** 이상의 원인 해석은 보류합니다.",
     ]
     us_items = [
-        f"**S&P500** {sp500['price']} ({sp500['change']}), **다우** {dow['price']} ({dow['change']}), **나스닥** {nasdaq['price']} ({nasdaq['change']})의 상대 강도로 위험자산 선호를 확인하세요.",
-        f"**VIX** {vix['price']} ({vix['change']}), **미10년물** {us10y['price']} ({us10y['change']}), **WTI** {wti['price']} ({wti['change']})를 함께 보며 변동성/금리/원자재 압력을 동시 점검하세요.",
+        f"**S&P500** {sp500['price']} ({sp500['change']}), **다우** {dow['price']} ({dow['change']}), **나스닥** {nasdaq['price']} ({nasdaq['change']})로 집계됐습니다.",
+        f"**VIX** {vix['price']} ({vix['change']}), **미10년물** {us10y['price']} ({us10y['change']}), **WTI** {wti['price']} ({wti['change']})의 동행 여부를 확인하세요.",
         build_watchpoint_line(vix, usdkrw, us10y),
     ]
     return korea_items, us_items
-
-
-def normalize_summary_items(
-    items: List[str],
-    fallback_korea_items: List[str],
-    fallback_us_items: List[str],
-    watchpoint_line: str,
-) -> List[str]:
-    korea_items: List[str] = []
-    us_items: List[str] = []
-    current_section = "korea"
-
-    for raw in items:
-        stripped = raw.strip()
-        if not stripped:
-            continue
-        if "[한국 시장]" in stripped or stripped.startswith("한국 시장"):
-            current_section = "korea"
-            continue
-        if "[미국 시장]" in stripped or stripped.startswith("미국 시장"):
-            current_section = "us"
-            continue
-
-        cleaned = stripped.lstrip("-").strip()
-        if not cleaned:
-            continue
-        cleaned = ensure_bold_keyword(cleaned)
-
-        if current_section == "korea" and len(korea_items) < 3:
-            korea_items.append(cleaned)
-        elif current_section == "us" and len(us_items) < 3:
-            us_items.append(cleaned)
-        elif len(korea_items) < 3:
-            korea_items.append(cleaned)
-        elif len(us_items) < 3:
-            us_items.append(cleaned)
-
-    while len(korea_items) < 3:
-        korea_items.append(fallback_korea_items[len(korea_items)])
-
-    while len(us_items) < 3:
-        us_items.append(fallback_us_items[len(us_items)])
-
-    us_items = us_items[:3]
-    if "핵심 관전 포인트" not in us_items[-1]:
-        us_items[-1] = watchpoint_line
-    us_items = [ensure_bold_keyword(item) for item in us_items]
-
-    return ["[한국 시장]", *korea_items[:3], "[미국 시장]", *us_items]
 
 
 def generate_cover_svg(path: Path, title: str) -> None:
@@ -393,21 +332,6 @@ def detect_run_source() -> str:
     return "local"
 
 
-def is_briefing_response_valid(text: str) -> bool:
-    lines = [line.strip() for line in text.split("\n") if line.strip()]
-    if not any("[한국 시장]" in line for line in lines):
-        return False
-    if not any("[미국 시장]" in line for line in lines):
-        return False
-
-    bullet_count = sum(1 for line in lines if line.startswith("-"))
-    if bullet_count < 6:
-        return False
-    if "핵심 관전 포인트" not in text:
-        return False
-    return True
-
-
 def parse_price_value(value: str) -> float:
     cleaned = str(value).replace(",", "").strip()
     if cleaned in {"", "N/A", "-"}:
@@ -418,10 +342,28 @@ def parse_price_value(value: str) -> float:
         return float("nan")
 
 
+def require_market_coverage(indexes: dict, minimum: int, required: tuple[str, ...] = ()) -> int:
+    available = 0
+    for item in indexes.values():
+        price = parse_price_value(item.get("price", "N/A"))
+        if price == price:
+            available += 1
+    if available < minimum:
+        raise RuntimeError(f"Market data coverage below threshold: {available}/{len(indexes)} (minimum {minimum})")
+    missing_required = []
+    for key in required:
+        price = parse_price_value(indexes.get(key, {}).get("price", "N/A"))
+        if price != price:
+            missing_required.append(key)
+    if missing_required:
+        raise RuntimeError(f"Required market data missing: {', '.join(missing_required)}")
+    return available
+
+
 def build_risk_trends(snapshot_history: List[dict], current_indexes: dict) -> dict:
     keys = ["vix", "usdkrw", "us10y", "wti"]
     labels = {"up": "상승", "down": "하락", "flat": "보합", "na": "데이터 확인 필요"}
-    colors = {"up": "#ef4444", "down": "#3b82f6", "flat": "#6b7280", "na": "#6b7280"}
+    colors = {"up": UP_COLOR, "down": DOWN_COLOR, "flat": NEUTRAL_COLOR, "na": NEUTRAL_COLOR}
 
     previous_indexes = {}
     if snapshot_history:
@@ -605,17 +547,14 @@ def save_snapshot(headline: str, summary_items: List[str], cover_image: str, ind
         "run_source": detect_run_source(),
     }
     stamp = timestamp.strftime("%Y-%m-%d-%H%M%S")
-    try:
-        (DATA_DIR / f"{stamp}.json").write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        (DATA_DIR / "latest.json").write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-    except Exception:
-        pass
+    (DATA_DIR / f"{stamp}.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    (DATA_DIR / "latest.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
 
 
 def generate_ai_briefing(
@@ -630,18 +569,13 @@ def generate_ai_briefing(
     us10y: dict,
     wti: dict,
 ) -> Tuple[str, List[str], str]:
-    fallback_headline, fallback_items = fallback_summary(
-        kospi,
-        kosdaq,
-        sp500,
-        dow,
-        nasdaq,
-        ewy,
-        vix,
-        usdkrw,
-        us10y,
-        wti,
+    fallback_headline = "핵심 지수 점검"
+
+    watchpoint_line = build_watchpoint_line(vix, usdkrw, us10y)
+    fallback_korea_items, fallback_us_items = build_fallback_section_items(
+        kospi, kosdaq, sp500, dow, nasdaq, ewy, vix, usdkrw, us10y, wti
     )
+    fallback_items = ["[한국 시장]", *fallback_korea_items, "[미국 시장]", *fallback_us_items]
 
     if not OPENAI_API_KEY:
         existing_cover = get_existing_cover_file()
@@ -650,7 +584,7 @@ def generate_ai_briefing(
         generate_cover_svg(OUTPUT_DIR / "cover.svg", fallback_headline)
         return fallback_headline, fallback_items, "cover.svg"
 
-    client = OpenAI(api_key=OPENAI_API_KEY)
+    client = OpenAI(api_key=OPENAI_API_KEY, timeout=30, max_retries=1)
 
     prompt_context = (
         "간밤의 미국 시장 주요 이슈와 오늘 아침 한국 시장의 개장 흐름 및 관전 포인트"
@@ -658,9 +592,20 @@ def generate_ai_briefing(
         else "오늘 한국 시장 마감 상황 요약 및 오늘 밤 미국 시장 관전 포인트"
     )
 
+    evidence = {
+        "idx-kospi": kospi,
+        "idx-kosdaq": kosdaq,
+        "idx-sp500": sp500,
+        "idx-dow": dow,
+        "idx-nasdaq": nasdaq,
+        "idx-ewy": ewy,
+        "idx-vix": vix,
+        "idx-usdkrw": usdkrw,
+        "idx-us10y": us10y,
+        "idx-wti": wti,
+    }
     text_prompt = f"""
-목표:
-- {prompt_context}를 개인투자자 대상 데일리 브리핑으로 작성하세요.
+목표: {prompt_context}를 개인투자자 대상 데일리 브리핑으로 작성하세요.
 
 사용 가능한 팩트 데이터(이 범위 밖 정보는 추정/창작 금지):
 - 한국 시장: 코스피 {kospi['price']} ({kospi['change']}), 코스닥 {kosdaq['price']} ({kosdaq['change']})
@@ -669,101 +614,53 @@ def generate_ai_briefing(
 - 리스크/거시: VIX {vix['price']} ({vix['change']}), 달러원 {usdkrw['price']} ({usdkrw['change']}), 미10년물 {us10y['price']} ({us10y['change']}), WTI {wti['price']} ({wti['change']})
 
 작성 규칙:
-1) 반드시 아래 출력 형식 그대로 작성하세요. 섹션명/불릿 기호/줄 수를 지키세요.
-2) 문체는 20년차 투자 분석 전문 애널리스트 톤으로, 단정적 예언 대신 근거 기반 판단을 제시하세요.
-3) 각 불릿은 55~75자 내외의 간결한 문장으로 작성하세요.
-4) 매 문장에 실전 해석(수급/섹터/리스크/대응) 중 최소 1개를 포함하세요.
-5) 핵심 키워드는 각 불릿마다 1개 이상 **굵게** 표시하세요.
-6) [한국 시장] 3개 + [미국 시장] 3개, 총 6개 불릿을 작성하세요.
-7) 각 섹션에서 최소 1개 불릿은 숫자(지수/등락률/변동폭)를 포함하세요.
-8) 데이터가 N/A이거나 불명확하면 숫자를 만들지 말고 "데이터 확인 필요"라고 명시하세요.
-9) 과장, 투자확정 표현(예: 반드시 오른다)은 금지합니다.
-10) 마지막 불릿은 반드시 "오늘의 핵심 관전 포인트" 한 줄로 마무리하세요.
-11) 관전 포인트에는 최소 2개 조건형 트리거를 포함하세요. 예: "A면 B, C면 D".
+1) korea_points 3개, us_points 2개, watchpoint 1개를 작성하세요.
+2) 관측값과 해석을 분리하고, 제공된 수치에서 직접 확인되지 않는 원인·뉴스·수급 주체를 만들지 마세요.
+3) 각 포인트는 55~90자이며 수급/섹터/리스크/대응 중 관련 있는 실전 해석을 포함하세요.
+4) 각 포인트의 핵심 키워드 1개 이상을 **굵게** 표시하세요.
+5) 한국/미국 포인트에 각각 최소 1개의 제공된 숫자를 포함하세요.
+6) N/A 값은 숫자를 추정하지 말고 "데이터 확인 필요"로 표현하세요.
+7) 단정적 예측, 매수·매도 지시, 목표가 제시는 금지합니다.
+8) watchpoint는 "오늘의 핵심 관전 포인트:"로 시작하고, 관측 가능한 조건형 트리거 2개를 포함하세요.
+9) headline은 공백 포함 12~24자의 한국어 한 줄이며 과장과 특수기호를 피하세요.
+10) headline, 각 point, watchpoint에 claim_type 및 실제 근거의 evidence_ids를 포함하세요. 지표명과 수치는 반드시 같은 evidence ID를 인용하세요.
 
-출력 형식:
-[한국 시장]
-- ...
-- ...
-- ...
-[미국 시장]
-- ...
-- ...
-- ...
+근거 ID: idx-kospi, idx-kosdaq, idx-sp500, idx-dow, idx-nasdaq, idx-ewy, idx-vix, idx-usdkrw, idx-us10y, idx-wti
+근거 데이터(JSON): {json.dumps(evidence, ensure_ascii=False)}
 """.strip()
 
     try:
-        text_response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "당신은 여의도 경력 20년차 투자 분석 전문 애널리스트입니다. "
-                        "입력된 데이터만 사용해, 근거 기반의 실전형 해석과 대응 포인트를 제시하세요. "
-                        "과장 없이 리스크와 기회를 함께 짚고, 마지막 문장은 반드시 조건형 시나리오로 작성하세요."
-                    ),
-                },
-                {"role": "user", "content": text_prompt},
-            ],
+        briefing = create_structured_completion(
+            client,
+            schema_name="daily_market_briefing",
+            schema=DAILY_BRIEFING_SCHEMA,
+            system_prompt=(
+                "당신은 금융 데이터 편집자입니다. 사용자에게 제공된 팩트만 사용하세요. "
+                "관측되지 않은 사건, 인과관계, 수급 주체를 추정하지 말고 사실과 조건부 해석을 구분하세요. "
+                "출력은 지정된 JSON Schema를 준수하며 투자 권유가 아닌 정보성 브리핑이어야 합니다."
+            ),
+            user_prompt=text_prompt,
         )
-        llm_summary_raw = text_response.choices[0].message.content.strip()
-        if not is_briefing_response_valid(llm_summary_raw):
-            retry_prompt = (
-                "이전 응답이 형식 규칙을 지키지 못했습니다. "
-                "반드시 [한국 시장] 3개 불릿, [미국 시장] 3개 불릿으로 다시 작성하고, "
-                "마지막 불릿은 '오늘의 핵심 관전 포인트'로 시작해 조건형 시나리오 2개를 포함하세요.\n\n"
-                f"원본 요청:\n{text_prompt}\n\n"
-                f"이전 응답:\n{llm_summary_raw}"
-            )
-            retry_response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "당신은 형식을 정확히 지키는 금융 브리핑 에디터입니다. "
-                            "지정된 포맷과 불릿 수를 반드시 준수하세요."
-                        ),
-                    },
-                    {"role": "user", "content": retry_prompt},
-                ],
-            )
-            llm_summary_raw = retry_response.choices[0].message.content.strip()
-        
-        lines = llm_summary_raw.split("\n")
-        watchpoint_line = build_watchpoint_line(vix, usdkrw, us10y)
-        fallback_korea_items, fallback_us_items = build_fallback_section_items(
-            kospi,
-            kosdaq,
-            sp500,
-            dow,
-            nasdaq,
-            ewy,
-            vix,
-            usdkrw,
-            us10y,
-            wti,
-        )
-        summary_items = normalize_summary_items(
-            lines,
-            fallback_korea_items,
-            fallback_us_items,
-            watchpoint_line,
-        )
-
-        headline_prompt = (
-            "다음 브리핑 요약을 바탕으로 한국어 헤드라인 1개를 작성하세요. "
-            "길이는 12~18자, 공백 포함입니다. "
-            "강한 명사 중심으로 쓰고, 과장/감탄/특수기호는 금지합니다. "
-            "출력은 헤드라인 한 줄만 작성하세요.\n\n"
-            f"내용: {llm_summary_raw}"
-        )
-        headline_response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": headline_prompt}],
-        )
-        headline = headline_response.choices[0].message.content.strip()
+        claims = [briefing["headline"], *briefing["korea_points"], *briefing["us_points"], briefing["watchpoint"]]
+        aliases = {
+            "코스피": "idx-kospi", "KOSPI": "idx-kospi", "코스닥": "idx-kosdaq", "KOSDAQ": "idx-kosdaq",
+            "S&P500": "idx-sp500", "S&P 500": "idx-sp500", "다우": "idx-dow", "나스닥": "idx-nasdaq",
+            "NASDAQ": "idx-nasdaq", "EWY": "idx-ewy", "VIX": "idx-vix", "달러원": "idx-usdkrw",
+            "USD/KRW": "idx-usdkrw", "미10년물": "idx-us10y", "WTI": "idx-wti",
+        }
+        evidence_labels = {
+            "idx-kospi": "KOSPI", "idx-kosdaq": "KOSDAQ", "idx-sp500": "S&P 500",
+            "idx-dow": "DOW", "idx-nasdaq": "NASDAQ", "idx-ewy": "EWY", "idx-vix": "VIX",
+            "idx-usdkrw": "USD/KRW", "idx-us10y": "미 10년물", "idx-wti": "WTI",
+        }
+        if not validate_grounded_claims(claims, evidence, aliases):
+            raise ValueError("AI briefing contains a claim not grounded in its cited evidence")
+        headline = render_focus_headline(briefing["headline"], evidence_labels)
+        korea_points = [render_grounded_claim(item, evidence, evidence_labels) for item in briefing["korea_points"]]
+        us_points = [render_grounded_claim(item, evidence, evidence_labels) for item in briefing["us_points"]]
+        watchpoint_body = render_grounded_claim(briefing["watchpoint"], evidence, evidence_labels)
+        watchpoint = f"오늘의 **핵심 관전 포인트**: {watchpoint_body}" if watchpoint_body else watchpoint_line
+        summary_items = ["[한국 시장]", *korea_points, "[미국 시장]", *us_points, watchpoint]
 
         kospi_chg = parse_change_percent(kospi.get("change", ""))
         vix_val = parse_price_value(vix.get("price", "0"))
@@ -798,14 +695,13 @@ def generate_ai_briefing(
         if GENERATE_AI_IMAGE:
             try:
                 image_response = client.images.generate(
-                    model="dall-e-3",
+                    model=IMAGE_MODEL,
                     prompt=image_prompt,
                     size="1024x1024",
-                    quality="standard",
+                    quality="low",
                     n=1,
                 )
-                image_url = image_response.data[0].url
-                img_data = requests.get(image_url, timeout=30).content
+                img_data = base64.b64decode(image_response.data[0].b64_json)
                 _clean_old_covers()
                 now_kst = datetime.now(KST)
                 cover_name = f"cover_{now_kst.strftime('%Y%m%d_%H%M')}.png"
@@ -823,7 +719,8 @@ def generate_ai_briefing(
                 image_file = "cover.svg"
 
         return headline, summary_items, image_file
-    except Exception:
+    except Exception as exc:
+        print(f"AI briefing fallback: {type(exc).__name__}: {exc}")
         generate_cover_svg(OUTPUT_DIR / "cover.svg", fallback_headline)
         return fallback_headline, fallback_items, "cover.svg"
 
@@ -837,15 +734,34 @@ def render_html(
     snapshot_count: int,
     news_items: List[dict] = None,
 ) -> None:
-    env = Environment(loader=FileSystemLoader(str(BASE_DIR)))
+    env = Environment(
+        loader=FileSystemLoader(str(BASE_DIR)),
+        autoescape=select_autoescape(["html", "xml"]),
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
     env.filters["bold"] = bold_filter
     template = env.get_template("template.html")
+
+    korea_items: List[str] = []
+    us_items: List[str] = []
+    current_section = ""
+    for item in summary_items:
+        if item == "[한국 시장]":
+            current_section = "korea"
+        elif item == "[미국 시장]":
+            current_section = "us"
+        elif current_section == "korea":
+            korea_items.append(item)
+        elif current_section == "us":
+            us_items.append(item)
 
     html_output = template.render(
         edition_title=EDITION_TITLE,
         current_time=CURRENT_TIME_STR,
         comic_headline=headline,
-        summary_items=summary_items,
+        korea_items=korea_items,
+        us_items=us_items,
         cover_image=cover_image,
         market_overview=build_market_overview(indexes),
         risk_trends=risk_trends,
@@ -890,9 +806,10 @@ def send_discord_alert(headline: str, summary_items: List[str], indexes: dict) -
     }
 
     try:
-        requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=10)
-    except Exception:
-        pass
+        response = requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=10)
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        print(f"Discord notification failed: {exc}")
 
 
 def main() -> None:
@@ -920,6 +837,11 @@ def main() -> None:
         "us10y": get_index_data("^TNX"),
         "wti": get_index_data("CL=F"),
     }
+    require_market_coverage(
+        indexes,
+        minimum=int(os.getenv("MIN_MARKET_COVERAGE", "6")),
+        required=("kospi", "kosdaq"),
+    )
 
     headline, summary_items, cover_image = generate_ai_briefing(
         indexes["kospi"],

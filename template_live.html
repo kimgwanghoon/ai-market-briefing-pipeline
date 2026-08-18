@@ -151,6 +151,17 @@
       transition: opacity 0.15s ease, transform 0.15s ease;
     }
 
+    @media (max-width: 480px) {
+      .tooltip-panel {
+        position: fixed;
+        left: 16px;
+        right: 16px;
+        top: auto;
+        bottom: 16px;
+        width: auto;
+      }
+    }
+
     .tooltip:hover .tooltip-panel,
     .tooltip:focus-within .tooltip-panel {
       opacity: 1;
@@ -349,18 +360,19 @@
   <main class="page">
     <span class="badge">LIVE MARKET PULSE</span>
     <h1>장중 시장 분위기 모니터</h1>
-    <p class="meta">집계 구간: {{ window_start }} ~ {{ window_end }} / 생성 시각: {{ generated_at }} (KST)</p>
-    <div class="top-links">
-      <a href="index.html">데일리 브리핑 보기</a>
-    </div>
+    <p class="meta">시장 관측 구간: {{ window_start }} ~ {{ window_end }} / 생성 시각: {{ generated_at }} (KST)</p>
+    <nav class="top-links" aria-label="시장 브리핑 메뉴">
+      <a href="index.html">데일리</a>
+      <a href="weekly.html">주간</a>
+    </nav>
 
     <section class="card">
       <h2 class="section-title">하이브리드 센티먼트</h2>
       <div class="score">
         <p class="score-text">{{ sentiment.label }} · {{ sentiment.score }}점</p>
-        <span class="tooltip" tabindex="0">
-          <span class="tooltip-button">i</span>
-          <span class="tooltip-panel">
+        <span class="tooltip">
+          <button class="tooltip-button" type="button" aria-describedby="score-tooltip">i</button>
+          <span class="tooltip-panel" id="score-tooltip" role="tooltip">
             <p class="tooltip-title">점수 해석 기준</p>
             <p>점수는 0~100 범위이며, 50이 중립 기준입니다.</p>
             <p>50보다 높을수록 우호적이고, 낮을수록 방어적입니다.</p>
@@ -380,9 +392,9 @@
       </ul>
       <div class="metric metric-line">
         <span>신뢰도 {{ sentiment.confidence }}%</span>
-        <span class="tooltip" tabindex="0">
-          <span class="tooltip-button">i</span>
-          <span class="tooltip-panel">
+        <span class="tooltip">
+          <button class="tooltip-button" type="button" aria-describedby="confidence-tooltip">i</button>
+          <span class="tooltip-panel" id="confidence-tooltip" role="tooltip">
             {% for line in sentiment.confidence_tooltip %}
               <p{% if loop.first %} class="tooltip-title"{% endif %}>{{ line }}</p>
             {% endfor %}
@@ -392,17 +404,17 @@
       </div>
       <ol class="summary">
         {% for point in key_points %}
-          <li>{{ point | bold | safe }}</li>
+          <li>{{ point | bold }}</li>
         {% endfor %}
       </ol>
-      <p class="watch">{{ watchpoint | bold | safe }}</p>
+      <p class="watch">{{ watchpoint | bold }}</p>
     </section>
 
     <section class="card">
       <h2 class="section-title">전일 대비 자동 코멘트</h2>
       <ol class="summary">
         {% for line in day_over_day %}
-          <li>{{ line | bold | safe }}</li>
+          <li>{{ line | bold }}</li>
         {% endfor %}
       </ol>
     </section>
@@ -415,6 +427,8 @@
           <ol class="tiny-list">
             {% for item in sector_rotation.strong %}
               <li>{{ item.sector }} ({{ item.final_score }}) · 이벤트 {{ item.event_score }} / 가격 {{ item.price_confirmation }} / 신뢰도 {{ item.confidence }}%</li>
+            {% else %}
+              <li>조건을 충족한 강세 후보가 없습니다.</li>
             {% endfor %}
           </ol>
         </div>
@@ -423,6 +437,8 @@
           <ol class="tiny-list">
             {% for item in sector_rotation.weak %}
               <li>{{ item.sector }} ({{ item.final_score }}) · 이벤트 {{ item.event_score }} / 가격 {{ item.price_confirmation }} / 신뢰도 {{ item.confidence }}%</li>
+            {% else %}
+              <li>조건을 충족한 경계 후보가 없습니다.</li>
             {% endfor %}
           </ol>
         </div>
@@ -448,6 +464,7 @@
       <p class="metric">점수 기준: 80 이상 강한 우호 / 60~79 우호 / 40~59 중립 / 20~39 경계 / 0~19 강한 경계</p>
       <div class="heatmap">
         <table>
+          <caption>최근 5거래일 시간대별 센티먼트 점수</caption>
           <thead>
             <tr>
               <th>일자</th>
@@ -459,7 +476,7 @@
           <tbody>
             {% for row in heatmap.rows %}
               <tr>
-                <td>{{ row.day }}</td>
+                <th scope="row">{{ row.day }}</th>
                 {% for cell in row.scores %}
                   <td style="background: {{ cell.color }}">{{ cell.text }}</td>
                 {% endfor %}
@@ -484,25 +501,29 @@
     </section>
 
     <section class="card">
-      <h2 class="section-title">주요 뉴스 이벤트</h2>
+      <h2 class="section-title">최근 주요 뉴스 이벤트</h2>
       <ol class="event-list">
         {% for event in news_events[:6] %}
           <li>
             <a href="{{ event.url }}" target="_blank" rel="noopener noreferrer">{{ event.title }}</a>
             ({{ event.source }}, 점수 {{ event.impact_score }})
           </li>
+        {% else %}
+          <li>수집된 주요 뉴스가 없습니다.</li>
         {% endfor %}
       </ol>
     </section>
 
     <section class="card">
-      <h2 class="section-title">주요 공시 이벤트</h2>
+      <h2 class="section-title">당일 주요 공시 이벤트</h2>
       <ol class="event-list">
         {% for event in dart_events[:6] %}
           <li>
             <a href="{{ event.url }}" target="_blank" rel="noopener noreferrer">{{ event.corp_name }} {{ event.title }}</a>
             (점수 {{ event.impact_score }})
           </li>
+        {% else %}
+          <li>수집된 주요 공시가 없습니다.</li>
         {% endfor %}
       </ol>
     </section>

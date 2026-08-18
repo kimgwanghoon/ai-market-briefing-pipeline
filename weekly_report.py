@@ -6,7 +6,7 @@ from typing import List
 
 import pytz
 import requests
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from main import resolve_pages_url
 
@@ -51,33 +51,53 @@ def build_week_summary(snapshots: List[dict]) -> dict:
             "count": 0,
             "label": "데이터 부족",
             "top_risk": "데이터 부족",
+            "top_opportunity": "데이터 부족",
             "top_watchpoint": "데이터 부족",
         }
 
-    scores = [float(item.get("sentiment", {}).get("score", 0)) for item in snapshots]
+    scores = []
+    for item in snapshots:
+        sentiment = item.get("sentiment", {})
+        if "raw_score" in sentiment:
+            scores.append(float(sentiment.get("score", 50)))
+        else:
+            scores.append(round(max(0, min(100, (float(sentiment.get("score", 0)) + 100) / 2)), 1))
     score_avg = round(sum(scores) / len(scores), 2)
     score_max = round(max(scores), 2)
     score_min = round(min(scores), 2)
 
-    if score_avg >= 60:
+    if score_avg >= 80:
+        label = "강한 우호"
+    elif score_avg >= 60:
         label = "우호"
-    elif score_avg < 40:
+    elif score_avg >= 40:
+        label = "중립"
+    elif score_avg >= 20:
         label = "경계"
     else:
-        label = "중립"
+        label = "강한 경계"
 
     risk_candidates = []
+    opportunity_candidates = []
     for item in snapshots:
         for event in item.get("events", {}).get("news", [])[:5]:
-            impact = abs(float(event.get("impact_score", 0)))
-            risk_candidates.append((impact, event.get("title", "")))
+            impact = float(event.get("impact_score", 0))
+            if impact < 0:
+                risk_candidates.append((abs(impact), event.get("title", "")))
+            elif impact > 0:
+                opportunity_candidates.append((impact, event.get("title", "")))
         for event in item.get("events", {}).get("dart", [])[:5]:
-            impact = abs(float(event.get("impact_score", 0)))
+            impact = float(event.get("impact_score", 0))
             title = f"{event.get('corp_name', '')} {event.get('title', '')}".strip()
-            risk_candidates.append((impact, title))
+            if impact < 0:
+                risk_candidates.append((abs(impact), title))
+            elif impact > 0:
+                opportunity_candidates.append((impact, title))
 
     risk_candidates.sort(key=lambda x: x[0], reverse=True)
-    top_risk = risk_candidates[0][1] if risk_candidates else "유의미한 이벤트 부족"
+    opportunity_candidates.sort(key=lambda x: x[0], reverse=True)
+    top_risk = risk_candidates[0][1] if risk_candidates else "유의미한 하방 이벤트 부족"
+    top_opportunity = opportunity_candidates[0][1] if opportunity_candidates else "유의미한 상방 이벤트 부족"
 
     watchpoint = ""
     for item in reversed(snapshots):
@@ -92,6 +112,7 @@ def build_week_summary(snapshots: List[dict]) -> dict:
         "count": len(snapshots),
         "label": label,
         "top_risk": top_risk,
+        "top_opportunity": top_opportunity,
         "top_watchpoint": watchpoint or "핵심 관전 포인트 데이터 없음",
     }
 
@@ -120,7 +141,12 @@ def save_weekly_report(summary: dict, snapshots: List[dict]) -> dict:
 
 
 def render_weekly_html(payload: dict) -> None:
-    env = Environment(loader=FileSystemLoader(str(BASE_DIR)))
+    env = Environment(
+        loader=FileSystemLoader(str(BASE_DIR)),
+        autoescape=select_autoescape(["html", "xml"]),
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
     template = env.get_template("template_weekly.html")
     html = template.render(
         title=payload.get("title", "주간 시장 리포트"),
@@ -151,13 +177,17 @@ def send_weekly_discord(payload: dict) -> None:
         ],
     }
     try:
-        requests.post(DISCORD_WEBHOOK_URL, json={"embeds": [embed]}, timeout=10)
-    except Exception:
-        pass
+        response = requests.post(DISCORD_WEBHOOK_URL, json={"embeds": [embed]}, timeout=10)
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        print(f"Discord notification failed: {exc}")
 
 
 def main() -> None:
     snapshots = load_week_snapshots(days=7)
+    minimum_samples = int(os.getenv("MIN_WEEKLY_SAMPLES", "6"))
+    if len(snapshots) < minimum_samples:
+        raise RuntimeError(f"Weekly sample coverage below threshold: {len(snapshots)} (minimum {minimum_samples})")
     summary = build_week_summary(snapshots)
     payload = save_weekly_report(summary, snapshots)
     render_weekly_html(payload)

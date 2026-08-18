@@ -1,7 +1,9 @@
 import argparse
 import re
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 
 PROTECTED_RELATIVE_PATHS = {
@@ -23,7 +25,7 @@ def parse_timestamp_from_name(name: str) -> datetime | None:
             continue
         try:
             dt = datetime.strptime(match.group(0), fmt)
-            return dt.replace(tzinfo=timezone.utc)
+            return dt.replace(tzinfo=ZoneInfo("Asia/Seoul")).astimezone(timezone.utc)
         except ValueError:
             continue
     return None
@@ -70,6 +72,8 @@ def main() -> None:
 
     deleted, skipped, failed = cleanup_json_files(target_dir, args.retention_days)
     print(f"Cleanup completed. deleted={deleted}, skipped={skipped}, failed={failed}")
+    if failed:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

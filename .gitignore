@@ -1,1 +1,6 @@
 IMPLEMENTATION_PLAN.md
+__pycache__/
+*.py[cod]
+public/data/
+public/live.html
+public/weekly.html

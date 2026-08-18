@@ -432,19 +432,19 @@
       <h1>{{ edition_title }}</h1>
       <p class="hero-focus">{{ comic_headline }}</p>
       <p class="time">생성 시각(KST): {{ current_time }}</p>
-      <div class="quick-links">
-        <a href="live.html">장중 보기</a>
-        <a href="weekly.html">주간 리포트</a>
-      </div>
+      <nav class="quick-links" aria-label="시장 브리핑 메뉴">
+        <a href="live.html">장중</a>
+        <a href="weekly.html">주간</a>
+      </nav>
     </header>
 
     <section class="indexes-section">
-      <h3 class="section-title">📊 주요 지수 및 리스크 신호</h3>
+      <h2 class="section-title">주요 지수 및 리스크 신호</h2>
       {% include "template_market_cards.html" %}
     </section>
 
     <section class="cover-section">
-      <img class="cover" src="{{ cover_image }}" onerror="this.onerror=null;this.src='cover.svg';" alt="시장 브리핑 커버" />
+      <img class="cover" src="{{ cover_image }}" onerror="this.onerror=null;this.src='cover.svg';" alt="{{ comic_headline }} 브리핑 커버" />
     </section>
 
     {% if news_items %}
@@ -465,7 +465,7 @@
     {% endif %}
 
     <section class="risk-section">
-      <h3 class="section-title">🧭 리스크 대시보드</h3>
+      <h2 class="section-title">리스크 대시보드</h2>
       <div class="risk-grid">
         <article class="risk-item">
           <p class="risk-name">VIX</p>
@@ -490,29 +490,17 @@
     <section class="headline-card">
       <h3 class="section-title">📋 AI 브리핑</h3>
       
-      {% set sections = { '한국 시장': false, '미국 시장': false } %}
-      {% for item in summary_items %}
-        {% set is_section_header = ('[한국 시장]' in item or '[미국 시장]' in item or '한국 시장' in item[:10] or '미국 시장' in item[:10]) %}
-        {% if '[한국 시장]' in item or '한국 시장' in item[:10] %}
-          {% set _ = sections.update({'한국 시장': true}) %}
-          {% if sections['한국 시장'] and not sections['한국 시장_표시'] %}
-            {% set _ = sections.update({'한국 시장_표시': true}) %}
-      <p class="summary-title">📈 한국 시장</p>
+      <h3 class="summary-title">한국 시장</h3>
       <ol class="summary">
-          {% endif %}
-        {% elif '[미국 시장]' in item or '미국 시장' in item[:10] %}
-          {% set _ = sections.update({'미국 시장': true}) %}
-          {% if sections['미국 시장'] and not sections['미국 시장_표시'] %}
-          </ol>
-      <p class="summary-title">🌎 미국 시장</p>
+        {% for item in korea_items %}
+        <li>{{ item | bold }}</li>
+        {% endfor %}
+      </ol>
+      <h3 class="summary-title">미국 시장</h3>
       <ol class="summary">
-          {% set _ = sections.update({'미국 시장_표시': true}) %}
-          {% endif %}
-        {% endif %}
-        {% if not is_section_header %}
-        <li>{{ item | bold | safe }}</li>
-        {% endif %}
-      {% endfor %}
+        {% for item in us_items %}
+        <li>{{ item | bold }}</li>
+        {% endfor %}
       </ol>
     </section>
 

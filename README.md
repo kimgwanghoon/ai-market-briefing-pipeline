@@ -27,6 +27,8 @@
 | `.github/workflows/cleanup-data.yml` | 평일 00:00(KST) JSON 정리 실행 |
 | `.github/workflows/weekly-report.yml` | 토요일 09:00(KST) 주간 리포트 생성/배포 |
 | `requirements.txt` | Python 의존성 |
+| `ai_generation.py` | JSON Schema 기반 AI 출력 계약과 모델 설정 |
+| `tests/` | 점수 스키마, HTML 안전성, 구조화 출력 회귀 테스트 |
 | `public/data/*.json` | 실행 스냅샷 누적 데이터 (히스토리/대시보드용) |
 
 ## 환경 변수
@@ -39,6 +41,10 @@ DISCORD_WEBHOOK_URL=your_discord_webhook_url
 GITHUB_PAGES_URL=https://<username>.github.io/<repository>/
 GENERATE_AI_IMAGE=true
 DART_API_KEY=your_opendart_api_key
+OPENAI_TEXT_MODEL=gpt-4o-mini-2024-07-18
+OPENAI_IMAGE_MODEL=gpt-image-1-mini
+MIN_MARKET_COVERAGE=6
+MIN_WEEKLY_SAMPLES=6
 ```
 
 - `AI_API_KEY`: OpenAI 요약/헤드라인/이미지 생성용 (없으면 fallback 모드)
@@ -46,6 +52,19 @@ DART_API_KEY=your_opendart_api_key
 - `GITHUB_PAGES_URL`: 선택값, Discord 메시지 URL (미설정 시 GitHub Actions 환경 변수로 자동 추론)
 - `GENERATE_AI_IMAGE`: `false`면 이미지 API 호출 없이 기존 커버 유지
 - `DART_API_KEY`: 선택값, 장중 전자공시(OpenDART) 이벤트 분석용
+- `OPENAI_TEXT_MODEL`: 구조화 출력을 지원하는 텍스트 모델 (기본값은 재현 가능한 스냅샷 고정)
+- `OPENAI_IMAGE_MODEL`: 커버 이미지 모델 (기본값 `gpt-image-1-mini`)
+- `MIN_MARKET_COVERAGE`: 데일리 배포에 필요한 최소 유효 지표 수. 미달 시 기존 정상 페이지를 덮어쓰지 않고 작업을 실패시킵니다.
+- `MIN_WEEKLY_SAMPLES`: 주간 리포트 배포에 필요한 최소 장중 스냅샷 수 (기본값 6)
+
+## 로컬 검증
+
+```bash
+python -m compileall -q .
+python -m unittest discover -s tests -v
+```
+
+배포 워크플로는 `gh-pages`의 기존 `data/`를 복원한 뒤 생성 작업을 실행합니다. 모든 Pages 쓰기 작업은 공통 concurrency group으로 직렬화되어 히스토리 유실과 동시 push 충돌을 줄입니다.
 
 ## 스케줄 정책
 
