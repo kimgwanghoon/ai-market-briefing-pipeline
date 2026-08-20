@@ -1,4 +1,5 @@
 import base64
+import json
 import tempfile
 import unittest
 from datetime import datetime
@@ -11,6 +12,7 @@ from main import bold_filter, require_market_coverage
 from intraday import (
     KST,
     build_data_quality,
+    build_timeline_heatmap,
     compute_reliability,
     filter_unseen_events,
     find_previous_snapshot,
@@ -112,6 +114,32 @@ class SentimentContractTests(unittest.TestCase):
             ["current"],
         )
 
+    def test_heatmap_uses_actual_execution_times_without_scheduled_slots(self):
+        history = [
+            {
+                "timestamp": "2026-08-18 09:47:00",
+                "sentiment": {"score": 62, "raw_score": 24},
+            },
+            {
+                "timestamp": "2026-08-18 10:12:00",
+                "sentiment": {"score": 58, "raw_score": 16},
+            },
+        ]
+        current = {
+            "timestamp": "2026-08-18 10:49:00",
+            "sentiment": {"score": 70, "raw_score": 40},
+        }
+
+        result = build_timeline_heatmap(current, history)
+
+        self.assertEqual(
+            [item["time"] for item in result["observations"]],
+            ["08-18 09:47", "08-18 10:12", "08-18 10:49"],
+        )
+        self.assertEqual(len(result["timeline"]), 3)
+        self.assertNotIn("slots", result)
+        self.assertNotIn("rows", result)
+
 
 class HtmlSafetyTests(unittest.TestCase):
     def test_bold_filter_escapes_untrusted_html(self):
@@ -119,6 +147,53 @@ class HtmlSafetyTests(unittest.TestCase):
         self.assertIn("<strong>핵심</strong>", rendered)
         self.assertNotIn("<img", rendered)
         self.assertIn("&lt;img", rendered)
+
+    def test_editorial_cover_and_news_context_are_rendered(self):
+        metric = {
+            "price": "100.00",
+            "change": "▲ 1.00 (+1.00%)",
+            "trend": "상승",
+            "color": "#b91c1c",
+        }
+        indexes = {
+            key: dict(metric)
+            for key in ("kospi", "kosdaq", "ewy", "sp500", "dow", "nasdaq", "vix", "usdkrw", "us10y", "wti")
+        }
+        risk_trends = {
+            key: {"text": "상승", "color": "#b91c1c"}
+            for key in ("vix", "usdkrw", "us10y", "wti")
+        }
+        news = [
+            {
+                "title": "금리 변화 기사",
+                "link": "https://example.com/news",
+                "press": "테스트경제",
+                "time": "09:00",
+                "image_url": "https://example.com/news.jpg",
+                "impact_scope": "Macro",
+                "why_it_matters": "시장 할인율 변화와 연결됩니다.",
+            }
+        ]
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with patch.object(main, "OUTPUT_DIR", Path(tmp_dir)):
+                main.render_html(
+                    "코스피·나스닥 엇갈린 온도차",
+                    ["[한국 시장]", "**KOSPI** 점검", "[미국 시장]", "**NASDAQ** 점검"],
+                    "cover_test.png",
+                    indexes,
+                    risk_trends,
+                    3,
+                    news,
+                )
+            html = (Path(tmp_dir) / "index.html").read_text(encoding="utf-8")
+
+        self.assertIn("AI Editorial Cover", html)
+        self.assertIn("코스피·나스닥 엇갈린 온도차", html)
+        self.assertIn("왜 중요한가", html)
+        self.assertIn("news.jpg", html)
+        self.assertIn("EWY", html)
+        self.assertIn("DOW", html)
 
 
 class MarketCoverageTests(unittest.TestCase):
@@ -138,6 +213,55 @@ class MarketCoverageTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(RuntimeError, "Required market data missing"):
             require_market_coverage(indexes, minimum=2, required=("kospi", "kosdaq"))
+
+
+class MarketHeadlineTests(unittest.TestCase):
+    def test_highlights_cross_market_temperature_gap(self):
+        kospi = {"change": "▲ 20.00 (+1.20%)"}
+        nasdaq = {"change": "▼ 80.00 (-0.80%)"}
+        vix = {"price": "18.00"}
+        self.assertEqual(
+            main.build_market_headline(kospi, nasdaq, vix),
+            "코스피·나스닥 엇갈린 온도차",
+        )
+
+
+class NewsCurationTests(unittest.TestCase):
+    def test_preserves_source_and_adds_editorial_context(self):
+        payload = {
+            "selected_news": [
+                {
+                    "id": 1,
+                    "impact_scope": "Macro",
+                    "why_it_matters": "금리 변화가 지수 밸류에이션에 영향을 줄 수 있습니다.",
+                }
+            ]
+        }
+        completions = Mock()
+        completions.create.return_value = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(payload)))]
+        )
+        client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
+        articles = [
+            {"title": "첫 기사", "link": "https://example.com/1", "press": "A"},
+            {
+                "title": "금리 기사",
+                "link": "https://example.com/2",
+                "press": "B",
+                "description": "시장 금리가 변동했습니다.",
+            },
+        ]
+
+        selected = main.select_top_news(articles, max_count=1, client=client)
+
+        self.assertEqual(selected[0]["title"], "금리 기사")
+        self.assertEqual(selected[0]["link"], "https://example.com/2")
+        self.assertEqual(selected[0]["impact_scope"], "Macro")
+        self.assertIn("밸류에이션", selected[0]["why_it_matters"])
+        self.assertEqual(
+            completions.create.call_args.kwargs["response_format"]["type"],
+            "json_schema",
+        )
 
 
 class CoverGenerationTests(unittest.TestCase):
@@ -184,7 +308,7 @@ class CoverGenerationTests(unittest.TestCase):
                     market_item,
                 )
 
-            self.assertEqual(headline, "핵심 지수 점검")
+            self.assertEqual(headline, "변동성 경계 속 지수 방향 점검")
             self.assertTrue(cover_image.startswith("cover_"))
             self.assertEqual((Path(tmp_dir) / cover_image).read_bytes(), image_bytes)
             client.images.generate.assert_called_once()
