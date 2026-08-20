@@ -19,7 +19,7 @@ from openai import OpenAI
 from ai_generation import (
     DAILY_BRIEFING_SCHEMA,
     create_structured_completion,
-    render_focus_headline,
+    has_only_grounded_numbers,
     render_grounded_claim,
     validate_grounded_claims,
 )
@@ -352,6 +352,23 @@ def parse_change_percent(change: str) -> float:
         return float("nan")
 
 
+def build_market_headline(kospi: dict, nasdaq: dict, vix: dict) -> str:
+    kospi_change = parse_change_percent(kospi.get("change", ""))
+    nasdaq_change = parse_change_percent(nasdaq.get("change", ""))
+    vix_value = parse_price_value(vix.get("price", ""))
+
+    if kospi_change == kospi_change and nasdaq_change == nasdaq_change:
+        if kospi_change > 0.5 and nasdaq_change > 0.5:
+            return "코스피·나스닥 동반 강세"
+        if kospi_change < -0.5 and nasdaq_change < -0.5:
+            return "한미 증시 동반 약세"
+        if kospi_change * nasdaq_change < 0:
+            return "코스피·나스닥 엇갈린 온도차"
+    if vix_value == vix_value and vix_value > 25:
+        return "변동성 경계 속 지수 방향 점검"
+    return "지수 혼조 속 금리·환율 점검"
+
+
 def require_market_coverage(indexes: dict, minimum: int, required: tuple[str, ...] = ()) -> int:
     available = 0
     for item in indexes.values():
@@ -401,7 +418,9 @@ def build_market_overview(indexes: dict) -> List[dict]:
     selected = [
         ("kospi", "KOSPI"),
         ("kosdaq", "KOSDAQ"),
+        ("ewy", "EWY"),
         ("sp500", "S&P 500"),
+        ("dow", "DOW"),
         ("nasdaq", "NASDAQ"),
         ("usdkrw", "USD/KRW"),
         ("vix", "VIX"),
@@ -459,6 +478,13 @@ def crawl_naver_news(now_kst: datetime, max_articles: int = 30) -> List[dict]:
             time_el = item.select_one("div.sa_text_datetime b")
             time_str = time_el.get_text(strip=True) if time_el else ""
 
+            summary_el = item.select_one("div.sa_text_lede")
+            description = summary_el.get_text(" ", strip=True) if summary_el else ""
+            image_el = item.select_one("img")
+            image_url = ""
+            if image_el:
+                image_url = image_el.get("data-src") or image_el.get("src") or ""
+
             article_dt = None
             for fmt in ("%Y.%m.%d. %H:%M", "%Y.%m.%d."):
                 try:
@@ -476,6 +502,8 @@ def crawl_naver_news(now_kst: datetime, max_articles: int = 30) -> List[dict]:
                 "press": press,
                 "time": time_str,
                 "dt": article_dt,
+                "description": description,
+                "image_url": image_url,
             })
 
         if len(articles) >= max_articles:
@@ -484,48 +512,108 @@ def crawl_naver_news(now_kst: datetime, max_articles: int = 30) -> List[dict]:
     return articles[:max_articles]
 
 
-def select_top_news(articles: List[dict], max_count: int = 5) -> List[dict]:
-    if not articles or not OPENAI_API_KEY:
-        return articles[:max_count]
+def select_top_news(articles: List[dict], max_count: int = 5, client=None) -> List[dict]:
+    fallback = []
+    for article in articles[:max_count]:
+        item = dict(article)
+        item.setdefault("impact_scope", "Market")
+        item.setdefault("why_it_matters", "")
+        fallback.append(item)
+    if not articles or (not OPENAI_API_KEY and client is None):
+        return fallback
 
-    titles_text = "\n".join(
-        f"{i+1}. [{a['press']}] {a['title']}" for i, a in enumerate(articles)
-    )
+    candidates = [
+        {
+            "id": i,
+            "press": article.get("press", ""),
+            "title": article.get("title", ""),
+            "description": article.get("description", "")[:320],
+        }
+        for i, article in enumerate(articles)
+    ]
 
-    client = OpenAI(api_key=OPENAI_API_KEY)
+    news_client = client or OpenAI(api_key=OPENAI_API_KEY)
     try:
-        resp = client.chat.completions.create(
+        resp = news_client.chat.completions.create(
             model="gpt-4o-mini",
             temperature=0.1,
             messages=[
                 {
                     "role": "system",
                     "content": (
-                        "증권/경제 뉴스 에디터. 아래 뉴스 목록에서 가장 중요한 뉴스를 최대 5개 선별하라.\n"
-                        "규칙:\n"
-                        "- 시장에 영향을 주는 뉴스를 우선 선택\n"
-                        "- 동일 주제/사건의 중복 기사는 1개만 선택\n"
-                        "- 단순 종목 추천, 광고성 기사 제외\n"
-                        "- 응답은 선택한 기사 번호만 쉼표로 나열 (예: 1,5,8,12,15)"
+                        "한국 투자자를 위한 증권·경제 뉴스 편집자입니다. 후보에 있는 사실만 사용하세요. "
+                        "금리·정책·실적·섹터 회전·수급·지정학·지수 영향도가 큰 뉴스를 우선하고, "
+                        "중복 이슈와 광고성·생활경제성 기사는 제외하세요. why_it_matters는 제목과 "
+                        "description에서 확인되는 범위 안에서만 작성하고 새로운 숫자나 원인을 만들지 마세요."
                     ),
                 },
-                {"role": "user", "content": titles_text},
+                {
+                    "role": "user",
+                    "content": (
+                        f"다음 후보에서 최대 {max_count}개를 고르세요. impact_scope는 "
+                        "Macro, US, Korea, Sector 중 하나입니다.\n"
+                        + json.dumps(candidates, ensure_ascii=False)
+                    ),
+                },
             ],
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "market_news_selection",
+                    "strict": True,
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "selected_news": {
+                                "type": "array",
+                                "minItems": 1,
+                                "maxItems": max_count,
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {"type": "integer"},
+                                        "impact_scope": {
+                                            "type": "string",
+                                            "enum": ["Macro", "US", "Korea", "Sector"],
+                                        },
+                                        "why_it_matters": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 120,
+                                        },
+                                    },
+                                    "required": ["id", "impact_scope", "why_it_matters"],
+                                    "additionalProperties": False,
+                                },
+                            }
+                        },
+                        "required": ["selected_news"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
         )
-        nums_text = resp.choices[0].message.content.strip()
-        selected_indices = []
-        for token in re.split(r"[,\s]+", nums_text):
-            token = token.strip().rstrip(".")
-            if token.isdigit():
-                idx = int(token) - 1
-                if 0 <= idx < len(articles):
-                    selected_indices.append(idx)
-        if selected_indices:
-            return [articles[i] for i in selected_indices[:max_count]]
+        parsed = json.loads(resp.choices[0].message.content or "{}")
+        selected = []
+        seen_ids = set()
+        for choice in parsed.get("selected_news", []):
+            idx = choice.get("id")
+            if not isinstance(idx, int) or not 0 <= idx < len(articles) or idx in seen_ids:
+                continue
+            seen_ids.add(idx)
+            item = dict(articles[idx])
+            item["impact_scope"] = choice["impact_scope"]
+            why_it_matters = re.sub(r"\s+", " ", choice["why_it_matters"]).strip()
+            if not has_only_grounded_numbers([why_it_matters], candidates[idx]):
+                why_it_matters = ""
+            item["why_it_matters"] = why_it_matters
+            selected.append(item)
+        if selected:
+            return selected[:max_count]
     except Exception as exc:
         logging.warning("select_top_news LLM failed: %s", exc)
 
-    return articles[:max_count]
+    return fallback
 
 
 def load_recent_snapshots(limit: int = 7) -> List[dict]:
@@ -544,7 +632,13 @@ def load_recent_snapshots(limit: int = 7) -> List[dict]:
     return snapshots
 
 
-def save_snapshot(headline: str, summary_items: List[str], cover_image: str, indexes: dict) -> None:
+def save_snapshot(
+    headline: str,
+    summary_items: List[str],
+    cover_image: str,
+    indexes: dict,
+    news_items: List[dict] | None = None,
+) -> None:
     timestamp = datetime.now(KST)
     payload = {
         "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
@@ -552,6 +646,7 @@ def save_snapshot(headline: str, summary_items: List[str], cover_image: str, ind
         "headline": headline,
         "summary_items": summary_items,
         "indexes": indexes,
+        "news_items": news_items or [],
         "cover_image": cover_image,
         "generate_ai_image": GENERATE_AI_IMAGE,
         "run_source": detect_run_source(),
@@ -579,7 +674,7 @@ def generate_ai_briefing(
     us10y: dict,
     wti: dict,
 ) -> Tuple[str, List[str], str]:
-    fallback_headline = "핵심 지수 점검"
+    fallback_headline = build_market_headline(kospi, nasdaq, vix)
 
     watchpoint_line = build_watchpoint_line(vix, usdkrw, us10y)
     fallback_korea_items, fallback_us_items = build_fallback_section_items(
@@ -632,8 +727,10 @@ def generate_ai_briefing(
 6) N/A 값은 숫자를 추정하지 말고 "데이터 확인 필요"로 표현하세요.
 7) 단정적 예측, 매수·매도 지시, 목표가 제시는 금지합니다.
 8) watchpoint는 "오늘의 핵심 관전 포인트:"로 시작하고, 관측 가능한 조건형 트리거 2개를 포함하세요.
-9) headline은 공백 포함 12~24자의 한국어 한 줄이며 과장과 특수기호를 피하세요.
+9) headline은 공백 포함 12~24자의 한국어 한 줄로, 시장의 방향 차이·긴장감·온도차 중 실제 데이터로 확인되는 특징을 압축하세요.
 10) headline, 각 point, watchpoint에 claim_type 및 실제 근거의 evidence_ids를 포함하세요. 지표명과 수치는 반드시 같은 evidence ID를 인용하세요.
+11) 모든 text에는 인용한 근거 중 최소 한 개의 정확한 지표명(KOSPI, KOSDAQ, S&P 500, DOW, NASDAQ, EWY, VIX, USD/KRW, 미10년물, WTI)을 반드시 포함하세요.
+12) headline에는 정확한 지표명을 포함하고, 과장·특수기호·이모지·매수·매도 표현을 사용하지 마세요.
 
 근거 ID: idx-kospi, idx-kosdaq, idx-sp500, idx-dow, idx-nasdaq, idx-ewy, idx-vix, idx-usdkrw, idx-us10y, idx-wti
 근거 데이터(JSON): {json.dumps(evidence, ensure_ascii=False)}
@@ -668,6 +765,8 @@ def generate_ai_briefing(
 
         image_prompt = (
             "Create a premium square editorial cover illustration for a Korean daily market briefing. "
+            f"Use this grounded market headline only as a semantic art-direction theme, never render it as text: "
+            f"{cover_headline}. "
             "Communicate financial-market movement through one clear focal composition: an elegant abstract "
             "flow of illuminated data ribbons and geometric market layers moving across a refined Seoul "
             "financial-district atmosphere. The visual should feel like a serious global finance magazine, "
@@ -738,7 +837,9 @@ def generate_ai_briefing(
         }
         if not validate_grounded_claims(claims, evidence, aliases):
             raise ValueError("AI briefing contains a claim not grounded in its cited evidence")
-        headline = render_focus_headline(briefing["headline"], evidence_labels)
+        headline = re.sub(r"[*#`]+", "", briefing["headline"]["text"]).strip()
+        if not 8 <= len(headline) <= 40:
+            headline = fallback_headline
         korea_points = [render_grounded_claim(item, evidence, evidence_labels) for item in briefing["korea_points"]]
         us_points = [render_grounded_claim(item, evidence, evidence_labels) for item in briefing["us_points"]]
         watchpoint_body = render_grounded_claim(briefing["watchpoint"], evidence, evidence_labels)
@@ -893,7 +994,7 @@ def main() -> None:
 
     render_html(headline, summary_items, cover_image, indexes, risk_trends, snapshot_count, news_items)
     send_discord_alert(headline, summary_items, indexes)
-    save_snapshot(headline, summary_items, cover_image, indexes)
+    save_snapshot(headline, summary_items, cover_image, indexes, news_items)
 
     print("Generated:", OUTPUT_DIR / "index.html")
 
