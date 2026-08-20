@@ -21,6 +21,7 @@
 | `intraday.py` | 장중(08:30~15:30) 뉴스/공시/시장신호 하이브리드 스냅샷 생성 |
 | `cleanup_json.py` | 30일 초과 JSON 데이터 정리 스크립트 |
 | `weekly_report.py` | 일별 센티먼트·주간 지수 변화·이벤트·다음 주 조건부 전망을 집계해 JSON/HTML 및 알림 생성 |
+| `discord_notifications.py` | 데일리·장중·주간 Discord 임베드 구성, 길이 제한, 멘션 차단 및 재시도 처리 |
 | `template.html` | 브리핑 페이지 HTML 템플릿 |
 | `template_live.html` | 장중 라이브 페이지 HTML 템플릿 (`public/live.html`) |
 | `template_weekly.html` | 주간 리포트 HTML 템플릿 (`public/weekly.html`) |
@@ -51,7 +52,7 @@ MIN_WEEKLY_SAMPLES=6
 ```
 
 - `AI_API_KEY`: OpenAI 요약/헤드라인/이미지 생성용 (없으면 fallback 모드)
-- `DISCORD_WEBHOOK_URL`: 선택값, 설정 시 Discord 웹훅 전송
+- `DISCORD_WEBHOOK_URL`: 선택값, 설정 시 보고서별 Discord 임베드와 상세 페이지 링크 전송
 - `GITHUB_PAGES_URL`: 선택값, Discord 메시지 URL (미설정 시 GitHub Actions 환경 변수로 자동 추론)
 - `GENERATE_AI_IMAGE`: `false`면 이미지 API 호출 없이 기존 커버 유지
 - `DART_API_KEY`: 선택값, 장중 전자공시(OpenDART) 이벤트 분석용
@@ -72,14 +73,14 @@ python -m unittest discover -s tests -v
 ## 스케줄 정책
 
 - `main.yml`: 평일 08:00 / 18:00(KST) 데일리 브리핑
-- `intraday.yml`: 평일 08:10~15:10(KST)에 준비를 시작하고 08:30~15:30 정각에 장중 스냅샷 생성을 시도합니다. GitHub 스케줄러가 늦게 시작되면 대기 없이 실제 시작 시각에 생성합니다.
+- `intraday.yml`: 외부 스케줄러의 `workflow_dispatch` 호출을 받아 평일 08:10~15:10(KST)에 준비를 시작하고 08:30~15:30 정각에 장중 스냅샷을 생성합니다. GitHub 내부 cron은 사용하지 않습니다.
 - `quality.yml`: `master` 코드 변경과 PR에서는 테스트만 실행하며, 데일리 페이지를 임의 시각에 다시 생성하지 않습니다.
 - `cleanup-data.yml`: 평일 00:00(KST) 30일 초과 JSON 자동 정리
 - `weekly-report.yml`: 토요일 09:00(KST) 주간 시장 리포트 생성/발송
 
 ### 무료 외부 스케줄러 연동
 
-`cron-job.org` 같은 HTTP 스케줄러에서는 아래 GitHub API를 `POST`로 호출할 수 있습니다.
+QStash 같은 HTTP 스케줄러에서는 아래 GitHub API를 `POST`로 호출할 수 있습니다.
 
 ```text
 https://api.github.com/repos/<owner>/<repo>/actions/workflows/intraday.yml/dispatches
@@ -91,7 +92,15 @@ https://api.github.com/repos/<owner>/<repo>/actions/workflows/intraday.yml/dispa
 {"ref":"master","inputs":{"align_to_half_hour":"true"}}
 ```
 
-정확한 목표 슬롯을 지정하려면 `target_kst`를 `YYYY-MM-DD HH:30:00` 형식으로 함께 전달합니다. 토큰은 해당 저장소의 Actions 쓰기 권한만 가진 fine-grained PAT를 사용하고 외부 스케줄러의 비밀 헤더에만 저장합니다. 내부 cron과 외부 호출이 같은 목표 시각에 겹쳐도 `scheduled_target_kst`가 이미 저장돼 있으면 두 번째 실행은 데이터 수집·AI 호출·알림을 건너뜁니다.
+QStash cron은 `10 8-15 * * MON-FRI`, 시간대는 `Asia/Seoul`로 설정합니다. 정확한 목표 슬롯을 지정하려면 `target_kst`를 `YYYY-MM-DD HH:30:00` 형식으로 함께 전달합니다. 토큰은 해당 저장소의 Actions 쓰기 권한만 가진 fine-grained PAT를 사용하고 QStash의 비밀 헤더에만 저장합니다. 재시도 등으로 같은 목표 시각이 중복 호출되면 `scheduled_target_kst`를 기준으로 두 번째 데이터 수집·AI 호출·알림을 건너뜁니다.
+
+## Discord 알림
+
+- 데일리: 국내·미국·리스크 지표, 한국/미국 핵심 요약, 주요 뉴스 원문 링크
+- 장중: 현재 점수와 직전 변화, 데이터 충실도·검증 상태, 신규 뉴스/공시, 즉시 확인할 관전 포인트
+- 주간: 주간 지수 변화, 주요 기회·위험 이벤트, 다음 주 예상 범위와 상·하방 조건
+- 임베드 제목은 각 전체 보고서로 연결되며 `allowed_mentions`를 비워 외부 제목의 멘션을 차단합니다.
+- Discord 429 또는 일시적인 5xx 응답은 최대 3회까지 제한적으로 재시도합니다.
 
 ## 장중 점수 모델
 
