@@ -215,13 +215,6 @@ def display_score_color(display_score: float) -> str:
     return "#e2e8f0"
 
 
-def get_snapshot_raw_score(item: dict) -> float:
-    sentiment = item.get("sentiment", {})
-    if "raw_score" in sentiment:
-        return float(sentiment.get("raw_score", 0))
-    return float(sentiment.get("score", 0))
-
-
 def get_snapshot_display_score(item: dict) -> float:
     sentiment = item.get("sentiment", {})
     if "raw_score" in sentiment:
@@ -255,22 +248,6 @@ def build_confidence_tooltip(confidence: int, data_quality: dict) -> List[str]:
         f"기준: {data_quality.get('basis', '데이터 기준 없음')}",
         "주의: 이 값이 미래 방향 적중률을 직접 뜻하지는 않습니다.",
     ]
-
-
-def bucket_time_to_slot(dt: datetime, slots: List[str], tolerance_minutes: int = 35) -> str | None:
-    current_minutes = dt.hour * 60 + dt.minute
-    best_slot = None
-    best_gap = None
-    for slot in slots:
-        hour, minute = [int(part) for part in slot.split(":")]
-        slot_minutes = hour * 60 + minute
-        gap = abs(current_minutes - slot_minutes)
-        if best_gap is None or gap < best_gap:
-            best_slot = slot
-            best_gap = gap
-    if best_gap is None or best_gap > tolerance_minutes:
-        return None
-    return best_slot
 
 
 def fetch_market_signals() -> Dict[str, dict]:
@@ -1051,65 +1028,29 @@ def compute_reliability(history: List[dict]) -> dict:
 
 
 def build_timeline_heatmap(current_payload: dict, history: List[dict]) -> dict:
-    merged = [current_payload, *history]
-    recent = sorted(merged, key=parse_snapshot_dt)[-60:]
-    slots = ["08:30", "09:30", "10:30", "11:30", "12:30", "13:30", "14:30", "15:30"]
-
-    day_map: Dict[str, Dict[str, float]] = {}
-    for item in recent:
+    # The workflow may start late or retry at an unscheduled minute. Preserve
+    # each stored execution timestamp instead of snapping it to a planned slot.
+    snapshots_by_timestamp: Dict[str, dict] = {}
+    for item in [*history, current_payload]:
         dt = parse_snapshot_dt(item)
-        day_key = dt.strftime("%m-%d")
-        slot_key = bucket_time_to_slot(dt, slots)
-        if slot_key is None:
-            continue
-        existing = day_map.setdefault(day_key, {}).get(slot_key)
-        score = get_snapshot_raw_score(item)
-        if existing is None or abs(score) >= abs(existing):
-            day_map.setdefault(day_key, {})[slot_key] = score
+        snapshots_by_timestamp[dt.isoformat()] = item
+    recent = sorted(snapshots_by_timestamp.values(), key=parse_snapshot_dt)[-60:]
 
-    days = sorted(day_map.keys())[-5:]
-    rows = []
-    for day in days:
-        row = {"day": day, "scores": []}
-        for slot in slots:
-            score = day_map[day].get(slot)
-            if score is None:
-                row["scores"].append({"slot": slot, "text": "-", "color": "#f8fafc", "state": "missing"})
-                continue
-            display_score = normalize_sentiment_score(score)
-            row["scores"].append(
-                {
-                    "slot": slot,
-                    "text": f"{display_score:.0f}",
-                    "color": display_score_color(display_score),
-                    "state": describe_display_score(display_score)["range_key"],
-                }
-            )
-        rows.append(row)
-
-    seen_slot_keys: set = set()
-    deduped_timeline = []
-    for item in reversed(recent):
-        dt = parse_snapshot_dt(item)
-        slot = bucket_time_to_slot(dt, slots, tolerance_minutes=35)
-        slot_key = (dt.strftime("%m-%d"), slot or dt.strftime("%H"))
-        if slot_key not in seen_slot_keys:
-            seen_slot_keys.add(slot_key)
-            deduped_timeline.append(item)
-    deduped_timeline = list(reversed(deduped_timeline))[-12:]
-
-    timeline = [
-        {
+    def format_observation(item: dict) -> dict:
+        display_score = get_snapshot_display_score(item)
+        score_state = describe_display_score(display_score)
+        return {
             "time": parse_snapshot_dt(item).strftime("%m-%d %H:%M"),
-            "score": get_snapshot_display_score(item),
-            "label": describe_display_score(get_snapshot_display_score(item))["label"],
-            "color": display_score_color(get_snapshot_display_score(item)),
+            "score": display_score,
+            "label": score_state["label"],
+            "color": display_score_color(display_score),
+            "state": score_state["range_key"],
         }
-        for item in deduped_timeline
-    ]
+
+    observations = [format_observation(item) for item in recent[-40:]]
+    timeline = [format_observation(item) for item in recent[-12:]]
     return {
-        "slots": slots,
-        "rows": rows,
+        "observations": observations,
         "timeline": timeline,
         "legend": [
             {"name": "강한 우호 80+", "color": "#fecaca"},
@@ -1117,7 +1058,6 @@ def build_timeline_heatmap(current_payload: dict, history: List[dict]) -> dict:
             {"name": "중립 40~59", "color": "#e2e8f0"},
             {"name": "경계 20~39", "color": "#dbeafe"},
             {"name": "강한 경계 0~19", "color": "#bfdbfe"},
-            {"name": "결측", "color": "#f8fafc"},
         ],
     }
 
