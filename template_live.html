@@ -281,23 +281,32 @@
     }
 
     .heatmap {
-      overflow-x: auto;
-      border: 1px solid var(--line);
-      border-radius: 10px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+      gap: 8px;
     }
 
-    .heatmap table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.85rem;
-    }
-
-    .heatmap th,
-    .heatmap td {
+    .heatmap-cell {
+      min-height: 76px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
       border: 1px solid var(--line);
-      padding: 6px;
+      border-radius: 9px;
+      padding: 8px;
       text-align: center;
-      white-space: nowrap;
+    }
+
+    .heatmap-time {
+      margin: 0 0 3px;
+      color: var(--muted);
+      font-size: 0.72rem;
+    }
+
+    .heatmap-value {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 800;
     }
 
     .timeline {
@@ -462,28 +471,16 @@
         {% endfor %}
       </ul>
       <p class="metric">점수 기준: 80 이상 강한 우호 / 60~79 우호 / 40~59 중립 / 20~39 경계 / 0~19 강한 경계</p>
+      <p class="metric">예약 시간대가 아니라 스냅샷이 실제 저장된 실행 시각(KST)만 표시합니다.</p>
       <div class="heatmap">
-        <table>
-          <caption>최근 5거래일 시간대별 센티먼트 점수</caption>
-          <thead>
-            <tr>
-              <th>일자</th>
-              {% for slot in heatmap.slots %}
-                <th>{{ slot }}</th>
-              {% endfor %}
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in heatmap.rows %}
-              <tr>
-                <th scope="row">{{ row.day }}</th>
-                {% for cell in row.scores %}
-                  <td style="background: {{ cell.color }}">{{ cell.text }}</td>
-                {% endfor %}
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+        {% for item in heatmap.observations %}
+          <article class="heatmap-cell" style="background: {{ item.color }}">
+            <p class="heatmap-time">{{ item.time }}</p>
+            <p class="heatmap-value">{{ item.score }}</p>
+          </article>
+        {% else %}
+          <p class="metric">저장된 실행 데이터가 없습니다.</p>
+        {% endfor %}
       </div>
       <div class="timeline">
         {% for item in heatmap.timeline %}
