@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Morning Briefing: 간밤의 미장 &amp; 국장 프리뷰</title>
-  <meta name="description" content="핵심 지수 점검" />
+  <meta name="description" content="지수 혼조 속 금리·환율 점검" />
   <meta property="og:title" content="Morning Briefing: 간밤의 미장 &amp; 국장 프리뷰" />
-  <meta property="og:description" content="핵심 지수 점검" />
+  <meta property="og:description" content="지수 혼조 속 금리·환율 점검" />
   <meta property="og:image" content="cover.svg" />
   <style>
     :root {
@@ -118,17 +118,57 @@
     }
 
     .cover-section {
-      text-align: center;
       margin-bottom: 32px;
+    }
+
+    .cover-frame {
+      position: relative;
+      width: 100%;
+      max-width: 680px;
+      margin: 0 auto;
+      overflow: hidden;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      box-shadow: 0 12px 40px rgba(15, 23, 42, 0.16);
+      background: #0f172a;
     }
 
     .cover {
       width: 100%;
-      max-width: 600px;
       display: block;
-      border-radius: 16px;
-      border: 1px solid var(--line);
-      box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+    }
+
+    .cover-overlay {
+      position: absolute;
+      inset: auto 0 0;
+      padding: 72px 28px 26px;
+      color: #fff;
+      text-align: left;
+      background: linear-gradient(transparent, rgba(2, 6, 23, 0.9));
+    }
+
+    .cover-kicker {
+      display: inline-flex;
+      margin-bottom: 8px;
+      padding: 5px 9px;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.55);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      backdrop-filter: blur(6px);
+    }
+
+    .cover-headline {
+      margin: 0;
+      font-size: clamp(1.35rem, 4vw, 2rem);
+      font-weight: 850;
+      line-height: 1.3;
+      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
     }
 
     .section-title {
@@ -151,11 +191,11 @@
 
     .market-overview-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 12px;
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: 760px) {
       .market-overview-grid {
         grid-template-columns: repeat(2, 1fr);
       }
@@ -252,10 +292,11 @@
     }
 
     .news-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 14px 0;
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      align-items: center;
+      gap: 16px;
+      padding: 16px 0;
       border-bottom: 1px solid var(--line);
     }
 
@@ -269,17 +310,24 @@
     }
 
     .news-rank {
-      flex-shrink: 0;
-      width: 28px;
-      height: 28px;
-      border-radius: 8px;
+      width: 92px;
+      height: 72px;
+      border-radius: 12px;
       background: var(--accent-soft);
       color: var(--accent);
-      font-size: 13px;
+      font-size: 1.1rem;
       font-weight: 800;
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+
+    .news-thumb {
+      width: 92px;
+      height: 72px;
+      border-radius: 12px;
+      object-fit: cover;
+      background: var(--accent-soft);
     }
 
     .news-content {
@@ -307,6 +355,47 @@
       margin: 0;
       font-size: 0.8rem;
       color: var(--muted);
+    }
+
+    .news-scope {
+      display: inline-flex;
+      margin-right: 6px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .news-why {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.5;
+    }
+
+    .news-why strong {
+      color: var(--accent);
+    }
+
+    @media (max-width: 600px) {
+      .news-item {
+        grid-template-columns: 72px minmax(0, 1fr);
+        gap: 11px;
+      }
+
+      .news-rank,
+      .news-thumb {
+        width: 72px;
+        height: 64px;
+      }
+
+      .cover-overlay {
+        padding: 56px 20px 20px;
+      }
     }
 
     .risk-section {
@@ -420,6 +509,9 @@
 
       .cover {
         border-color: var(--line);
+      }
+
+      .cover-frame {
         box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
       }
     }
@@ -430,8 +522,8 @@
     <header class="header">
       <span class="badge">AUTOMATED BRIEFING</span>
       <h1>Morning Briefing: 간밤의 미장 &amp; 국장 프리뷰</h1>
-      <p class="hero-focus">핵심 지수 점검</p>
-      <p class="time">생성 시각(KST): 2026-08-20 10:18:12</p>
+      <p class="hero-focus">지수 혼조 속 금리·환율 점검</p>
+      <p class="time">생성 시각(KST): 2026-08-20 10:18:51</p>
       <nav class="quick-links" aria-label="시장 브리핑 메뉴">
         <a href="live.html">장중</a>
         <a href="weekly.html">주간</a>
@@ -443,8 +535,8 @@
 <div class="market-overview-grid">
     <article class="item market-card" style="border-left: 3px solid #b91c1c">
       <p class="name">KOSPI</p>
-      <p class="price">6,782.15</p>
-      <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 310.98 (+4.81%)</p>
+      <p class="price">6,785.53</p>
+      <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 314.36 (+4.86%)</p>
     </article>
     <article class="item market-card" style="border-left: 3px solid #b91c1c">
       <p class="name">KOSDAQ</p>
@@ -452,9 +544,19 @@
       <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 12.16 (+1.47%)</p>
     </article>
     <article class="item market-card" style="border-left: 3px solid #b91c1c">
+      <p class="name">EWY</p>
+      <p class="price">174.43</p>
+      <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 4.38 (+2.58%)</p>
+    </article>
+    <article class="item market-card" style="border-left: 3px solid #b91c1c">
       <p class="name">S&amp;P 500</p>
       <p class="price">7,707.98</p>
       <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 16.22 (+0.21%)</p>
+    </article>
+    <article class="item market-card" style="border-left: 3px solid #b91c1c">
+      <p class="name">DOW</p>
+      <p class="price">53,463.05</p>
+      <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 119.65 (+0.22%)</p>
     </article>
     <article class="item market-card" style="border-left: 3px solid #b91c1c">
       <p class="name">NASDAQ</p>
@@ -463,8 +565,8 @@
     </article>
     <article class="item market-card" style="border-left: 3px solid #1d4ed8">
       <p class="name">USD/KRW</p>
-      <p class="price">1,394.22</p>
-      <p class="change" style="color: #1d4ed8; font-size: 0.95rem;">▼ 19.36 (-1.37%)</p>
+      <p class="price">1,393.98</p>
+      <p class="change" style="color: #1d4ed8; font-size: 0.95rem;">▼ 19.60 (-1.39%)</p>
     </article>
     <article class="item market-card" style="border-left: 3px solid #1d4ed8">
       <p class="name">VIX</p>
@@ -474,45 +576,61 @@
 </div>    </section>
 
     <section class="cover-section">
-      <img class="cover" src="cover.svg" onerror="this.onerror=null;this.src='cover.svg';" alt="핵심 지수 점검 브리핑 커버" />
+      <div class="cover-frame">
+        <img class="cover" src="cover.svg" onerror="this.onerror=null;this.src='cover.svg';" alt="지수 혼조 속 금리·환율 점검 브리핑 커버" />
+        <div class="cover-overlay">
+          <span class="cover-kicker">AI Editorial Cover</span>
+          <p class="cover-headline">지수 혼조 속 금리·환율 점검</p>
+        </div>
+      </div>
     </section>
 
     <section class="news-section">
       <h3 class="section-title">📰 주요 뉴스</h3>
       <ul class="news-list">
         <li class="news-item">
-          <span class="news-rank">1</span>
+          <img class="news-thumb" src="https://mimgnews.pstatic.net/image/origin/422/2026/08/20/897534.jpg?type=nf220_150" alt="" loading="lazy" referrerpolicy="no-referrer" />
           <div class="news-content">
             <p class="news-title"><a href="https://n.news.naver.com/mnews/article/422/0000897534" target="_blank" rel="noopener">SK하이닉스 40조 환원에 급등…코스피 4%대↑</a></p>
-            <p class="news-meta">연합뉴스TV · 1분전</p>
+            <p class="news-meta">
+<span class="news-scope">Korea</span>              연합뉴스TV · 1분전            </p>
+            <p class="news-why"><strong>왜 중요한가</strong> · SK하이닉스의 40조원 규모 주주환원 정책 발표로 인해 코스피가 5% 이상 급등하며 시장에 긍정적인 영향을 미쳤습니다.</p>
           </div>
         </li>
         <li class="news-item">
-          <span class="news-rank">2</span>
-          <div class="news-content">
-            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/018/0006354694" target="_blank" rel="noopener">환율 1380원대로 추가 하락…美 바이백에 ‘달러 약세’ 영향</a></p>
-            <p class="news-meta">이데일리 · 1분전</p>
-          </div>
-        </li>
-        <li class="news-item">
-          <span class="news-rank">3</span>
+          <img class="news-thumb" src="https://mimgnews.pstatic.net/image/origin/422/2026/08/20/897531.jpg?type=nf220_150" alt="" loading="lazy" referrerpolicy="no-referrer" />
           <div class="news-content">
             <p class="news-title"><a href="https://n.news.naver.com/mnews/article/422/0000897531" target="_blank" rel="noopener">[속보] 코스피 5%대 급등…매수 사이드카 발동</a></p>
-            <p class="news-meta">연합뉴스TV · 3분전</p>
+            <p class="news-meta">
+<span class="news-scope">Korea</span>              연합뉴스TV · 3분전            </p>
+            <p class="news-why"><strong>왜 중요한가</strong> · 코스피가 장중 5% 넘게 급등하며 매수 사이드카가 발동되었고, 이는 SK하이닉스의 주주환원 정책에 따른 것입니다.</p>
           </div>
         </li>
         <li class="news-item">
-          <span class="news-rank">4</span>
-          <div class="news-content">
-            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/654/0000196118" target="_blank" rel="noopener">[속보] 코스피, 5% 급등에 &#39;매수 사이드카&#39; 발동…지수 6700선 회복</a></p>
-            <p class="news-meta">강원도민일보 · 6분전</p>
-          </div>
-        </li>
-        <li class="news-item">
-          <span class="news-rank">5</span>
+          <img class="news-thumb" src="https://mimgnews.pstatic.net/image/origin/421/2026/08/20/9122908.jpg?type=nf220_150" alt="" loading="lazy" referrerpolicy="no-referrer" />
           <div class="news-content">
             <p class="news-title"><a href="https://n.news.naver.com/mnews/article/421/0009122908" target="_blank" rel="noopener">&#39;40조 자사주 소각&#39; SK하닉 11% 급등…코스피 매수 사이드카(상보)</a></p>
-            <p class="news-meta">뉴스1 · 6분전</p>
+            <p class="news-meta">
+<span class="news-scope">Korea</span>              뉴스1 · 6분전            </p>
+            <p class="news-why"><strong>왜 중요한가</strong> · SK하이닉스의 40조원 자사주 소각 발표로 인해 주가가 11% 급등하며 코스피에 긍정적인 영향을 미쳤습니다.</p>
+          </div>
+        </li>
+        <li class="news-item">
+          <img class="news-thumb" src="https://mimgnews.pstatic.net/image/origin/018/2026/08/20/6354694.jpg?type=nf220_150" alt="" loading="lazy" referrerpolicy="no-referrer" />
+          <div class="news-content">
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/018/0006354694" target="_blank" rel="noopener">환율 1380원대로 추가 하락…美 바이백에 ‘달러 약세’ 영향</a></p>
+            <p class="news-meta">
+<span class="news-scope">Macro</span>              이데일리 · 1분전            </p>
+            <p class="news-why"><strong>왜 중요한가</strong> · 원·달러 환율이 하락하고 있으며, 이는 반도체 수출기업들의 달러 매도와 미국의 장기 국채 바이백 확대에 따른 것입니다.</p>
+          </div>
+        </li>
+        <li class="news-item">
+          <img class="news-thumb" src="https://mimgnews.pstatic.net/image/origin/014/2026/08/20/5563947.jpg?type=nf220_150" alt="" loading="lazy" referrerpolicy="no-referrer" />
+          <div class="news-content">
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/014/0005563947" target="_blank" rel="noopener">삼성전자 급락에도 반등 기대…&#34;AI 투자 회수 빨라진다&#34;</a></p>
+            <p class="news-meta">
+<span class="news-scope">US</span>              파이낸셜뉴스 · 5분전            </p>
+            <p class="news-why"><strong>왜 중요한가</strong> · 삼성전자의 주가가 급락했지만, AI 투자 수익화 속도가 금리 부담을 줄일 수 있다는 분석이 나와 향후 시장에 긍정적인 영향을 미칠 수 있습니다.</p>
           </div>
         </li>
       </ul>
@@ -527,7 +645,7 @@
         </article>
         <article class="risk-item">
           <p class="risk-name">USD/KRW</p>
-          <p class="risk-meta">현재 1,394.22 (▼ 19.36 (-1.37%)) · 최근 대비 <span style="color: #b91c1c">상승</span></p>
+          <p class="risk-meta">현재 1,393.98 (▼ 19.60 (-1.39%)) · 최근 대비 <span style="color: #1d4ed8">하락</span></p>
         </article>
         <article class="risk-item">
           <p class="risk-name">US 10Y</p>
@@ -535,7 +653,7 @@
         </article>
         <article class="risk-item">
           <p class="risk-name">WTI</p>
-          <p class="risk-meta">현재 84.78 (▼ 0.16 (-0.19%)) · 최근 대비 <span style="color: #b91c1c">상승</span></p>
+          <p class="risk-meta">현재 84.79 (▼ 0.15 (-0.18%)) · 최근 대비 <span style="color: #b91c1c">상승</span></p>
         </article>
       </div>
       <p class="risk-note">누적 스냅샷 8건 기준으로 직전 기록과 방향을 비교합니다.</p>
@@ -546,15 +664,15 @@
       
       <h3 class="summary-title">한국 시장</h3>
       <ol class="summary">
-        <li><strong>코스피</strong> 6,782.15 (▲ 310.98 (+4.81%)), <strong>코스닥</strong> 836.62 (▲ 12.16 (+1.47%))로 집계됐으며 결측값은 확인이 필요합니다.</li>
-        <li><strong>EWY</strong> 174.43 (▲ 4.38 (+2.58%))와 <strong>달러원</strong> 1,394.22 (▼ 19.36 (-1.37%))의 관측 방향을 함께 확인하세요.</li>
+        <li><strong>코스피</strong> 6,785.53 (▲ 314.36 (+4.86%)), <strong>코스닥</strong> 836.62 (▲ 12.16 (+1.47%))로 집계됐으며 결측값은 확인이 필요합니다.</li>
+        <li><strong>EWY</strong> 174.43 (▲ 4.38 (+2.58%))와 <strong>달러원</strong> 1,393.98 (▼ 19.60 (-1.39%))의 관측 방향을 함께 확인하세요.</li>
         <li>수급과 거래대금 데이터는 제공되지 않았으므로 <strong>지수 관측값</strong> 이상의 원인 해석은 보류합니다.</li>
       </ol>
       <h3 class="summary-title">미국 시장</h3>
       <ol class="summary">
         <li><strong>S&amp;P500</strong> 7,707.98 (▲ 16.22 (+0.21%)), <strong>다우</strong> 53,463.05 (▲ 119.65 (+0.22%)), <strong>나스닥</strong> 26,331.09 (▲ 41.38 (+0.16%))로 집계됐습니다.</li>
-        <li><strong>VIX</strong> 14.89 (▼ 0.95 (-6.00%)), <strong>미10년물</strong> 4.65 (▼ 0.05 (-1.13%)), <strong>WTI</strong> 84.78 (▼ 0.16 (-0.19%))의 동행 여부를 확인하세요.</li>
-        <li>오늘의 <strong>핵심 관전 포인트</strong>: <strong>VIX</strong>(14.89)가 반등하면 변동성 확대 여부를 확인하고, <strong>미10년물</strong>(4.65)과 <strong>달러원</strong>(1,394.22)이 동반 상승하면 금리·환율 부담이 이어지는지 추가 지표로 확인하세요.</li>
+        <li><strong>VIX</strong> 14.89 (▼ 0.95 (-6.00%)), <strong>미10년물</strong> 4.65 (▼ 0.05 (-1.13%)), <strong>WTI</strong> 84.79 (▼ 0.15 (-0.18%))의 동행 여부를 확인하세요.</li>
+        <li>오늘의 <strong>핵심 관전 포인트</strong>: <strong>VIX</strong>(14.89)가 반등하면 변동성 확대 여부를 확인하고, <strong>미10년물</strong>(4.65)과 <strong>달러원</strong>(1,393.98)이 동반 상승하면 금리·환율 부담이 이어지는지 추가 지표로 확인하세요.</li>
       </ol>
     </section>
 
