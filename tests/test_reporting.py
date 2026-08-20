@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 
 import main
 import intraday
+import weekly_report
 from main import bold_filter, require_market_coverage
 from intraday import (
     KST,
@@ -59,6 +60,63 @@ class WeeklySummaryTests(unittest.TestCase):
         summary = build_week_summary([item])
         self.assertEqual(summary["top_risk"], "실적 악화")
         self.assertEqual(summary["top_opportunity"], "대형 수주")
+
+    def test_weights_each_trading_day_equally(self):
+        snapshots = []
+        for minute in (10, 20, 30):
+            item = snapshot(80, raw_score=45)
+            item["timestamp"] = f"2026-08-17 09:{minute:02d}:00"
+            snapshots.append(item)
+        second_day = snapshot(20, raw_score=-45)
+        second_day["timestamp"] = "2026-08-18 09:10:00"
+        snapshots.append(second_day)
+
+        summary = build_week_summary(snapshots)
+
+        self.assertEqual(summary["score_avg"], 50.0)
+        self.assertEqual(summary["trading_days"], 2)
+        self.assertEqual(summary["count"], 4)
+
+    def test_builds_grounded_next_week_outlook(self):
+        first = snapshot(48, raw_score=-3)
+        first["timestamp"] = "2026-08-17 09:10:00"
+        last = snapshot(58, raw_score=12)
+        last["timestamp"] = "2026-08-21 15:30:00"
+
+        summary = build_week_summary([first, last])
+        outlook = summary["next_week_outlook"]
+
+        self.assertIn("점", outlook["expected_range"])
+        self.assertEqual(outlook["confidence"], "낮음")
+        self.assertIn("과거 주간 스냅샷", outlook["disclaimer"])
+
+    def test_weekly_html_renders_daily_flow_and_outlook_last(self):
+        first = snapshot(48, raw_score=-3)
+        first["timestamp"] = "2026-08-17 09:10:00"
+        last = snapshot(58, raw_score=12)
+        last["timestamp"] = "2026-08-21 15:30:00"
+        last["watchpoint"] = "**VIX** 흐름을 확인하세요."
+        summary = build_week_summary([first, last])
+        payload = {
+            "title": "주간 시장 리포트 | 테스트",
+            "generated_at": "2026-08-22 09:00:00",
+            "summary": summary,
+            "daily_points": summary["daily_points"],
+            "market_performance": summary["market_performance"],
+            "risk_events": summary["risk_events"],
+            "opportunity_events": summary["opportunity_events"],
+            "next_week_outlook": summary["next_week_outlook"],
+        }
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with patch.object(weekly_report, "OUTPUT_DIR", Path(tmp_dir)):
+                weekly_report.render_weekly_html(payload)
+            html = (Path(tmp_dir) / "weekly.html").read_text(encoding="utf-8")
+
+        self.assertIn("일별 센티먼트 흐름", html)
+        self.assertIn("다음 주 조건부 전망", html)
+        self.assertIn("<strong>VIX</strong>", html)
+        self.assertLess(html.index("주요 이벤트"), html.index("다음 주 조건부 전망"))
 
 
 class SentimentContractTests(unittest.TestCase):
