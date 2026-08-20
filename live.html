@@ -281,23 +281,32 @@
     }
 
     .heatmap {
-      overflow-x: auto;
-      border: 1px solid var(--line);
-      border-radius: 10px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+      gap: 8px;
     }
 
-    .heatmap table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.85rem;
-    }
-
-    .heatmap th,
-    .heatmap td {
+    .heatmap-cell {
+      min-height: 76px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
       border: 1px solid var(--line);
-      padding: 6px;
+      border-radius: 9px;
+      padding: 8px;
       text-align: center;
-      white-space: nowrap;
+    }
+
+    .heatmap-time {
+      margin: 0 0 3px;
+      color: var(--muted);
+      font-size: 0.72rem;
+    }
+
+    .heatmap-value {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 800;
     }
 
     .timeline {
@@ -354,254 +363,244 @@
       border-radius: 3px;
       border: 1px solid var(--line);
     }
+
+    .page { max-width: 1120px; }
+
+    .hero-header {
+      position: relative;
+      overflow: hidden;
+      padding: 28px;
+      border-radius: 24px;
+      color: #f8fafc;
+      background: linear-gradient(135deg, #0f172a 0%, #164e63 100%);
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+    }
+
+    .hero-header::after {
+      content: "";
+      position: absolute;
+      width: 260px;
+      height: 260px;
+      right: -90px;
+      top: -120px;
+      border-radius: 50%;
+      background: rgba(45, 212, 191, 0.16);
+    }
+
+    .hero-header .badge { color: #99f6e4; background: rgba(15, 118, 110, 0.35); }
+    .hero-header .meta { color: #cbd5e1; }
+    .hero-header h1 { max-width: 620px; }
+    .hero-header .top-links a { color: #ccfbf1; border-color: #5eead4; background: rgba(15, 118, 110, 0.22); }
+
+    .pulse-card {
+      display: grid;
+      grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.2fr);
+      gap: 24px;
+      align-items: center;
+    }
+
+    .score-kicker {
+      margin: 0 0 6px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .score-main { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .score-number { font-size: clamp(3.4rem, 8vw, 5.4rem); line-height: 0.95; letter-spacing: -0.06em; }
+    .score-denominator { color: var(--muted); font-weight: 700; }
+
+    .state-pill,
+    .impact-badge,
+    .movement-badge {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 800;
+    }
+
+    .state-strong_bullish, .state-bullish, .impact-badge.positive, .movement-badge.positive { color: #991b1b; background: #fee2e2; }
+    .state-caution, .state-strong_caution, .impact-badge.negative, .movement-badge.negative { color: #1e40af; background: #dbeafe; }
+    .state-neutral, .impact-badge.neutral, .movement-badge.flat { color: #334155; background: #e2e8f0; }
+
+    .score-meter {
+      position: relative;
+      height: 12px;
+      margin: 18px 0 10px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #93c5fd 0%, #e2e8f0 50%, #fca5a5 100%);
+    }
+
+    .score-marker {
+      position: absolute;
+      top: 50%;
+      width: 18px;
+      height: 18px;
+      border: 3px solid #fff;
+      border-radius: 50%;
+      background: #0f172a;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.28);
+      transform: translate(-50%, -50%);
+    }
+
+    .pulse-facts {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .fact {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #f8fafc;
+    }
+
+    .fact-label { margin: 0 0 4px; color: var(--muted); font-size: 0.75rem; }
+    .fact-value { margin: 0; font-weight: 800; line-height: 1.35; }
+
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .section-head .section-title, .section-head .metric { margin-bottom: 0; }
+
+    .observation-strip {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(96px, 1fr);
+      gap: 8px;
+      overflow-x: auto;
+      padding: 2px 2px 10px;
+      scroll-snap-type: x proximity;
+    }
+
+    .heatmap-cell { scroll-snap-align: start; }
+    .heatmap-delta { margin: 4px 0 0; color: var(--muted); font-size: 0.7rem; font-weight: 700; }
+    .timeline-item.latest { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+    .event-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .event-card { padding: 14px; border: 1px solid var(--line); border-radius: 13px; background: #f8fafc; }
+    .event-meta { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; margin-bottom: 9px; }
+    .event-source, .event-time { color: var(--muted); font-size: 0.75rem; }
+    .event-title { color: var(--ink); font-weight: 750; line-height: 1.45; text-decoration: none; }
+    .event-title:hover { color: var(--accent); text-decoration: underline; }
+    .event-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 10px; }
+    .event-tag { padding: 3px 7px; border-radius: 999px; color: var(--muted); background: #e2e8f0; font-size: 0.7rem; }
+
+    .insight-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    details.card summary { cursor: pointer; color: var(--accent); font-weight: 800; }
+    details.card[open] summary { margin-bottom: 14px; }
+
+    @media (max-width: 760px) {
+      .page { padding-top: 16px; }
+      .hero-header { padding: 22px 18px; border-radius: 18px; }
+      .pulse-card, .insight-grid, .event-grid { grid-template-columns: 1fr; }
+      .pulse-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .market-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .timeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 420px) {
+      .pulse-facts { grid-template-columns: 1fr; }
+      .market-overview-grid { grid-template-columns: 1fr 1fr; }
+      .card { padding: 16px; }
+    }
   </style>
 </head>
 <body>
   <main class="page">
-    <span class="badge">LIVE MARKET PULSE</span>
-    <h1>장중 시장 분위기 모니터</h1>
-    <p class="meta">시장 관측 구간: 2026-08-20 08:00:00 ~ 2026-08-20 08:59:59 / 생성 시각: 2026-08-20 08:48:20 (KST)</p>
-    <nav class="top-links" aria-label="시장 브리핑 메뉴">
-      <a href="index.html">데일리</a>
-      <a href="weekly.html">주간</a>
-    </nav>
+    <header class="hero-header">
+      <span class="badge">LIVE · ACTUAL SNAPSHOT</span>
+      <h1>장중 시장 분위기 모니터</h1>
+      <p class="meta">실행 시각 2026-08-20 12:30:12 KST · 관측 구간 2026-08-20 12:00:00 ~ 2026-08-20 12:59:59</p>
+      <nav class="top-links" aria-label="시장 브리핑 메뉴">
+        <a href="index.html">데일리 브리핑</a>
+        <a href="weekly.html">주간 리포트</a>
+      </nav>
+    </header>
 
-    <section class="card">
-      <h2 class="section-title">하이브리드 센티먼트</h2>
-      <div class="score">
-        <p class="score-text">중립 · 43.2점</p>
-        <span class="tooltip">
-          <button class="tooltip-button" type="button" aria-describedby="score-tooltip">i</button>
-          <span class="tooltip-panel" id="score-tooltip" role="tooltip">
-            <p class="tooltip-title">점수 해석 기준</p>
-            <p>점수는 0~100 범위이며, 50이 중립 기준입니다.</p>
-            <p>50보다 높을수록 우호적이고, 낮을수록 방어적입니다.</p>
-            <p>현재 점수: 43.2점</p>
-            <p>현재 구간: 중립</p>
-            <p>해석: 상승·하락 신호가 혼재한 상태입니다.</p>
-            <p>기준: 40~59.9는 중립 구간</p>
-            <p>세부 반영: 시장 8.23 / 뉴스 3.7 / 공시 -10.8 / 섹터 0.58</p>
-          </span>
-        </span>
-      </div>
-      <ul class="breakdown">
-        <li>시장 8.23</li>
-        <li>뉴스 3.7</li>
-        <li>공시 -10.8</li>
-        <li>섹터 0.58</li>
-      </ul>
-      <div class="metric metric-line">
-        <span>신뢰도 81%</span>
-        <span class="tooltip">
-          <button class="tooltip-button" type="button" aria-describedby="confidence-tooltip">i</button>
-          <span class="tooltip-panel" id="confidence-tooltip" role="tooltip">
-              <p class="tooltip-title">신뢰도 안내</p>
-              <p>신뢰도는 예측 적중률이 아니라, 현재 점수 계산에 사용된 데이터의 충실도를 의미합니다.</p>
-              <p>현재 신뢰도: 81%</p>
-              <p>해석: 데이터 커버리지가 높은 상태입니다.</p>
-              <p>기준: 지표 9/9, 이벤트 23건, 섹터확인 0건</p>
-              <p>주의: 이 값이 미래 방향 적중률을 직접 뜻하지는 않습니다.</p>
-          </span>
-        </span>
-        <span>산정 근거: 지표 9/9, 이벤트 23건, 섹터확인 0건</span>
-      </div>
-      <ol class="summary">
-          <li>하이브리드 점수는 <strong>43.2점(중립)</strong>으로, 시장 8.23, 뉴스 3.7, 공시 -10.8, 섹터확인 0.58를 반영했습니다.</li>
-          <li>리스크 축은 <strong>VIX 14.89 (▼ 0.95 (-6.00%))</strong>, <strong>달러원 1,388.73 (▼ 24.85 (-1.76%))</strong> 흐름을 우선 점검하세요.</li>
-          <li>주요 뉴스: <strong>美 재무부 장기채 바이백 확대…뉴욕증시 3거래일 만에 반등[뉴스새벽배송]</strong></li>
-      </ol>
-      <p class="watch">오늘의 <strong>핵심 관전 포인트</strong>: <strong>VIX</strong>와 <strong>달러원</strong>이 동반 상승하면 변동성·환율 부담의 지속 여부를 확인하고, 두 지표가 안정되면 지수 레벨과 이벤트 점수가 함께 개선되는지 확인하세요.</p>
-    </section>
-
-    <section class="card">
-      <h2 class="section-title">전일 대비 자동 코멘트</h2>
-      <ol class="summary">
-          <li>전일 비교 데이터 확인이 필요합니다.</li>
-      </ol>
-    </section>
-
-    <section class="card">
-      <h2 class="section-title">섹터 회전 탐지</h2>
-      <div class="split">
-        <div>
-          <p class="metric">강세 전개 후보</p>
-          <ol class="tiny-list">
-              <li>반도체 (1.17) · 이벤트 2.0 / 가격 0.0 / 신뢰도 65%</li>
-          </ol>
+    <section class="card pulse-card">
+      <div>
+        <p class="score-kicker">Hybrid sentiment</p>
+        <div class="score-main">
+          <strong class="score-number">63.6</strong>
+          <span class="score-denominator">/ 100</span>
+          <span class="state-pill state-bullish">우호</span>
         </div>
-        <div>
-          <p class="metric">약세/경계 후보</p>
-          <ol class="tiny-list">
-              <li>조건을 충족한 경계 후보가 없습니다.</li>
-          </ol>
+        <div class="score-meter" aria-label="센티먼트 점수 63.6점">
+          <span class="score-marker" style="left: 63.6%"></span>
         </div>
+        <p class="metric">전반적으로 우호적이지만 추가 확인이 필요한 상태입니다.</p>
+        <span class="movement-badge positive">직전 실행 대비 +20.4p</span>
       </div>
-      <p class="metric">기준: 이벤트 점수 + 대표 종목 수익률 확인 결합</p>
-    </section>
-
-    <section class="card">
-      <h2 class="section-title">신뢰도 점검</h2>
-      <p class="metric">평가 표본 24건</p>
-      <p class="metric">Hit Rate: 41.7% / False Alarm: 58.3%</p>
-      <p class="metric">Bullish 0.0% / Bearish 33.3% / Neutral 45.0%</p>
-      <p class="metric">검증 기준: 20~120분 뒤 동일 거래일 KOSPI/KOSDAQ 지수 레벨 수익률 기준</p>
-    </section>
-
-    <section class="card">
-      <h2 class="section-title">히트맵 / 타임라인</h2>
-      <ul class="legend">
-          <li><span class="swatch" style="background: #fecaca"></span>강한 우호 80+</li>
-          <li><span class="swatch" style="background: #fee2e2"></span>우호 60~79</li>
-          <li><span class="swatch" style="background: #e2e8f0"></span>중립 40~59</li>
-          <li><span class="swatch" style="background: #dbeafe"></span>경계 20~39</li>
-          <li><span class="swatch" style="background: #bfdbfe"></span>강한 경계 0~19</li>
-          <li><span class="swatch" style="background: #f8fafc"></span>결측</li>
-      </ul>
-      <p class="metric">점수 기준: 80 이상 강한 우호 / 60~79 우호 / 40~59 중립 / 20~39 경계 / 0~19 강한 경계</p>
-      <div class="heatmap">
-        <table>
-          <caption>최근 5거래일 시간대별 센티먼트 점수</caption>
-          <thead>
-            <tr>
-              <th>일자</th>
-                <th>08:30</th>
-                <th>09:30</th>
-                <th>10:30</th>
-                <th>11:30</th>
-                <th>12:30</th>
-                <th>13:30</th>
-                <th>14:30</th>
-                <th>15:30</th>
-            </tr>
-          </thead>
-          <tbody>
-              <tr>
-                <th scope="row">08-14</th>
-                  <td style="background: #f8fafc">-</td>
-                  <td style="background: #e2e8f0">52</td>
-                  <td style="background: #f8fafc">-</td>
-                  <td style="background: #f8fafc">-</td>
-                  <td style="background: #e2e8f0">53</td>
-                  <td style="background: #f8fafc">-</td>
-                  <td style="background: #e2e8f0">57</td>
-                  <td style="background: #e2e8f0">54</td>
-              </tr>
-              <tr>
-                <th scope="row">08-17</th>
-                  <td style="background: #fee2e2">65</td>
-                  <td style="background: #f8fafc">-</td>
-                  <td style="background: #e2e8f0">55</td>
-                  <td style="background: #f8fafc">-</td>
-                  <td style="background: #e2e8f0">46</td>
-                  <td style="background: #e2e8f0">48</td>
-                  <td style="background: #e2e8f0">42</td>
-                  <td style="background: #f8fafc">-</td>
-              </tr>
-              <tr>
-                <th scope="row">08-18</th>
-                  <td style="background: #e2e8f0">47</td>
-                  <td style="background: #f8fafc">-</td>
-                  <td style="background: #fee2e2">64</td>
-                  <td style="background: #f8fafc">-</td>
-                  <td style="background: #e2e8f0">50</td>
-                  <td style="background: #e2e8f0">45</td>
-                  <td style="background: #dbeafe">39</td>
-                  <td style="background: #f8fafc">-</td>
-              </tr>
-              <tr>
-                <th scope="row">08-19</th>
-                  <td style="background: #dbeafe">36</td>
-                  <td style="background: #f8fafc">-</td>
-                  <td style="background: #e2e8f0">40</td>
-                  <td style="background: #f8fafc">-</td>
-                  <td style="background: #e2e8f0">44</td>
-                  <td style="background: #e2e8f0">42</td>
-                  <td style="background: #dbeafe">31</td>
-                  <td style="background: #f8fafc">-</td>
-              </tr>
-              <tr>
-                <th scope="row">08-20</th>
-                  <td style="background: #e2e8f0">43</td>
-                  <td style="background: #f8fafc">-</td>
-                  <td style="background: #f8fafc">-</td>
-                  <td style="background: #f8fafc">-</td>
-                  <td style="background: #f8fafc">-</td>
-                  <td style="background: #f8fafc">-</td>
-                  <td style="background: #f8fafc">-</td>
-                  <td style="background: #f8fafc">-</td>
-              </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="timeline">
-          <article class="timeline-item" style="background: #fee2e2">
-            <p class="timeline-time">08-18 10:56</p>
-            <p class="timeline-score">64.3 · 우호</p>
+      <div>
+        <div class="pulse-facts">
+          <article class="fact">
+            <p class="fact-label">데이터 신뢰도</p>
+            <p class="fact-value">93% · 지표 9/9, 이벤트 41건, 섹터확인 3건</p>
           </article>
-          <article class="timeline-item" style="background: #e2e8f0">
-            <p class="timeline-time">08-18 12:21</p>
-            <p class="timeline-score">50.3 · 중립</p>
+          <article class="fact">
+            <p class="fact-label">가장 큰 점수 요인</p>
+            <p class="fact-value">시장 12.0 · 우호 기여</p>
           </article>
-          <article class="timeline-item" style="background: #e2e8f0">
-            <p class="timeline-time">08-18 14:00</p>
-            <p class="timeline-score">48.3 · 중립</p>
+          <article class="fact">
+            <p class="fact-label">이번 실행 신규 이벤트</p>
+            <p class="fact-value">뉴스 1건 · 공시 40건</p>
           </article>
-          <article class="timeline-item" style="background: #dbeafe">
-            <p class="timeline-time">08-18 14:53</p>
-            <p class="timeline-score">38.8 · 경계</p>
+          <article class="fact">
+            <p class="fact-label">점수 해석</p>
+            <p class="fact-value">60~79.9는 우호 구간</p>
           </article>
-          <article class="timeline-item" style="background: #e2e8f0">
-            <p class="timeline-time">08-18 16:13</p>
-            <p class="timeline-score">45.8 · 중립</p>
-          </article>
-          <article class="timeline-item" style="background: #dbeafe">
-            <p class="timeline-time">08-19 08:47</p>
-            <p class="timeline-score">35.6 · 경계</p>
-          </article>
-          <article class="timeline-item" style="background: #e2e8f0">
-            <p class="timeline-time">08-19 10:58</p>
-            <p class="timeline-score">40.1 · 중립</p>
-          </article>
-          <article class="timeline-item" style="background: #e2e8f0">
-            <p class="timeline-time">08-19 12:24</p>
-            <p class="timeline-score">44.5 · 중립</p>
-          </article>
-          <article class="timeline-item" style="background: #e2e8f0">
-            <p class="timeline-time">08-19 13:06</p>
-            <p class="timeline-score">41.7 · 중립</p>
-          </article>
-          <article class="timeline-item" style="background: #dbeafe">
-            <p class="timeline-time">08-19 14:54</p>
-            <p class="timeline-score">34.2 · 경계</p>
-          </article>
-          <article class="timeline-item" style="background: #dbeafe">
-            <p class="timeline-time">08-19 16:13</p>
-            <p class="timeline-score">33.6 · 경계</p>
-          </article>
-          <article class="timeline-item" style="background: #e2e8f0">
-            <p class="timeline-time">08-20 08:48</p>
-            <p class="timeline-score">43.2 · 중립</p>
-          </article>
+        </div>
+        <ol class="summary">
+            <li>하이브리드 점수는 <strong>63.6점(우호)</strong>으로, 시장 12, 뉴스 0.0, 공시 3.2, 섹터확인 1.95를 반영했습니다.</li>
+            <li>리스크 축은 <strong>VIX 14.89 (▼ 0.95 (-6.00%))</strong>, <strong>달러원 1,394.09 (▼ 19.49 (-1.38%))</strong> 흐름을 우선 점검하세요.</li>
+            <li>주요 뉴스: <strong>창신 이어 양쯔까지…&#39;中 메모리&#39; 잇딴 IPO에 삼전·닉스 부담 커지나</strong></li>
+        </ol>
+        <p class="watch">오늘의 <strong>핵심 관전 포인트</strong>: <strong>VIX</strong>와 <strong>달러원</strong>이 동반 상승하면 변동성·환율 부담의 지속 여부를 확인하고, 두 지표가 안정되면 지수 레벨과 이벤트 점수가 함께 개선되는지 확인하세요.</p>
       </div>
     </section>
 
     <section class="card">
-      <h2 class="section-title">핵심 시장 신호</h2>
+      <div class="section-head">
+        <h2 class="section-title">핵심 시장 신호</h2>
+        <p class="metric">현재 실행에서 수집한 지수</p>
+      </div>
 <div class="market-overview-grid">
-    <article class="item market-card" style="border-left: 3px solid #4b5563">
+    <article class="item market-card" style="border-left: 3px solid #b91c1c">
       <p class="name">KOSPI</p>
-      <p class="price">6,471.17</p>
-      <p class="change" style="color: #4b5563; font-size: 0.95rem;">- 0.00 (+0.00%)</p>
+      <p class="price">6,848.83</p>
+      <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 377.66 (+5.84%)</p>
     </article>
-    <article class="item market-card" style="border-left: 3px solid #4b5563">
+    <article class="item market-card" style="border-left: 3px solid #b91c1c">
       <p class="name">KOSDAQ</p>
-      <p class="price">824.46</p>
-      <p class="change" style="color: #4b5563; font-size: 0.95rem;">- 0.00 (+0.00%)</p>
+      <p class="price">839.42</p>
+      <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 14.96 (+1.81%)</p>
+    </article>
+    <article class="item market-card" style="border-left: 3px solid #b91c1c">
+      <p class="name">EWY</p>
+      <p class="price">174.43</p>
+      <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 4.38 (+2.58%)</p>
     </article>
     <article class="item market-card" style="border-left: 3px solid #b91c1c">
       <p class="name">S&amp;P 500</p>
       <p class="price">7,707.98</p>
       <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 16.22 (+0.21%)</p>
+    </article>
+    <article class="item market-card" style="border-left: 3px solid #b91c1c">
+      <p class="name">DOW</p>
+      <p class="price">53,463.10</p>
+      <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 119.70 (+0.22%)</p>
     </article>
     <article class="item market-card" style="border-left: 3px solid #b91c1c">
       <p class="name">NASDAQ</p>
@@ -610,8 +609,8 @@
     </article>
     <article class="item market-card" style="border-left: 3px solid #1d4ed8">
       <p class="name">USD/KRW</p>
-      <p class="price">1,388.73</p>
-      <p class="change" style="color: #1d4ed8; font-size: 0.95rem;">▼ 24.85 (-1.76%)</p>
+      <p class="price">1,394.09</p>
+      <p class="change" style="color: #1d4ed8; font-size: 0.95rem;">▼ 19.49 (-1.38%)</p>
     </article>
     <article class="item market-card" style="border-left: 3px solid #1d4ed8">
       <p class="name">VIX</p>
@@ -621,64 +620,400 @@
 </div>    </section>
 
     <section class="card">
-      <h2 class="section-title">최근 주요 뉴스 이벤트</h2>
-      <ol class="event-list">
-          <li>
-            <a href="https://finance.naver.com/news/news_read.naver?article_id=0006354565&amp;office_id=018&amp;mode=mainnews&amp;type=&amp;date=2026-08-20&amp;page=1" target="_blank" rel="noopener noreferrer">美 재무부 장기채 바이백 확대…뉴욕증시 3거래일 만에 반등[뉴스새벽배송]</a>
-            (이데일리, 점수 2)
-          </li>
-          <li>
-            <a href="https://finance.naver.com/news/news_read.naver?article_id=0005804959&amp;office_id=277&amp;mode=mainnews&amp;type=&amp;date=2026-08-20&amp;page=1" target="_blank" rel="noopener noreferrer">美, 반도체 변동성에도 바이오로 반등…韓도 상승 전망[굿모닝증시]</a>
-            (아시아경제, 점수 1)
-          </li>
-          <li>
-            <a href="https://finance.naver.com/news/news_read.naver?article_id=0016260065&amp;office_id=001&amp;mode=mainnews&amp;type=&amp;date=2026-08-20&amp;page=1" target="_blank" rel="noopener noreferrer">美훈풍·하이닉스 주주환원…코스피 반등 시도하나[마켓뷰]</a>
-            (연합뉴스, 점수 1)
-          </li>
-          <li>
-            <a href="https://finance.naver.com/news/news_read.naver?article_id=0000049984&amp;office_id=648&amp;mode=mainnews&amp;type=&amp;date=2026-08-20&amp;page=1" target="_blank" rel="noopener noreferrer">코스닥 30년차 제이엠아이, &#39;동전주&#39; 해결해도 &#39;시총&#39; 문턱…대책은?</a>
-            (비즈워치, 점수 0)
-          </li>
-          <li>
-            <a href="https://finance.naver.com/news/news_read.naver?article_id=0006354573&amp;office_id=018&amp;mode=mainnews&amp;type=&amp;date=2026-08-20&amp;page=1" target="_blank" rel="noopener noreferrer">1400원 깨진 환율…“외국인 국내 증시 유입 촉매”</a>
-            (이데일리, 점수 0)
-          </li>
-          <li>
-            <a href="https://finance.naver.com/news/news_read.naver?article_id=0005322671&amp;office_id=015&amp;mode=mainnews&amp;type=&amp;date=2026-08-20&amp;page=1" target="_blank" rel="noopener noreferrer">&#34;서진시스템, 주가 끌어 내린 악재들 해소 국면…목표가↓&#34;-iM</a>
-            (한국경제, 점수 0)
-          </li>
-      </ol>
+      <div class="section-head">
+        <h2 class="section-title">실제 실행 흐름</h2>
+        <p class="metric">예약 슬롯 보정 없음 · KST</p>
+      </div>
+      <ul class="legend">
+          <li><span class="swatch" style="background: #fecaca"></span>강한 우호 80+</li>
+          <li><span class="swatch" style="background: #fee2e2"></span>우호 60~79</li>
+          <li><span class="swatch" style="background: #e2e8f0"></span>중립 40~59</li>
+          <li><span class="swatch" style="background: #dbeafe"></span>경계 20~39</li>
+          <li><span class="swatch" style="background: #bfdbfe"></span>강한 경계 0~19</li>
+      </ul>
+      <div class="observation-strip" aria-label="최근 실제 실행 시각별 센티먼트 히트맵">
+          <article class="heatmap-cell" style="background: #fee2e2" aria-label="08-11 09:00 60.6점 우호">
+            <p class="heatmap-time">08-11 09:00</p>
+            <p class="heatmap-value">60.6</p>
+            <p class="heatmap-delta">0.0p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-11 11:33 46.2점 중립">
+            <p class="heatmap-time">08-11 11:33</p>
+            <p class="heatmap-value">46.2</p>
+            <p class="heatmap-delta">-14.4p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-11 13:47 48.4점 중립">
+            <p class="heatmap-time">08-11 13:47</p>
+            <p class="heatmap-value">48.4</p>
+            <p class="heatmap-delta">+2.2p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-11 15:13 50.8점 중립">
+            <p class="heatmap-time">08-11 15:13</p>
+            <p class="heatmap-value">50.8</p>
+            <p class="heatmap-delta">+2.4p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-11 16:44 46.4점 중립">
+            <p class="heatmap-time">08-11 16:44</p>
+            <p class="heatmap-value">46.4</p>
+            <p class="heatmap-delta">-4.4p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #fee2e2" aria-label="08-12 09:07 66.0점 우호">
+            <p class="heatmap-time">08-12 09:07</p>
+            <p class="heatmap-value">66.0</p>
+            <p class="heatmap-delta">+19.6p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #fee2e2" aria-label="08-12 12:03 64.4점 우호">
+            <p class="heatmap-time">08-12 12:03</p>
+            <p class="heatmap-value">64.4</p>
+            <p class="heatmap-delta">-1.6p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-12 14:12 59.3점 중립">
+            <p class="heatmap-time">08-12 14:12</p>
+            <p class="heatmap-value">59.3</p>
+            <p class="heatmap-delta">-5.1p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-12 15:51 53.3점 중립">
+            <p class="heatmap-time">08-12 15:51</p>
+            <p class="heatmap-value">53.3</p>
+            <p class="heatmap-delta">-6.0p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-13 09:07 58.1점 중립">
+            <p class="heatmap-time">08-13 09:07</p>
+            <p class="heatmap-value">58.1</p>
+            <p class="heatmap-delta">+4.8p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-13 12:06 45.0점 중립">
+            <p class="heatmap-time">08-13 12:06</p>
+            <p class="heatmap-value">45.0</p>
+            <p class="heatmap-delta">-13.1p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-13 14:16 49.1점 중립">
+            <p class="heatmap-time">08-13 14:16</p>
+            <p class="heatmap-value">49.1</p>
+            <p class="heatmap-delta">+4.1p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #fee2e2" aria-label="08-13 15:54 63.3점 우호">
+            <p class="heatmap-time">08-13 15:54</p>
+            <p class="heatmap-value">63.3</p>
+            <p class="heatmap-delta">+14.2p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-14 09:08 52.1점 중립">
+            <p class="heatmap-time">08-14 09:08</p>
+            <p class="heatmap-value">52.1</p>
+            <p class="heatmap-delta">-11.2p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-14 12:05 53.3점 중립">
+            <p class="heatmap-time">08-14 12:05</p>
+            <p class="heatmap-value">53.3</p>
+            <p class="heatmap-delta">+1.2p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-14 14:13 57.3점 중립">
+            <p class="heatmap-time">08-14 14:13</p>
+            <p class="heatmap-value">57.3</p>
+            <p class="heatmap-delta">+4.0p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-14 15:52 54.2점 중립">
+            <p class="heatmap-time">08-14 15:52</p>
+            <p class="heatmap-value">54.2</p>
+            <p class="heatmap-delta">-3.1p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #fee2e2" aria-label="08-17 08:44 65.4점 우호">
+            <p class="heatmap-time">08-17 08:44</p>
+            <p class="heatmap-value">65.4</p>
+            <p class="heatmap-delta">+11.2p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-17 11:00 55.4점 중립">
+            <p class="heatmap-time">08-17 11:00</p>
+            <p class="heatmap-value">55.4</p>
+            <p class="heatmap-delta">-10.0p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-17 12:26 46.1점 중립">
+            <p class="heatmap-time">08-17 12:26</p>
+            <p class="heatmap-value">46.1</p>
+            <p class="heatmap-delta">-9.3p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-17 13:10 48.1점 중립">
+            <p class="heatmap-time">08-17 13:10</p>
+            <p class="heatmap-value">48.1</p>
+            <p class="heatmap-delta">+2.0p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-17 14:06 42.3점 중립">
+            <p class="heatmap-time">08-17 14:06</p>
+            <p class="heatmap-value">42.3</p>
+            <p class="heatmap-delta">-5.8p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-17 14:58 46.2점 중립">
+            <p class="heatmap-time">08-17 14:58</p>
+            <p class="heatmap-value">46.2</p>
+            <p class="heatmap-delta">+3.9p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-17 16:30 55.9점 중립">
+            <p class="heatmap-time">08-17 16:30</p>
+            <p class="heatmap-value">55.9</p>
+            <p class="heatmap-delta">+9.7p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-18 08:47 46.8점 중립">
+            <p class="heatmap-time">08-18 08:47</p>
+            <p class="heatmap-value">46.8</p>
+            <p class="heatmap-delta">-9.1p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #fee2e2" aria-label="08-18 10:56 64.3점 우호">
+            <p class="heatmap-time">08-18 10:56</p>
+            <p class="heatmap-value">64.3</p>
+            <p class="heatmap-delta">+17.5p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-18 12:21 50.3점 중립">
+            <p class="heatmap-time">08-18 12:21</p>
+            <p class="heatmap-value">50.3</p>
+            <p class="heatmap-delta">-14.0p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-18 13:05 44.9점 중립">
+            <p class="heatmap-time">08-18 13:05</p>
+            <p class="heatmap-value">44.9</p>
+            <p class="heatmap-delta">-5.4p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-18 14:00 48.3점 중립">
+            <p class="heatmap-time">08-18 14:00</p>
+            <p class="heatmap-value">48.3</p>
+            <p class="heatmap-delta">+3.4p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #dbeafe" aria-label="08-18 14:53 38.8점 경계">
+            <p class="heatmap-time">08-18 14:53</p>
+            <p class="heatmap-value">38.8</p>
+            <p class="heatmap-delta">-9.5p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-18 16:13 45.8점 중립">
+            <p class="heatmap-time">08-18 16:13</p>
+            <p class="heatmap-value">45.8</p>
+            <p class="heatmap-delta">+7.0p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #dbeafe" aria-label="08-19 08:47 35.6점 경계">
+            <p class="heatmap-time">08-19 08:47</p>
+            <p class="heatmap-value">35.6</p>
+            <p class="heatmap-delta">-10.2p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-19 10:58 40.1점 중립">
+            <p class="heatmap-time">08-19 10:58</p>
+            <p class="heatmap-value">40.1</p>
+            <p class="heatmap-delta">+4.5p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-19 12:24 44.5점 중립">
+            <p class="heatmap-time">08-19 12:24</p>
+            <p class="heatmap-value">44.5</p>
+            <p class="heatmap-delta">+4.4p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-19 13:06 41.7점 중립">
+            <p class="heatmap-time">08-19 13:06</p>
+            <p class="heatmap-value">41.7</p>
+            <p class="heatmap-delta">-2.8p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #dbeafe" aria-label="08-19 14:01 31.1점 경계">
+            <p class="heatmap-time">08-19 14:01</p>
+            <p class="heatmap-value">31.1</p>
+            <p class="heatmap-delta">-10.6p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #dbeafe" aria-label="08-19 14:54 34.2점 경계">
+            <p class="heatmap-time">08-19 14:54</p>
+            <p class="heatmap-value">34.2</p>
+            <p class="heatmap-delta">+3.1p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #dbeafe" aria-label="08-19 16:13 33.6점 경계">
+            <p class="heatmap-time">08-19 16:13</p>
+            <p class="heatmap-value">33.6</p>
+            <p class="heatmap-delta">-0.6p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #e2e8f0" aria-label="08-20 08:48 43.2점 중립">
+            <p class="heatmap-time">08-20 08:48</p>
+            <p class="heatmap-value">43.2</p>
+            <p class="heatmap-delta">+9.6p</p>
+          </article>
+          <article class="heatmap-cell" style="background: #fee2e2" aria-label="08-20 12:30 63.6점 우호">
+            <p class="heatmap-time">08-20 12:30</p>
+            <p class="heatmap-value">63.6</p>
+            <p class="heatmap-delta">+20.4p</p>
+          </article>
+      </div>
+      <div class="timeline">
+          <article class="timeline-item" style="background: #e2e8f0">
+            <p class="timeline-time">08-18 14:00</p>
+            <p class="timeline-score">48.3 · 중립</p>
+            <p class="heatmap-delta">+3.4p</p>
+          </article>
+          <article class="timeline-item" style="background: #dbeafe">
+            <p class="timeline-time">08-18 14:53</p>
+            <p class="timeline-score">38.8 · 경계</p>
+            <p class="heatmap-delta">-9.5p</p>
+          </article>
+          <article class="timeline-item" style="background: #e2e8f0">
+            <p class="timeline-time">08-18 16:13</p>
+            <p class="timeline-score">45.8 · 중립</p>
+            <p class="heatmap-delta">+7.0p</p>
+          </article>
+          <article class="timeline-item" style="background: #dbeafe">
+            <p class="timeline-time">08-19 08:47</p>
+            <p class="timeline-score">35.6 · 경계</p>
+            <p class="heatmap-delta">-10.2p</p>
+          </article>
+          <article class="timeline-item" style="background: #e2e8f0">
+            <p class="timeline-time">08-19 10:58</p>
+            <p class="timeline-score">40.1 · 중립</p>
+            <p class="heatmap-delta">+4.5p</p>
+          </article>
+          <article class="timeline-item" style="background: #e2e8f0">
+            <p class="timeline-time">08-19 12:24</p>
+            <p class="timeline-score">44.5 · 중립</p>
+            <p class="heatmap-delta">+4.4p</p>
+          </article>
+          <article class="timeline-item" style="background: #e2e8f0">
+            <p class="timeline-time">08-19 13:06</p>
+            <p class="timeline-score">41.7 · 중립</p>
+            <p class="heatmap-delta">-2.8p</p>
+          </article>
+          <article class="timeline-item" style="background: #dbeafe">
+            <p class="timeline-time">08-19 14:01</p>
+            <p class="timeline-score">31.1 · 경계</p>
+            <p class="heatmap-delta">-10.6p</p>
+          </article>
+          <article class="timeline-item" style="background: #dbeafe">
+            <p class="timeline-time">08-19 14:54</p>
+            <p class="timeline-score">34.2 · 경계</p>
+            <p class="heatmap-delta">+3.1p</p>
+          </article>
+          <article class="timeline-item" style="background: #dbeafe">
+            <p class="timeline-time">08-19 16:13</p>
+            <p class="timeline-score">33.6 · 경계</p>
+            <p class="heatmap-delta">-0.6p</p>
+          </article>
+          <article class="timeline-item" style="background: #e2e8f0">
+            <p class="timeline-time">08-20 08:48</p>
+            <p class="timeline-score">43.2 · 중립</p>
+            <p class="heatmap-delta">+9.6p</p>
+          </article>
+          <article class="timeline-item latest" style="background: #fee2e2">
+            <p class="timeline-time">08-20 12:30</p>
+            <p class="timeline-score">63.6 · 우호</p>
+            <p class="heatmap-delta">+20.4p · 최신</p>
+          </article>
+      </div>
     </section>
 
     <section class="card">
-      <h2 class="section-title">당일 주요 공시 이벤트</h2>
-      <ol class="event-list">
-          <li>
-            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820000003" target="_blank" rel="noopener noreferrer">에이치엘로보틱스 특수관계인의유상증자참여</a>
-            (점수 -4)
-          </li>
-          <li>
-            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820000002" target="_blank" rel="noopener noreferrer">에이치엘로보틱스 유상증자결정</a>
-            (점수 -4)
-          </li>
-          <li>
-            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260819000386" target="_blank" rel="noopener noreferrer">나노씨엠에스 주요사항보고서(유상증자결정)</a>
-            (점수 -4)
-          </li>
-          <li>
-            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820800042" target="_blank" rel="noopener noreferrer">LG디스플레이 기업설명회(IR)개최(안내공시)              </a>
-            (점수 0)
-          </li>
-          <li>
-            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820000005" target="_blank" rel="noopener noreferrer">에이치엘로보틱스 최대주주등의주식보유변동</a>
-            (점수 0)
-          </li>
-          <li>
-            <a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820800033" target="_blank" rel="noopener noreferrer">LIG디펜스앤에어로스페이스 기업설명회(IR)개최(안내공시)              </a>
-            (점수 0)
-          </li>
-      </ol>
+      <div class="section-head">
+        <h2 class="section-title">이번 실행 주요 뉴스</h2>
+        <p class="metric">영향도 절댓값 순</p>
+      </div>
+      <div class="event-grid">
+          <article class="event-card">
+            <div class="event-meta">
+              <span class="impact-badge neutral">중립 0</span>
+              <span class="event-source">뉴시스</span>
+              <span class="event-time">2026-08-20 12:05:40</span>
+            </div>
+            <a class="event-title" href="https://finance.naver.com/news/news_read.naver?article_id=0014137792&amp;office_id=003&amp;mode=mainnews&amp;type=&amp;date=2026-08-20&amp;page=1" target="_blank" rel="noopener noreferrer">창신 이어 양쯔까지…&#39;中 메모리&#39; 잇딴 IPO에 삼전·닉스 부담 커지나</a>
+          </article>
+      </div>
     </section>
+
+    <section class="card">
+      <div class="section-head">
+        <h2 class="section-title">이번 실행 주요 공시</h2>
+        <p class="metric">DART 당일 신규 공시</p>
+      </div>
+      <div class="event-grid">
+          <article class="event-card">
+            <div class="event-meta">
+              <span class="impact-badge negative">경계 신호 -4</span>
+              <span class="event-source">DART</span>
+              <span class="event-time">20260820</span>
+            </div>
+            <a class="event-title" href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820000089" target="_blank" rel="noopener noreferrer">한탑 주요사항보고서(유상증자결정)</a>
+              <div class="event-tags">
+<span class="event-tag">유상증자</span>              </div>
+          </article>
+          <article class="event-card">
+            <div class="event-meta">
+              <span class="impact-badge positive">우호 신호 +3</span>
+              <span class="event-source">DART</span>
+              <span class="event-time">20260820</span>
+            </div>
+            <a class="event-title" href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820800177" target="_blank" rel="noopener noreferrer">미래산업 단일판매ㆍ공급계약체결              </a>
+              <div class="event-tags">
+<span class="event-tag">공급계약</span>              </div>
+          </article>
+          <article class="event-card">
+            <div class="event-meta">
+              <span class="impact-badge positive">우호 신호 +3</span>
+              <span class="event-source">DART</span>
+              <span class="event-time">20260820</span>
+            </div>
+            <a class="event-title" href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820800160" target="_blank" rel="noopener noreferrer">HJ중공업 [기재정정]단일판매ㆍ공급계약체결              </a>
+              <div class="event-tags">
+<span class="event-tag">공급계약</span><span class="event-tag">정정</span>              </div>
+          </article>
+          <article class="event-card">
+            <div class="event-meta">
+              <span class="impact-badge positive">우호 신호 +3</span>
+              <span class="event-source">DART</span>
+              <span class="event-time">20260820</span>
+            </div>
+            <a class="event-title" href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820900104" target="_blank" rel="noopener noreferrer">에이직랜드 [기재정정]단일판매ㆍ공급계약체결              </a>
+              <div class="event-tags">
+<span class="event-tag">공급계약</span><span class="event-tag">정정</span>              </div>
+          </article>
+          <article class="event-card">
+            <div class="event-meta">
+              <span class="impact-badge neutral">중립 0</span>
+              <span class="event-source">DART</span>
+              <span class="event-time">20260820</span>
+            </div>
+            <a class="event-title" href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820000110" target="_blank" rel="noopener noreferrer">모비데이즈 주식등의대량보유상황보고서(일반)</a>
+          </article>
+          <article class="event-card">
+            <div class="event-meta">
+              <span class="impact-badge neutral">중립 0</span>
+              <span class="event-source">DART</span>
+              <span class="event-time">20260820</span>
+            </div>
+            <a class="event-title" href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820000109" target="_blank" rel="noopener noreferrer">모비데이즈 임원ㆍ주요주주특정증권등소유상황보고서</a>
+          </article>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">시장 맥락</h2>
+      <div class="insight-grid">
+        <div>
+          <p class="metric">전일 대비 자동 코멘트</p>
+          <ol class="tiny-list">
+<li>전일 비교 데이터 확인이 필요합니다.</li>          </ol>
+        </div>
+        <div>
+          <p class="metric">섹터 회전 탐지</p>
+          <ol class="tiny-list">
+              <li>강세 후보 · 반도체 (2.0, 신뢰도 55%)</li>
+              <li>강세 후보 · 바이오 (1.94, 신뢰도 65%)</li>
+              <li>강세 후보 · 2차전지 (1.9, 신뢰도 45%)</li>
+              <li>경계 후보 · 에너지 (-1.57, 신뢰도 45%)</li>
+              <li>경계 후보 · 금융 (-1.44, 신뢰도 85%)</li>
+          </ol>
+          <p class="metric">이벤트 점수 + 대표 종목 수익률 확인 결합</p>
+        </div>
+      </div>
+    </section>
+
+    <details class="card">
+      <summary>점수 산정·신뢰도 진단 보기</summary>
+      <ul class="breakdown">
+        <li>시장 12</li>
+        <li>뉴스 0.0</li>
+        <li>공시 3.2</li>
+        <li>섹터 1.95</li>
+      </ul>
+      <p class="metric">평가 표본 24건 · Hit Rate 41.7% · False Alarm 58.3%</p>
+      <p class="metric">Bullish 0.0% / Bearish 33.3% / Neutral 45.0%</p>
+      <p class="metric">검증 기준: 20~120분 뒤 동일 거래일 KOSPI/KOSDAQ 지수 레벨 수익률 기준</p>
+      <p class="metric">신뢰도는 예측 적중률이 아니라 현재 점수 계산에 사용된 데이터 충실도입니다.</p>
+    </details>
   </main>
 </body>
 </html>
