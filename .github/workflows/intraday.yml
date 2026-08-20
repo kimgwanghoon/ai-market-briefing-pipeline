@@ -2,8 +2,10 @@ name: Intraday Sentiment Pipeline
 
 on:
   schedule:
-    - cron: "30 23 * * 0-4"
-    - cron: "30 0-6 * * 1-5"
+    # Start preparation at :10 UTC, then align generation to :30.
+    # This absorbs most GitHub scheduler delays without extra API calls.
+    - cron: "10 23 * * 0-4"
+    - cron: "10 0-6 * * 1-5"
   workflow_dispatch:
 
 concurrency:
@@ -16,6 +18,7 @@ permissions:
 jobs:
   intraday:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,22 +38,34 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
 
       - name: Install dependencies
         run: python -m pip install --upgrade pip && pip install -r requirements.txt
 
-      - name: Restore intraday history from gh-pages
-        run: |
-          mkdir -p public/data/intraday
-          git fetch origin gh-pages --depth=1 2>/dev/null || true
-          git checkout FETCH_HEAD -- data/intraday 2>/dev/null || true
-          if [ -d data/intraday ]; then
-            cp -r data/intraday/. public/data/intraday/
-            echo "Restored $(ls public/data/intraday/*.json 2>/dev/null | wc -l) history files"
-          fi
-
       - name: Run quality checks
         run: python -m compileall -q . && python -m unittest discover -s tests -v
+
+      - name: Align scheduled generation to half hour
+        if: github.event_name == 'schedule'
+        shell: bash
+        run: |
+          target_epoch=$(date -u -d "$(date -u +'%Y-%m-%d %H'):30:00" +%s)
+          now_epoch=$(date -u +%s)
+          wait_seconds=$((target_epoch - now_epoch))
+
+          if [ "$wait_seconds" -gt 0 ] && [ "$wait_seconds" -le 1500 ]; then
+            echo "Preparation complete. Waiting ${wait_seconds}s for the :30 target."
+            sleep "$wait_seconds"
+          fi
+
+          actual_epoch=$(date -u +%s)
+          delay_seconds=$((actual_epoch - target_epoch))
+          if [ "$delay_seconds" -lt 0 ]; then delay_seconds=0; fi
+
+          echo "SCHEDULE_TARGET_KST=$(TZ=Asia/Seoul date -d "@${target_epoch}" +'%Y-%m-%d %H:%M:%S')" >> "$GITHUB_ENV"
+          echo "SCHEDULE_DELAY_SECONDS=${delay_seconds}" >> "$GITHUB_ENV"
+          echo "Generation delay: ${delay_seconds}s"
 
       - name: Generate intraday snapshot
         env:
