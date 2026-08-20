@@ -8,10 +8,13 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import main
+import intraday
 from main import bold_filter, require_market_coverage
 from intraday import (
     KST,
     build_data_quality,
+    build_live_event_view,
+    build_live_pulse_summary,
     build_timeline_heatmap,
     compute_reliability,
     filter_unseen_events,
@@ -137,8 +140,44 @@ class SentimentContractTests(unittest.TestCase):
             ["08-18 09:47", "08-18 10:12", "08-18 10:49"],
         )
         self.assertEqual(len(result["timeline"]), 3)
+        self.assertEqual(
+            [item["delta_text"] for item in result["timeline"]],
+            ["첫 관측", "-4.0p", "+12.0p"],
+        )
         self.assertNotIn("slots", result)
         self.assertNotIn("rows", result)
+
+    def test_live_pulse_exposes_latest_movement_and_top_driver(self):
+        payload = {
+            "sentiment": {
+                "score": 62,
+                "score_breakdown": {"market": 3, "news": 8, "dart": -2, "sector": 1},
+            },
+            "events": {"news_count": 4, "dart_count": 2},
+            "heatmap": {"timeline": [{"score": 55}, {"score": 62}]},
+        }
+
+        summary = build_live_pulse_summary(payload)
+
+        self.assertEqual(summary["movement_text"], "직전 실행 대비 +7.0p")
+        self.assertEqual(summary["movement_class"], "positive")
+        self.assertEqual(summary["top_driver"], "뉴스")
+        self.assertEqual(summary["top_driver_direction"], "우호 기여")
+
+    def test_live_event_view_adds_impact_and_tag_labels(self):
+        event = {
+            "title": "실적 부진",
+            "source": "테스트경제",
+            "impact_score": -3,
+            "tags": ["-부진", "-실적 부진"],
+        }
+
+        view = build_live_event_view(event, "news")
+
+        self.assertEqual(view["impact_label"], "경계 신호")
+        self.assertEqual(view["impact_class"], "negative")
+        self.assertEqual(view["impact_score_text"], "-3")
+        self.assertEqual(view["tag_labels"], ["부진", "실적 부진"])
 
 
 class HtmlSafetyTests(unittest.TestCase):
@@ -194,6 +233,90 @@ class HtmlSafetyTests(unittest.TestCase):
         self.assertIn("news.jpg", html)
         self.assertIn("EWY", html)
         self.assertIn("DOW", html)
+
+    def test_live_dashboard_renders_actual_flow_and_event_context(self):
+        metric = {
+            "price": "100.00",
+            "change": "▲ 1.00 (+1.00%)",
+            "trend": "상승",
+            "color": "#b91c1c",
+        }
+        history = [
+            {"timestamp": "2026-08-18 09:47:00", "sentiment": {"score": 55, "raw_score": 7.5}}
+        ]
+        current = {
+            "timestamp": "2026-08-18 10:12:00",
+            "sentiment": {"score": 62, "raw_score": 18},
+        }
+        heatmap = build_timeline_heatmap(current, history)
+        payload = {
+            "timestamp": "2026-08-18 10:12:00",
+            "window_start": "2026-08-18 10:00:00",
+            "window_end": "2026-08-18 10:59:59",
+            "market_signals": {
+                key: dict(metric)
+                for key in ("kospi", "kosdaq", "ewy", "sp500", "dow", "nasdaq", "vix", "usdkrw", "us10y")
+            },
+            "events": {
+                "news_count": 1,
+                "dart_count": 1,
+                "news": [
+                    {
+                        "title": "반도체 수주 확대",
+                        "url": "https://example.com/news",
+                        "source": "테스트경제",
+                        "published_at": "2026-08-18 10:05",
+                        "impact_score": 4,
+                        "tags": ["+수주", "+확대"],
+                    }
+                ],
+                "dart": [
+                    {
+                        "corp_name": "테스트전자",
+                        "title": "공급계약체결",
+                        "url": "https://example.com/dart",
+                        "published_at": "20260818",
+                        "impact_score": 3,
+                        "tags": ["+공급계약"],
+                    }
+                ],
+            },
+            "sentiment": {
+                "label": "우호",
+                "score": 62,
+                "raw_score": 18,
+                "range_key": "bullish",
+                "range_rule": "60~79.9는 우호 구간",
+                "interpretation": "전반적으로 우호적입니다.",
+                "confidence": 80,
+                "score_breakdown": {"market": 3, "news": 8, "dart": 3, "sector": 1},
+                "data_quality": {"basis": "지표 9/9, 이벤트 2건"},
+            },
+            "key_points": ["**KOSPI** 흐름을 확인합니다."],
+            "watchpoint": "**VIX** 변화를 확인하세요.",
+            "day_over_day": ["전일 대비 우호 흐름입니다."],
+            "sector_rotation": {"strong": [], "weak": [], "basis": "가격 확인 결합"},
+            "reliability": {
+                "evaluated": 3,
+                "hit_rate": "66.7%",
+                "false_alarm_rate": "33.3%",
+                "by_label": {"bullish": "100.0%", "bearish": "N/A", "neutral": "50.0%"},
+                "basis": "후행 지수 수익률",
+            },
+            "heatmap": heatmap,
+        }
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with patch.object(intraday, "OUTPUT_DIR", Path(tmp_dir)):
+                intraday.render_live_html(payload)
+            html = (Path(tmp_dir) / "live.html").read_text(encoding="utf-8")
+
+        self.assertIn("LIVE · ACTUAL SNAPSHOT", html)
+        self.assertIn("직전 실행 대비 +7.0p", html)
+        self.assertIn("08-18 09:47", html)
+        self.assertIn("우호 신호 +4", html)
+        self.assertIn("반도체 수주 확대", html)
+        self.assertNotIn("08:30</th>", html)
 
 
 class MarketCoverageTests(unittest.TestCase):
