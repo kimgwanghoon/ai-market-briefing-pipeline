@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import Dict, List
 
 import pytz
-import requests
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from discord_notifications import build_weekly_embed, post_discord_webhook
 from intraday import score_dart_events, score_news_events
 from main import bold_filter, resolve_pages_url
 
@@ -368,28 +368,8 @@ def render_weekly_html(payload: dict) -> None:
 def send_weekly_discord(payload: dict) -> None:
     if not DISCORD_WEBHOOK_URL:
         return
-
-    summary = payload.get("summary", {})
-    embed = {
-        "title": payload.get("title", "주간 시장 리포트"),
-        "description": (
-            f"평균 점수 **{summary.get('score_avg', 0)}점 ({summary.get('label', '중립')})**\n"
-            f"주초→주말: {summary.get('score_start', 0)} → {summary.get('score_end', 0)} ({summary.get('score_change_text', '0.0p')})\n"
-            f"다음 주: {summary.get('next_week_outlook', {}).get('bias', '데이터 부족')}"
-        ),
-        "color": 5763714,
-        "url": f"{resolve_pages_url()}/weekly.html",
-        "fields": [
-            {"name": "집계 샘플", "value": str(summary.get("count", 0)), "inline": True},
-            {"name": "예상 센티먼트", "value": summary.get("next_week_outlook", {}).get("expected_range", "산출 불가"), "inline": True},
-            {"name": "핵심 관전 포인트", "value": summary.get("top_watchpoint", "-")[:1000], "inline": False},
-        ],
-    }
-    try:
-        response = requests.post(DISCORD_WEBHOOK_URL, json={"embeds": [embed]}, timeout=10)
-        response.raise_for_status()
-    except requests.RequestException as exc:
-        print(f"Discord notification failed: {exc}")
+    embed = build_weekly_embed(payload, resolve_pages_url())
+    post_discord_webhook(DISCORD_WEBHOOK_URL, embed)
 
 
 def main() -> None:

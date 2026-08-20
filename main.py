@@ -23,6 +23,7 @@ from ai_generation import (
     render_grounded_claim,
     validate_grounded_claims,
 )
+from discord_notifications import build_daily_embed, post_discord_webhook
 
 try:
     from dotenv import load_dotenv
@@ -976,43 +977,24 @@ def render_html(
     (OUTPUT_DIR / "index.html").write_text(html_output, encoding="utf-8")
 
 
-def send_discord_alert(headline: str, summary_items: List[str], indexes: dict) -> None:
+def send_discord_alert(
+    headline: str,
+    summary_items: List[str],
+    indexes: dict,
+    news_items: List[dict] | None = None,
+) -> None:
     if not DISCORD_WEBHOOK_URL:
         return
-
-    body_text = "\n".join([re.sub(r"\*+", "", s) for s in summary_items])
-    pages_url = resolve_pages_url()
-
-    embed_fields = [
-        {"name": "KOSPI", "value": f"{indexes['kospi']['price']} ({indexes['kospi']['change']})", "inline": True},
-        {"name": "KOSDAQ", "value": f"{indexes['kosdaq']['price']} ({indexes['kosdaq']['change']})", "inline": True},
-        {"name": "EWY", "value": f"{indexes['ewy']['price']} ({indexes['ewy']['change']})", "inline": True},
-        {"name": "S&P 500", "value": f"{indexes['sp500']['price']} ({indexes['sp500']['change']})", "inline": True},
-        {"name": "Dow", "value": f"{indexes['dow']['price']} ({indexes['dow']['change']})", "inline": True},
-        {"name": "NASDAQ", "value": f"{indexes['nasdaq']['price']} ({indexes['nasdaq']['change']})", "inline": True},
-        {"name": "VIX", "value": f"{indexes['vix']['price']} ({indexes['vix']['change']})", "inline": True},
-        {"name": "USD/KRW", "value": f"{indexes['usdkrw']['price']} ({indexes['usdkrw']['change']})", "inline": True},
-        {"name": "US10Y", "value": f"{indexes['us10y']['price']} ({indexes['us10y']['change']})", "inline": True},
-        {"name": "WTI", "value": f"{indexes['wti']['price']} ({indexes['wti']['change']})", "inline": True},
-    ]
-
-    payload = {
-        "embeds": [
-            {
-                "title": f"🚨 {EDITION_TITLE}",
-                "color": 5763714,
-                "fields": embed_fields,
-                "description": f"**📰 {headline}**\n\n{body_text}",
-                "url": pages_url,
-            }
-        ]
-    }
-
-    try:
-        response = requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=10)
-        response.raise_for_status()
-    except requests.RequestException as exc:
-        print(f"Discord notification failed: {exc}")
+    embed = build_daily_embed(
+        EDITION_TITLE,
+        CURRENT_TIME_STR,
+        headline,
+        summary_items,
+        indexes,
+        news_items or [],
+        resolve_pages_url(),
+    )
+    post_discord_webhook(DISCORD_WEBHOOK_URL, embed)
 
 
 def main() -> None:
@@ -1068,7 +1050,7 @@ def main() -> None:
         item.pop("dt", None)
 
     render_html(headline, summary_items, cover_image, indexes, risk_trends, snapshot_count, news_items)
-    send_discord_alert(headline, summary_items, indexes)
+    send_discord_alert(headline, summary_items, indexes, news_items)
     save_snapshot(headline, summary_items, cover_image, indexes, news_items)
 
     print("Generated:", OUTPUT_DIR / "index.html")

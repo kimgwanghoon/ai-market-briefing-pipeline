@@ -16,6 +16,7 @@ from ai_generation import (
     render_grounded_claim,
     validate_grounded_claims,
 )
+from discord_notifications import build_intraday_embed, post_discord_webhook
 from main import (
     bold_filter,
     build_market_overview,
@@ -1433,39 +1434,8 @@ def save_intraday_snapshot(
 def send_discord_intraday(payload: dict) -> None:
     if not DISCORD_WEBHOOK_URL:
         return
-
-    sentiment = payload["sentiment"]
-    signals = payload["market_signals"]
-
-    def idx(name: str) -> str:
-        item = signals.get(name, {})
-        return f"{item.get('price', 'N/A')} ({item.get('change', '-')})"
-
-    summary = payload.get("key_points", [])
-    description = "\n".join(summary[:2])
-    watchpoint = payload.get("watchpoint", "")
-    if watchpoint:
-        description = f"{description}\n\n{watchpoint}"
-
-    embed = {
-        "title": f"⏱️ 장중 시장 분위기 {sentiment.get('label', '중립')} ({sentiment.get('score', 50)}점)",
-        "description": description,
-        "color": 5763714,
-        "url": resolve_pages_url(),
-        "fields": [
-            {"name": "KOSPI", "value": idx("kospi"), "inline": True},
-            {"name": "KOSDAQ", "value": idx("kosdaq"), "inline": True},
-            {"name": "S&P 500", "value": idx("sp500"), "inline": True},
-            {"name": "NASDAQ", "value": idx("nasdaq"), "inline": True},
-            {"name": "VIX", "value": idx("vix"), "inline": True},
-            {"name": "USD/KRW", "value": idx("usdkrw"), "inline": True},
-        ],
-    }
-    try:
-        response = requests.post(DISCORD_WEBHOOK_URL, json={"embeds": [embed]}, timeout=10)
-        response.raise_for_status()
-    except requests.RequestException as exc:
-        print(f"Discord notification failed: {exc}")
+    embed = build_intraday_embed(payload, resolve_pages_url())
+    post_discord_webhook(DISCORD_WEBHOOK_URL, embed)
 
 
 def render_live_html(payload: dict) -> None:
