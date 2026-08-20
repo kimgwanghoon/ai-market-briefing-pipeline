@@ -1,6 +1,12 @@
+import base64
+import tempfile
 import unittest
 from datetime import datetime
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
+import main
 from main import bold_filter, require_market_coverage
 from intraday import (
     KST,
@@ -132,6 +138,56 @@ class MarketCoverageTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(RuntimeError, "Required market data missing"):
             require_market_coverage(indexes, minimum=2, required=("kospi", "kosdaq"))
+
+
+class CoverGenerationTests(unittest.TestCase):
+    def test_generates_cover_when_briefing_validation_falls_back(self):
+        image_bytes = b"generated cover"
+        client = SimpleNamespace(
+            images=SimpleNamespace(
+                generate=Mock(
+                    return_value=SimpleNamespace(
+                        data=[SimpleNamespace(b64_json=base64.b64encode(image_bytes).decode("ascii"))]
+                    )
+                )
+            )
+        )
+        market_item = {
+            "price": "2,650.00",
+            "change": "▲ 10.00 (+0.38%)",
+            "trend": "상승",
+            "color": "#b91c1c",
+        }
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with (
+                patch.object(main, "OUTPUT_DIR", Path(tmp_dir)),
+                patch.object(main, "OPENAI_API_KEY", "test-key"),
+                patch.object(main, "GENERATE_AI_IMAGE", True),
+                patch.object(main, "OpenAI", return_value=client),
+                patch.object(
+                    main,
+                    "create_structured_completion",
+                    side_effect=ValueError("briefing validation failed"),
+                ),
+            ):
+                headline, _, cover_image = main.generate_ai_briefing(
+                    market_item,
+                    market_item,
+                    market_item,
+                    market_item,
+                    market_item,
+                    market_item,
+                    market_item,
+                    market_item,
+                    market_item,
+                    market_item,
+                )
+
+            self.assertEqual(headline, "핵심 지수 점검")
+            self.assertTrue(cover_image.startswith("cover_"))
+            self.assertEqual((Path(tmp_dir) / cover_image).read_bytes(), image_bytes)
+            client.images.generate.assert_called_once()
 
 
 if __name__ == "__main__":
