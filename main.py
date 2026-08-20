@@ -629,6 +629,79 @@ def generate_ai_briefing(
 근거 데이터(JSON): {json.dumps(evidence, ensure_ascii=False)}
 """.strip()
 
+    def generate_market_cover(cover_headline: str) -> str:
+        kospi_chg = parse_change_percent(kospi.get("change", ""))
+        vix_val = parse_price_value(vix.get("price", "0"))
+        if kospi_chg == kospi_chg and kospi_chg > 0.5:
+            market_state = "constructive risk-on momentum with a clear upward visual rhythm"
+            palette = "deep navy, restrained emerald, warm gold highlights, clean white accents"
+            mood = "confident and energetic, with controlled optimism"
+        elif kospi_chg == kospi_chg and kospi_chg < -0.5:
+            market_state = "risk-off pressure with a controlled downward visual rhythm"
+            palette = "deep navy, muted crimson, cool steel blue, soft grey highlights"
+            mood = "serious and cautious, tense without looking catastrophic"
+        else:
+            market_state = "mixed sideways trading with balanced, unresolved visual tension"
+            palette = "deep navy, slate blue, muted teal, subtle amber highlights"
+            mood = "calm, analytical and watchful"
+        volatility = (
+            "Show elevated volatility through layered light trails and tighter visual tension, "
+            "but avoid panic, disaster imagery, or exaggerated market crashes. "
+            if (vix_val == vix_val and vix_val > 25)
+            else "Keep the visual rhythm measured and orderly, suggesting normal market volatility. "
+        )
+        session_light = (
+            "crisp early-morning light with a subtle dawn glow"
+            if IS_MORNING
+            else "refined evening light with subtle city illumination"
+        )
+
+        image_prompt = (
+            "Create a premium square editorial cover illustration for a Korean daily market briefing. "
+            "Communicate financial-market movement through one clear focal composition: an elegant abstract "
+            "flow of illuminated data ribbons and geometric market layers moving across a refined Seoul "
+            "financial-district atmosphere. The visual should feel like a serious global finance magazine, "
+            "not a trading-app advertisement. "
+            f"Market state: {market_state}. Mood: {mood}. Lighting: {session_light}. "
+            f"Color palette: {palette}. {volatility}"
+            "Use sophisticated editorial illustration, clean geometry, restrained cinematic depth, realistic "
+            "light, generous negative space, and a strong central visual hierarchy. Keep important details away "
+            "from the outer edges so the image remains effective when responsively cropped. "
+            "Do not depict bulls, bears, people, mascots, coins, money, rockets, candlestick charts, literal "
+            "screens, or cliché Wall Street imagery. Do not create fake interfaces or decorative financial data. "
+            "Absolutely no text, letters, numbers, ticker symbols, logos, flags, labels, captions, borders, "
+            "signatures, or watermarks anywhere in the image."
+        )
+
+        if not GENERATE_AI_IMAGE:
+            existing_cover = get_existing_cover_file()
+            if existing_cover:
+                return existing_cover
+            generate_cover_svg(OUTPUT_DIR / "cover.svg", cover_headline)
+            return "cover.svg"
+
+        try:
+            image_response = client.images.generate(
+                model=IMAGE_MODEL,
+                prompt=image_prompt,
+                size="1024x1024",
+                quality="low",
+                n=1,
+            )
+            img_data = base64.b64decode(image_response.data[0].b64_json)
+            _clean_old_covers()
+            now_kst = datetime.now(KST)
+            cover_name = f"cover_{now_kst.strftime('%Y%m%d_%H%M')}.png"
+            (OUTPUT_DIR / cover_name).write_bytes(img_data)
+            return cover_name
+        except Exception as exc:
+            print(f"AI cover fallback: {type(exc).__name__}: {exc}")
+            existing_cover = get_existing_cover_file()
+            if existing_cover:
+                return existing_cover
+            generate_cover_svg(OUTPUT_DIR / "cover.svg", cover_headline)
+            return "cover.svg"
+
     try:
         briefing = create_structured_completion(
             client,
@@ -661,81 +734,12 @@ def generate_ai_briefing(
         watchpoint_body = render_grounded_claim(briefing["watchpoint"], evidence, evidence_labels)
         watchpoint = f"오늘의 **핵심 관전 포인트**: {watchpoint_body}" if watchpoint_body else watchpoint_line
         summary_items = ["[한국 시장]", *korea_points, "[미국 시장]", *us_points, watchpoint]
-
-        kospi_chg = parse_change_percent(kospi.get("change", ""))
-        vix_val = parse_price_value(vix.get("price", "0"))
-        if kospi_chg == kospi_chg and kospi_chg > 0.5:
-            _market_state = "constructive risk-on momentum with a clear upward visual rhythm"
-            _palette = "deep navy, restrained emerald, warm gold highlights, clean white accents"
-            _mood = "confident and energetic, with controlled optimism"
-        elif kospi_chg == kospi_chg and kospi_chg < -0.5:
-            _market_state = "risk-off pressure with a controlled downward visual rhythm"
-            _palette = "deep navy, muted crimson, cool steel blue, soft grey highlights"
-            _mood = "serious and cautious, tense without looking catastrophic"
-        else:
-            _market_state = "mixed sideways trading with balanced, unresolved visual tension"
-            _palette = "deep navy, slate blue, muted teal, subtle amber highlights"
-            _mood = "calm, analytical and watchful"
-        _volatility = (
-            "Show elevated volatility through layered light trails and tighter visual tension, "
-            "but avoid panic, disaster imagery, or exaggerated market crashes. "
-            if (vix_val == vix_val and vix_val > 25)
-            else "Keep the visual rhythm measured and orderly, suggesting normal market volatility. "
-        )
-        _session_light = (
-            "crisp early-morning light with a subtle dawn glow"
-            if IS_MORNING
-            else "refined evening light with subtle city illumination"
-        )
-
-        image_prompt = (
-            "Create a premium square editorial cover illustration for a Korean daily market briefing. "
-            "Communicate financial-market movement through one clear focal composition: an elegant abstract "
-            "flow of illuminated data ribbons and geometric market layers moving across a refined Seoul "
-            "financial-district atmosphere. The visual should feel like a serious global finance magazine, "
-            "not a trading-app advertisement. "
-            f"Market state: {_market_state}. Mood: {_mood}. Lighting: {_session_light}. "
-            f"Color palette: {_palette}. {_volatility}"
-            "Use sophisticated editorial illustration, clean geometry, restrained cinematic depth, realistic "
-            "light, generous negative space, and a strong central visual hierarchy. Keep important details away "
-            "from the outer edges so the image remains effective when responsively cropped. "
-            "Do not depict bulls, bears, people, mascots, coins, money, rockets, candlestick charts, literal "
-            "screens, or cliché Wall Street imagery. Do not create fake interfaces or decorative financial data. "
-            "Absolutely no text, letters, numbers, ticker symbols, logos, flags, labels, captions, borders, "
-            "signatures, or watermarks anywhere in the image."
-        )
-
-        if GENERATE_AI_IMAGE:
-            try:
-                image_response = client.images.generate(
-                    model=IMAGE_MODEL,
-                    prompt=image_prompt,
-                    size="1024x1024",
-                    quality="low",
-                    n=1,
-                )
-                img_data = base64.b64decode(image_response.data[0].b64_json)
-                _clean_old_covers()
-                now_kst = datetime.now(KST)
-                cover_name = f"cover_{now_kst.strftime('%Y%m%d_%H%M')}.png"
-                (OUTPUT_DIR / cover_name).write_bytes(img_data)
-                image_file = cover_name
-            except Exception:
-                image_file = get_existing_cover_file()
-                if not image_file:
-                    generate_cover_svg(OUTPUT_DIR / "cover.svg", headline)
-                    image_file = "cover.svg"
-        else:
-            image_file = get_existing_cover_file()
-            if not image_file:
-                generate_cover_svg(OUTPUT_DIR / "cover.svg", headline)
-                image_file = "cover.svg"
-
+        image_file = generate_market_cover(headline)
         return headline, summary_items, image_file
     except Exception as exc:
         print(f"AI briefing fallback: {type(exc).__name__}: {exc}")
-        generate_cover_svg(OUTPUT_DIR / "cover.svg", fallback_headline)
-        return fallback_headline, fallback_items, "cover.svg"
+        image_file = generate_market_cover(fallback_headline)
+        return fallback_headline, fallback_items, image_file
 
 
 def render_html(
