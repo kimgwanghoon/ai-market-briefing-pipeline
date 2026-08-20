@@ -4,6 +4,7 @@
       <p class="name">{{ card.label }}</p>
       <p class="price">{{ card.price }}</p>
       <p class="change" style="color: {{ card.color }}; font-size: 0.95rem;">{{ card.change }}</p>
+      <p class="market-meta">{{ card.market_status }} · {{ card.as_of }}</p>
     </article>
   {% endfor %}
 </div>

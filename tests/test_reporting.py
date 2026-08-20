@@ -16,10 +16,13 @@ from intraday import (
     build_data_quality,
     build_live_event_view,
     build_live_pulse_summary,
-    build_timeline_heatmap,
+    build_score_comparison,
+    build_top_live_events,
     compute_reliability,
     filter_unseen_events,
     find_previous_snapshot,
+    has_execution_target,
+    is_material_dart_event,
     raw_score_label,
 )
 from weekly_report import build_week_summary
@@ -145,6 +148,30 @@ class SentimentContractTests(unittest.TestCase):
         reliability = compute_reliability(history)
         self.assertEqual(reliability["evaluated"], 5)
         self.assertEqual(reliability["hit_rate"], "100.0%")
+        self.assertEqual(reliability["status"], "검증 표본 부족")
+
+    def test_low_directional_hit_rate_is_marked_as_limited(self):
+        history = []
+        for day in range(18, 23):
+            for offset, hour in enumerate(range(9, 15)):
+                price = 100 - day - offset * 0.3
+                history.append(
+                    {
+                        "timestamp": f"2026-08-{day:02d} {hour:02d}:30:00",
+                        "sentiment": {"raw_label": "bullish"},
+                        "market_signals": {
+                            "kospi": {"price": str(price)},
+                            "kosdaq": {"price": str(price)},
+                        },
+                    }
+                )
+
+        reliability = compute_reliability(history)
+
+        self.assertEqual(reliability["evaluated"], 25)
+        self.assertEqual(reliability["hit_rate"], "0.0%")
+        self.assertTrue(reliability["reference_limited"])
+        self.assertEqual(reliability["status"], "방향성 참고 제한")
 
     def test_previous_snapshot_does_not_substitute_latest_wrong_slot(self):
         current = KST.localize(datetime(2026, 8, 18, 10, 30))
@@ -175,7 +202,7 @@ class SentimentContractTests(unittest.TestCase):
             ["current"],
         )
 
-    def test_heatmap_uses_actual_execution_times_without_scheduled_slots(self):
+    def test_score_comparison_uses_latest_actual_execution(self):
         history = [
             {
                 "timestamp": "2026-08-18 09:47:00",
@@ -191,19 +218,11 @@ class SentimentContractTests(unittest.TestCase):
             "sentiment": {"score": 70, "raw_score": 40},
         }
 
-        result = build_timeline_heatmap(current, history)
+        result = build_score_comparison(current, history)
 
-        self.assertEqual(
-            [item["time"] for item in result["observations"]],
-            ["08-18 09:47", "08-18 10:12", "08-18 10:49"],
-        )
-        self.assertEqual(len(result["timeline"]), 3)
-        self.assertEqual(
-            [item["delta_text"] for item in result["timeline"]],
-            ["첫 관측", "-4.0p", "+12.0p"],
-        )
-        self.assertNotIn("slots", result)
-        self.assertNotIn("rows", result)
+        self.assertEqual(result["previous_timestamp"], "2026-08-18 10:12:00")
+        self.assertEqual(result["previous_score"], 58)
+        self.assertEqual(result["delta"], 12)
 
     def test_live_pulse_exposes_latest_movement_and_top_driver(self):
         payload = {
@@ -212,7 +231,13 @@ class SentimentContractTests(unittest.TestCase):
                 "score_breakdown": {"market": 3, "news": 8, "dart": -2, "sector": 1},
             },
             "events": {"news_count": 4, "dart_count": 2},
-            "heatmap": {"timeline": [{"score": 55}, {"score": 62}]},
+            "comparison": {"previous_score": 55, "delta": 7},
+            "reliability": {
+                "status": "방향성 참고 제한",
+                "status_class": "limited",
+                "guidance": "원문을 함께 확인하세요.",
+                "reference_limited": True,
+            },
         }
 
         summary = build_live_pulse_summary(payload)
@@ -221,6 +246,7 @@ class SentimentContractTests(unittest.TestCase):
         self.assertEqual(summary["movement_class"], "positive")
         self.assertEqual(summary["top_driver"], "뉴스")
         self.assertEqual(summary["top_driver_direction"], "우호 기여")
+        self.assertTrue(summary["reference_limited"])
 
     def test_live_event_view_adds_impact_and_tag_labels(self):
         event = {
@@ -236,6 +262,58 @@ class SentimentContractTests(unittest.TestCase):
         self.assertEqual(view["impact_class"], "negative")
         self.assertEqual(view["impact_score_text"], "-3")
         self.assertEqual(view["tag_labels"], ["부진", "실적 부진"])
+
+    def test_material_dart_filter_and_semantic_deduplication(self):
+        self.assertTrue(is_material_dart_event("[기재정정] 단일판매ㆍ공급계약체결"))
+        self.assertFalse(is_material_dart_event("기업설명회(IR) 개최"))
+
+        history = [
+            {
+                "events": {
+                    "dart": [
+                        {
+                            "event_id": "old",
+                            "corp_name": "테스트전자",
+                            "title": "단일판매ㆍ공급계약체결",
+                        }
+                    ]
+                }
+            }
+        ]
+        events = [
+            {
+                "event_id": "new-correction",
+                "corp_name": "테스트전자",
+                "title": "[기재정정] 단일판매ㆍ공급계약체결",
+                "published_at": "20260818",
+            }
+        ]
+        now = KST.localize(datetime(2026, 8, 18, 10, 30))
+
+        self.assertEqual(filter_unseen_events(events, history, "dart", now), [])
+
+    def test_top_live_events_combines_sources_and_limits_to_five(self):
+        events = {
+            "news": [
+                {"title": f"뉴스 {index}", "impact_score": index, "published_at": f"10:0{index}"}
+                for index in range(1, 5)
+            ],
+            "dart": [
+                {"corp_name": "기업", "title": f"공시 {index}", "impact_score": -index, "published_at": "20260818"}
+                for index in range(1, 5)
+            ],
+        }
+
+        top_events = build_top_live_events(events)
+
+        self.assertEqual(len(top_events), 5)
+        self.assertEqual(abs(top_events[0]["impact_score"]), 4)
+        self.assertTrue({item["event_type_label"] for item in top_events} <= {"뉴스", "공시"})
+
+    def test_duplicate_execution_target_is_skipped(self):
+        history = [{"execution": {"scheduled_target_kst": "2026-08-18 10:30:00"}}]
+        self.assertTrue(has_execution_target(history, "2026-08-18 10:30:00"))
+        self.assertFalse(has_execution_target(history, "2026-08-18 11:30:00"))
 
 
 class HtmlSafetyTests(unittest.TestCase):
@@ -292,12 +370,14 @@ class HtmlSafetyTests(unittest.TestCase):
         self.assertIn("EWY", html)
         self.assertIn("DOW", html)
 
-    def test_live_dashboard_renders_actual_flow_and_event_context(self):
+    def test_live_dashboard_renders_latest_score_freshness_and_top_events(self):
         metric = {
             "price": "100.00",
             "change": "▲ 1.00 (+1.00%)",
             "trend": "상승",
             "color": "#b91c1c",
+            "market_status": "장중",
+            "as_of": "08-18 10:12 KST",
         }
         history = [
             {"timestamp": "2026-08-18 09:47:00", "sentiment": {"score": 55, "raw_score": 7.5}}
@@ -306,7 +386,7 @@ class HtmlSafetyTests(unittest.TestCase):
             "timestamp": "2026-08-18 10:12:00",
             "sentiment": {"score": 62, "raw_score": 18},
         }
-        heatmap = build_timeline_heatmap(current, history)
+        comparison = build_score_comparison(current, history)
         payload = {
             "timestamp": "2026-08-18 10:12:00",
             "window_start": "2026-08-18 10:00:00",
@@ -347,6 +427,7 @@ class HtmlSafetyTests(unittest.TestCase):
                 "range_rule": "60~79.9는 우호 구간",
                 "interpretation": "전반적으로 우호적입니다.",
                 "confidence": 80,
+                "data_completeness": 80,
                 "score_breakdown": {"market": 3, "news": 8, "dart": 3, "sector": 1},
                 "data_quality": {"basis": "지표 9/9, 이벤트 2건"},
             },
@@ -360,8 +441,12 @@ class HtmlSafetyTests(unittest.TestCase):
                 "false_alarm_rate": "33.3%",
                 "by_label": {"bullish": "100.0%", "bearish": "N/A", "neutral": "50.0%"},
                 "basis": "후행 지수 수익률",
+                "status": "방향성 추가 확인",
+                "status_class": "caution",
+                "guidance": "시장 지표와 함께 해석하세요.",
+                "reference_limited": False,
             },
-            "heatmap": heatmap,
+            "comparison": comparison,
         }
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -371,10 +456,14 @@ class HtmlSafetyTests(unittest.TestCase):
 
         self.assertIn("LIVE · ACTUAL SNAPSHOT", html)
         self.assertIn("직전 실행 대비 +7.0p", html)
-        self.assertIn("08-18 09:47", html)
+        self.assertNotIn("실제 실행 흐름", html)
+        self.assertIn("데이터 충실도", html)
+        self.assertIn("방향성 추가 확인", html)
+        self.assertIn("장중 · 08-18 10:12 KST", html)
+        self.assertIn("오늘 핵심 이벤트", html)
         self.assertIn("우호 신호 +4", html)
         self.assertIn("반도체 수주 확대", html)
-        self.assertNotIn("08:30</th>", html)
+        self.assertIn("테스트전자 공급계약체결", html)
 
 
 class MarketCoverageTests(unittest.TestCase):

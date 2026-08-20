@@ -7,6 +7,16 @@ on:
     - cron: "10 23 * * 0-4"
     - cron: "10 0-6 * * 1-5"
   workflow_dispatch:
+    inputs:
+      align_to_half_hour:
+        description: "준비 후 :30에 생성"
+        required: false
+        default: true
+        type: boolean
+      target_kst:
+        description: "선택 목표 시각 (YYYY-MM-DD HH:30:00 KST)"
+        required: false
+        type: string
 
 concurrency:
   group: market-pages-deploy
@@ -31,8 +41,16 @@ jobs:
           ref: gh-pages
           path: pages-history
 
-      - name: Restore published data
-        run: if [ -d pages-history/data ]; then mkdir -p public/data && cp -a pages-history/data/. public/data/; fi
+      - name: Restore published data and live page
+        run: |
+          if [ -d pages-history/data ]; then
+            mkdir -p public/data
+            cp -a pages-history/data/. public/data/
+          fi
+          if [ -f pages-history/live.html ]; then
+            mkdir -p public
+            cp pages-history/live.html public/live.html
+          fi
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -47,10 +65,19 @@ jobs:
         run: python -m compileall -q . && python -m unittest discover -s tests -v
 
       - name: Align scheduled generation to half hour
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' || inputs.align_to_half_hour == true
         shell: bash
         run: |
-          target_epoch=$(date -u -d "$(date -u +'%Y-%m-%d %H'):30:00" +%s)
+          requested_target='${{ inputs.target_kst }}'
+          if [ -n "$requested_target" ]; then
+            if [[ ! "$requested_target" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]][0-9]{2}:30:00$ ]]; then
+              echo "target_kst must use YYYY-MM-DD HH:30:00"
+              exit 1
+            fi
+            target_epoch=$(TZ=Asia/Seoul date -d "$requested_target" +%s)
+          else
+            target_epoch=$(date -u -d "$(date -u +'%Y-%m-%d %H'):30:00" +%s)
+          fi
           now_epoch=$(date -u +%s)
           wait_seconds=$((target_epoch - now_epoch))
 

@@ -1,9 +1,6 @@
 name: Build and Deploy Pages
 
 on:
-  push:
-    branches:
-      - master
   schedule:
     - cron: "0 23 * * 0-4"
     - cron: "0 9 * * 1-5"
@@ -65,7 +62,7 @@ jobs:
           GITHUB_PAGES_URL: ${{ secrets.GITHUB_PAGES_URL }}
           OPENAI_TEXT_MODEL: gpt-4o-mini-2024-07-18
           OPENAI_IMAGE_MODEL: gpt-image-1-mini
-          GENERATE_AI_IMAGE: ${{ github.event_name != 'push' }}
+          GENERATE_AI_IMAGE: true
         run: python main.py
 
       - name: Deploy to GitHub Pages
