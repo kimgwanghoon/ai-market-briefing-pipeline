@@ -4,71 +4,229 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{{ title }}</title>
+  <meta name="description" content="장중 실제 스냅샷을 일별로 집계한 주간 시장 리포트" />
   <style>
     :root {
-      --bg-a: #f8fafc;
-      --bg-b: #e2e8f0;
+      --bg: #eef2f7;
       --card: #ffffff;
       --ink: #0f172a;
       --muted: #64748b;
       --line: #dbe4ef;
       --accent: #0f766e;
+      --positive: #b91c1c;
+      --positive-soft: #fee2e2;
+      --negative: #1d4ed8;
+      --negative-soft: #dbeafe;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-      color: var(--ink);
-      background: linear-gradient(160deg, var(--bg-a), var(--bg-b));
       min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 90% 5%, #bae6fd 0, transparent 28%),
+        linear-gradient(155deg, #f8fafc, var(--bg));
+      font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
     }
-    .page { max-width: 920px; margin: 0 auto; padding: 36px 16px 64px; }
-    .card {
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: var(--card);
-      padding: 20px;
-      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-      margin-top: 16px;
+    .page { max-width: 1120px; margin: 0 auto; padding: 28px 16px 64px; }
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 30px;
+      border-radius: 24px;
+      color: #f8fafc;
+      background: linear-gradient(135deg, #0f172a, #164e63);
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
     }
-    h1 { margin: 0 0 8px; font-size: clamp(1.7rem, 4vw, 2.4rem); }
-    .meta { margin: 0; color: var(--muted); }
-    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-    @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
-    .metric { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: #f8fafc; }
-    .metric p { margin: 0; }
-    .label { color: var(--muted); font-size: 0.86rem; }
-    .value { font-weight: 750; font-size: 1.12rem; margin-top: 4px; }
-    .list { margin: 0; padding-left: 18px; line-height: 1.6; }
-    a { color: var(--accent); text-decoration: none; }
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -90px;
+      top: -130px;
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      background: rgba(45, 212, 191, 0.16);
+    }
+    .eyebrow { margin: 0 0 10px; color: #99f6e4; font-size: 0.76rem; font-weight: 800; letter-spacing: 0.12em; }
+    h1 { max-width: 760px; margin: 0 0 10px; font-size: clamp(1.7rem, 4vw, 2.6rem); line-height: 1.2; }
+    .hero-meta { margin: 0; color: #cbd5e1; font-size: 0.9rem; }
+    .nav { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+    .nav a { padding: 6px 10px; border: 1px solid #5eead4; border-radius: 999px; color: #ccfbf1; background: rgba(15,118,110,.22); font-size: .82rem; font-weight: 750; text-decoration: none; }
+    .card { margin-top: 16px; padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: 0 8px 24px rgba(15,23,42,.07); }
+    .section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+    h2 { margin: 0; color: var(--accent); font-size: 1.06rem; }
+    .meta, .note { margin: 0; color: var(--muted); font-size: .84rem; line-height: 1.55; }
+    .summary-grid { display: grid; grid-template-columns: minmax(250px,.8fr) minmax(0,1.2fr); gap: 24px; align-items: center; }
+    .score-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .score { font-size: clamp(3.7rem, 8vw, 5.5rem); line-height: .95; letter-spacing: -.06em; }
+    .denominator { color: var(--muted); font-weight: 700; }
+    .pill, .change-pill, .event-score { display: inline-flex; width: fit-content; padding: 5px 9px; border-radius: 999px; font-size: .76rem; font-weight: 800; }
+    .pill { color: #115e59; background: #ccfbf1; }
+    .positive { color: var(--positive); }
+    .negative { color: var(--negative); }
+    .flat { color: #475569; }
+    .change-pill.positive, .event-score.positive { color: var(--positive); background: var(--positive-soft); }
+    .change-pill.negative, .event-score.negative { color: var(--negative); background: var(--negative-soft); }
+    .change-pill.flat { color: #475569; background: #e2e8f0; }
+    .score-track { position: relative; height: 12px; margin: 18px 0 10px; border-radius: 999px; background: linear-gradient(90deg,#93c5fd,#e2e8f0 50%,#fca5a5); }
+    .score-marker { position: absolute; top: 50%; width: 18px; height: 18px; border: 3px solid #fff; border-radius: 50%; background: #0f172a; box-shadow: 0 2px 8px rgba(15,23,42,.3); transform: translate(-50%,-50%); }
+    .facts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+    .fact, .market, .day, .event { padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: #f8fafc; }
+    .fact-label, .market-label { margin: 0 0 5px; color: var(--muted); font-size: .75rem; }
+    .fact-value, .market-value { margin: 0; font-weight: 800; line-height: 1.4; }
+    .watch { margin: 14px 0 0; padding: 12px 14px; border-left: 4px solid var(--accent); border-radius: 9px; background: #f0fdfa; line-height: 1.6; }
+    .market-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
+    .market-route { margin: 5px 0 0; color: var(--muted); font-size: .75rem; }
+    .daily-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: 10px; }
+    .day-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+    .day-date { margin: 0; color: var(--muted); font-size: .78rem; font-weight: 750; }
+    .day-score { margin: 4px 0; font-size: 1.35rem; font-weight: 850; }
+    .mini-track { height: 6px; overflow: hidden; border-radius: 999px; background: #e2e8f0; }
+    .mini-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#0f766e,#2dd4bf); }
+    .day-detail { margin: 8px 0 0; color: var(--muted); font-size: .72rem; line-height: 1.5; }
+    .event-columns { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+    .event-column-title { margin: 0 0 9px; font-size: .9rem; font-weight: 850; }
+    .event-list { display: grid; gap: 8px; }
+    .event-meta { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 7px; }
+    .event-source { color: var(--muted); font-size: .72rem; }
+    .event a, .event-title { margin: 0; color: var(--ink); font-weight: 750; line-height: 1.45; text-decoration: none; }
+    .event a:hover { color: var(--accent); text-decoration: underline; }
+    .outlook { border-color: #99f6e4; background: linear-gradient(145deg,#ffffff,#f0fdfa); }
+    .outlook-hero { display: grid; grid-template-columns: minmax(220px,.75fr) minmax(0,1.25fr); gap: 20px; align-items: start; }
+    .outlook-range { margin: 8px 0; font-size: clamp(2rem,5vw,3rem); font-weight: 900; letter-spacing: -.04em; }
+    .outlook-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-top: 14px; }
+    .scenario { padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.82); }
+    .scenario h3 { margin: 0 0 8px; font-size: .9rem; }
+    .scenario ul, .rationale { margin: 0; padding-left: 18px; line-height: 1.55; font-size: .83rem; }
+    .disclaimer { margin: 14px 0 0; color: var(--muted); font-size: .75rem; }
+    @media (max-width:760px) {
+      .page { padding-top: 16px; }
+      .hero { padding: 22px 18px; border-radius: 18px; }
+      .summary-grid, .outlook-hero, .event-columns { grid-template-columns: 1fr; }
+      .market-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    }
+    @media (max-width:430px) {
+      .card { padding: 16px; }
+      .facts, .outlook-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
   <main class="page">
-    <h1>{{ title }}</h1>
-    <nav class="meta" aria-label="시장 브리핑 메뉴">생성 시각: {{ generated_at }} (KST) · <a href="index.html">데일리</a> · <a href="live.html">장중</a> · <a href="{{ pages_url }}">Pages 홈</a></nav>
+    <header class="hero">
+      <p class="eyebrow">WEEKLY MARKET REVIEW</p>
+      <h1>{{ title }}</h1>
+      <p class="hero-meta">실제 장중 스냅샷 집계 · 생성 시각 {{ generated_at }} KST</p>
+      <nav class="nav" aria-label="시장 브리핑 메뉴">
+        <a href="index.html">데일리 브리핑</a>
+        <a href="live.html">장중 모니터</a>
+        <a href="{{ pages_url }}">Pages 홈</a>
+      </nav>
+    </header>
 
     <section class="card">
-      <h2>주간 요약</h2>
-      <div class="grid">
-        <article class="metric"><p class="label">평균 점수</p><p class="value">{{ summary.score_avg }} ({{ summary.label }})</p></article>
-        <article class="metric"><p class="label">최고/최저</p><p class="value">{{ summary.score_max }} / {{ summary.score_min }}</p></article>
-        <article class="metric"><p class="label">집계 샘플 수</p><p class="value">{{ summary.count }}</p></article>
-        <article class="metric"><p class="label">주요 리스크 이벤트</p><p class="value">{{ summary.top_risk }}</p></article>
-        <article class="metric"><p class="label">주요 기회 이벤트</p><p class="value">{{ summary.top_opportunity }}</p></article>
+      <div class="section-head">
+        <h2>이번 주 결론</h2>
+        <p class="meta">일별 평균을 동일 가중치로 집계</p>
       </div>
-      <p style="margin-top:12px;"><strong>핵심 관전 포인트:</strong> {{ summary.top_watchpoint }}</p>
+      <div class="summary-grid">
+        <div>
+          <div class="score-row">
+            <strong class="score">{{ summary.score_avg }}</strong>
+            <span class="denominator">/ 100</span>
+            <span class="pill">{{ summary.label }}</span>
+          </div>
+          <div class="score-track" aria-label="주간 평균 센티먼트 {{ summary.score_avg }}점">
+            <span class="score-marker" style="left: {{ summary.score_avg }}%"></span>
+          </div>
+          <span class="change-pill {{ summary.score_change_class }}">주초 대비 {{ summary.score_change_text }}</span>
+        </div>
+        <div class="facts">
+          <article class="fact"><p class="fact-label">주초 → 주말</p><p class="fact-value">{{ summary.score_start }} → {{ summary.score_end }}</p></article>
+          <article class="fact"><p class="fact-label">주간 최고 / 최저</p><p class="fact-value">{{ summary.score_max }} / {{ summary.score_min }}</p></article>
+          <article class="fact"><p class="fact-label">거래일 커버리지</p><p class="fact-value">{{ summary.trading_days }}일</p></article>
+          <article class="fact"><p class="fact-label">실제 실행 샘플</p><p class="fact-value">{{ summary.count }}건</p></article>
+        </div>
+      </div>
+      <p class="watch"><strong>다음 확인 사항:</strong> {{ summary.top_watchpoint | bold }}</p>
     </section>
 
     <section class="card">
-      <h2>최근 샘플(최신 10개)</h2>
-      <ol class="list">
-        {% for item in samples %}
-          <li>{{ item.timestamp }} · 점수 {{ item.score }} · 라벨 {{ item.label }}</li>
-        {% else %}
-          <li>집계 가능한 장중 샘플이 없습니다.</li>
+      <div class="section-head"><h2>주간 주요 지표 변화</h2><p class="meta">첫 관측값 → 마지막 관측값</p></div>
+      <div class="market-grid">
+        {% for item in market_performance %}
+          <article class="market">
+            <p class="market-label">{{ item.label }}</p>
+            <p class="market-value {{ item.change_class }}">{{ item.change_text }}</p>
+            <p class="market-route">{{ item.start }} → {{ item.end }}</p>
+          </article>
         {% endfor %}
-      </ol>
+      </div>
+      <p class="note" style="margin-top:10px;">장중 수집 시점의 지수 레벨 비교이며 종가 수익률과 다를 수 있습니다.</p>
+    </section>
+
+    <section class="card">
+      <div class="section-head"><h2>일별 센티먼트 흐름</h2><p class="meta">실행 시각 나열 대신 거래일별 집계</p></div>
+      <div class="daily-grid">
+        {% for item in daily_points %}
+          <article class="day">
+            <div class="day-head"><p class="day-date">{{ item.day }}</p><span class="{{ item.change_class }}">{{ item.change_text }}</span></div>
+            <p class="day-score">{{ item.score_avg }} <span class="meta">{{ item.label }}</span></p>
+            <div class="mini-track"><span style="width: {{ item.score_avg }}%"></span></div>
+            <p class="day-detail">첫 {{ item.score_open }} → 마지막 {{ item.score_close }} · {{ item.count }}회 실행</p>
+          </article>
+        {% else %}
+          <p class="meta">집계 가능한 일별 데이터가 없습니다.</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-head"><h2>주요 이벤트</h2><p class="meta">현재 규칙으로 재평가·중복 제거</p></div>
+      <div class="event-columns">
+        <div>
+          <p class="event-column-title positive">기회 요인</p>
+          <div class="event-list">
+            {% for event in opportunity_events %}
+              <article class="event">
+                <div class="event-meta"><span class="event-score positive">{{ event.impact_text }}</span><span class="event-source">{{ event.source }}</span></div>
+                {% if event.url %}<a href="{{ event.url }}" target="_blank" rel="noopener noreferrer">{{ event.title }}</a>{% else %}<p class="event-title">{{ event.title }}</p>{% endif %}
+              </article>
+            {% else %}<p class="meta">유의미한 우호 이벤트가 없습니다.</p>{% endfor %}
+          </div>
+        </div>
+        <div>
+          <p class="event-column-title negative">리스크 요인</p>
+          <div class="event-list">
+            {% for event in risk_events %}
+              <article class="event">
+                <div class="event-meta"><span class="event-score negative">{{ event.impact_text }}</span><span class="event-source">{{ event.source }}</span></div>
+                {% if event.url %}<a href="{{ event.url }}" target="_blank" rel="noopener noreferrer">{{ event.title }}</a>{% else %}<p class="event-title">{{ event.title }}</p>{% endif %}
+              </article>
+            {% else %}<p class="meta">유의미한 경계 이벤트가 없습니다.</p>{% endfor %}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card outlook">
+      <div class="section-head"><h2>다음 주 조건부 전망</h2><p class="meta">신뢰도 {{ next_week_outlook.confidence }}</p></div>
+      <div class="outlook-hero">
+        <div>
+          <span class="pill">{{ next_week_outlook.bias }}</span>
+          <p class="outlook-range">{{ next_week_outlook.expected_range }}</p>
+          <p class="note">예상 센티먼트 범위</p>
+        </div>
+        <ul class="rationale">
+          {% for line in next_week_outlook.rationale %}<li>{{ line }}</li>{% endfor %}
+        </ul>
+      </div>
+      <div class="outlook-grid">
+        <article class="scenario"><h3 class="positive">상방 전환 조건</h3><ul>{% for line in next_week_outlook.upside_conditions %}<li>{{ line }}</li>{% endfor %}</ul></article>
+        <article class="scenario"><h3 class="negative">하방 위험 조건</h3><ul>{% for line in next_week_outlook.downside_conditions %}<li>{{ line }}</li>{% endfor %}</ul></article>
+      </div>
+      <p class="disclaimer">{{ next_week_outlook.disclaimer }}</p>
     </section>
   </main>
 </body>
