@@ -238,6 +238,7 @@
     .name { margin: 0 0 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
     .price { margin: 0; font-weight: 750; }
     .change { margin: 3px 0 0; font-size: 0.88rem; font-weight: 700; }
+    .market-meta { margin: 5px 0 0; color: var(--muted); font-size: 0.7rem; line-height: 1.35; }
 
     .event-list {
       margin: 0;
@@ -331,7 +332,8 @@
 
     .state-pill,
     .impact-badge,
-    .movement-badge {
+    .movement-badge,
+    .reliability-badge {
       display: inline-flex;
       align-items: center;
       width: fit-content;
@@ -344,6 +346,19 @@
     .state-strong_bullish, .state-bullish, .impact-badge.positive, .movement-badge.positive { color: #991b1b; background: #fee2e2; }
     .state-caution, .state-strong_caution, .impact-badge.negative, .movement-badge.negative { color: #1e40af; background: #dbeafe; }
     .state-neutral, .impact-badge.neutral, .movement-badge.flat { color: #334155; background: #e2e8f0; }
+    .reliability-badge.normal { color: #166534; background: #dcfce7; }
+    .reliability-badge.caution { color: #92400e; background: #fef3c7; }
+    .reliability-badge.limited { color: #991b1b; background: #fee2e2; }
+
+    .reliability-notice {
+      margin: 10px 0 0;
+      padding: 10px 12px;
+      border-radius: 10px;
+      color: #7f1d1d;
+      background: #fff1f2;
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
 
     .score-meter {
       position: relative;
@@ -425,7 +440,7 @@
     <header class="hero-header">
       <span class="badge">LIVE · ACTUAL SNAPSHOT</span>
       <h1>장중 시장 분위기 모니터</h1>
-      <p class="meta">실행 시각 2026-08-20 12:30:12 KST · 관측 구간 2026-08-20 12:00:00 ~ 2026-08-20 12:59:59</p>
+      <p class="meta">실행 시각 2026-08-20 13:47:43 KST · 관측 구간 2026-08-20 13:00:00 ~ 2026-08-20 13:59:59</p>
       <nav class="top-links" aria-label="시장 브리핑 메뉴">
         <a href="index.html">데일리 브리핑</a>
         <a href="weekly.html">주간 리포트</a>
@@ -436,21 +451,23 @@
       <div>
         <p class="score-kicker">Hybrid sentiment</p>
         <div class="score-main">
-          <strong class="score-number">63.6</strong>
+          <strong class="score-number">42.4</strong>
           <span class="score-denominator">/ 100</span>
-          <span class="state-pill state-bullish">우호</span>
+          <span class="state-pill state-neutral">중립</span>
         </div>
-        <div class="score-meter" aria-label="센티먼트 점수 63.6점">
-          <span class="score-marker" style="left: 63.6%"></span>
+        <div class="score-meter" aria-label="센티먼트 점수 42.4점">
+          <span class="score-marker" style="left: 42.4%"></span>
         </div>
-        <p class="metric">전반적으로 우호적이지만 추가 확인이 필요한 상태입니다.</p>
-        <span class="movement-badge positive">직전 실행 대비 +20.4p</span>
+        <p class="metric">상승·하락 신호가 혼재한 상태입니다.</p>
+        <span class="movement-badge negative">직전 실행 대비 -21.2p</span>
+        <span class="reliability-badge limited">방향성 참고 제한</span>
+          <p class="reliability-notice">최근 적중률이 낮아 지수·이벤트 원문을 함께 확인하세요.</p>
       </div>
       <div>
         <div class="pulse-facts">
           <article class="fact">
-            <p class="fact-label">데이터 신뢰도</p>
-            <p class="fact-value">93% · 지표 9/9, 이벤트 41건, 섹터확인 3건</p>
+            <p class="fact-label">데이터 충실도</p>
+            <p class="fact-value">75% · 지표 9/9, 이벤트 10건, 섹터확인 0건</p>
           </article>
           <article class="fact">
             <p class="fact-label">가장 큰 점수 요인</p>
@@ -458,19 +475,19 @@
           </article>
           <article class="fact">
             <p class="fact-label">이번 실행 신규 이벤트</p>
-            <p class="fact-value">뉴스 1건 · 공시 40건</p>
+            <p class="fact-value">뉴스 3건 · 공시 7건</p>
           </article>
           <article class="fact">
             <p class="fact-label">점수 해석</p>
-            <p class="fact-value">60~79.9는 우호 구간</p>
+            <p class="fact-value">40~59.9는 중립 구간</p>
           </article>
         </div>
         <ol class="summary">
-            <li>하이브리드 점수는 <strong>63.6점(우호)</strong>으로, 시장 12, 뉴스 0.0, 공시 3.2, 섹터확인 1.95를 반영했습니다.</li>
-            <li>리스크 축은 <strong>VIX 14.89 (▼ 0.95 (-6.00%))</strong>, <strong>달러원 1,394.09 (▼ 19.49 (-1.38%))</strong> 흐름을 우선 점검하세요.</li>
-            <li>주요 뉴스: <strong>창신 이어 양쯔까지…&#39;中 메모리&#39; 잇딴 IPO에 삼전·닉스 부담 커지나</strong></li>
+            <li><strong>KOSPI</strong> 6,860.39 (▲ 389.22 (+6.01%))로 관측됐습니다.</li>
+            <li><strong>KOSDAQ</strong> 840.31 (▲ 15.85 (+1.92%))로 관측됐습니다.</li>
+            <li><strong>VIX</strong> 14.89 (▼ 0.95 (-6.00%))로 관측됐습니다.</li>
         </ol>
-        <p class="watch">오늘의 <strong>핵심 관전 포인트</strong>: <strong>VIX</strong>와 <strong>달러원</strong>이 동반 상승하면 변동성·환율 부담의 지속 여부를 확인하고, 두 지표가 안정되면 지수 레벨과 이벤트 점수가 함께 개선되는지 확인하세요.</p>
+        <p class="watch">오늘의 핵심 관전 포인트: <strong>KOSPI</strong> 6,860.39 (▲ 389.22 (+6.01%)), <strong>KOSDAQ</strong> 840.31 (▲ 15.85 (+1.92%)), <strong>VIX</strong> 14.89 (▼ 0.95 (-6.00%))의 추가 변화가 나타나면 관련 지표와 함께 재확인하세요.</p>
       </div>
     </section>
 
@@ -482,125 +499,115 @@
 <div class="market-overview-grid">
     <article class="item market-card" style="border-left: 3px solid #b91c1c">
       <p class="name">KOSPI</p>
-      <p class="price">6,848.83</p>
-      <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 377.66 (+5.84%)</p>
+      <p class="price">6,860.39</p>
+      <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 389.22 (+6.01%)</p>
+      <p class="market-meta">장중 · 08-20 13:47 KST</p>
     </article>
     <article class="item market-card" style="border-left: 3px solid #b91c1c">
       <p class="name">KOSDAQ</p>
-      <p class="price">839.42</p>
-      <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 14.96 (+1.81%)</p>
+      <p class="price">840.31</p>
+      <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 15.85 (+1.92%)</p>
+      <p class="market-meta">장중 · 08-20 13:46 KST</p>
     </article>
     <article class="item market-card" style="border-left: 3px solid #b91c1c">
       <p class="name">EWY</p>
       <p class="price">174.43</p>
       <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 4.38 (+2.58%)</p>
+      <p class="market-meta">최근 종가 · 08-20 05:00 KST</p>
     </article>
     <article class="item market-card" style="border-left: 3px solid #b91c1c">
       <p class="name">S&amp;P 500</p>
       <p class="price">7,707.98</p>
       <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 16.22 (+0.21%)</p>
+      <p class="market-meta">최근 종가 · 08-20 05:38 KST</p>
     </article>
     <article class="item market-card" style="border-left: 3px solid #b91c1c">
       <p class="name">DOW</p>
-      <p class="price">53,463.10</p>
-      <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 119.70 (+0.22%)</p>
+      <p class="price">53,463.05</p>
+      <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 119.65 (+0.22%)</p>
+      <p class="market-meta">최근 종가 · 08-20 05:38 KST</p>
     </article>
     <article class="item market-card" style="border-left: 3px solid #b91c1c">
       <p class="name">NASDAQ</p>
       <p class="price">26,331.09</p>
       <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 41.38 (+0.16%)</p>
+      <p class="market-meta">최근 종가 · 08-20 06:15 KST</p>
     </article>
     <article class="item market-card" style="border-left: 3px solid #1d4ed8">
       <p class="name">USD/KRW</p>
-      <p class="price">1,394.09</p>
-      <p class="change" style="color: #1d4ed8; font-size: 0.95rem;">▼ 19.49 (-1.38%)</p>
+      <p class="price">1,394.31</p>
+      <p class="change" style="color: #1d4ed8; font-size: 0.95rem;">▼ 19.27 (-1.36%)</p>
+      <p class="market-meta">환율 거래중 · 08-20 13:47 KST</p>
     </article>
     <article class="item market-card" style="border-left: 3px solid #1d4ed8">
       <p class="name">VIX</p>
       <p class="price">14.89</p>
       <p class="change" style="color: #1d4ed8; font-size: 0.95rem;">▼ 0.95 (-6.00%)</p>
+      <p class="market-meta">최근 종가 · 08-20 05:15 KST</p>
     </article>
 </div>    </section>
 
 
     <section class="card">
       <div class="section-head">
-        <h2 class="section-title">이번 실행 주요 뉴스</h2>
-        <p class="metric">영향도 절댓값 순</p>
+        <h2 class="section-title">오늘 핵심 이벤트</h2>
+        <p class="metric">뉴스·공시 통합 · 영향도 순 · 최대 5개</p>
       </div>
       <div class="event-grid">
           <article class="event-card">
             <div class="event-meta">
-              <span class="impact-badge neutral">중립 0</span>
-              <span class="event-source">뉴시스</span>
-              <span class="event-time">2026-08-20 12:05:40</span>
-            </div>
-            <a class="event-title" href="https://finance.naver.com/news/news_read.naver?article_id=0014137792&amp;office_id=003&amp;mode=mainnews&amp;type=&amp;date=2026-08-20&amp;page=1" target="_blank" rel="noopener noreferrer">창신 이어 양쯔까지…&#39;中 메모리&#39; 잇딴 IPO에 삼전·닉스 부담 커지나</a>
-          </article>
-      </div>
-    </section>
-
-    <section class="card">
-      <div class="section-head">
-        <h2 class="section-title">이번 실행 주요 공시</h2>
-        <p class="metric">DART 당일 신규 공시</p>
-      </div>
-      <div class="event-grid">
-          <article class="event-card">
-            <div class="event-meta">
-              <span class="impact-badge negative">경계 신호 -4</span>
+              <span class="impact-badge negative">경계 신호 -5</span>
+              <span class="event-tag">공시</span>
               <span class="event-source">DART</span>
               <span class="event-time">20260820</span>
             </div>
-            <a class="event-title" href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820000089" target="_blank" rel="noopener noreferrer">한탑 주요사항보고서(유상증자결정)</a>
+            <a class="event-title" href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820800237" target="_blank" rel="noopener noreferrer">STX 기타시장안내              (상장폐지 이의신청서 제출)</a>
+              <div class="event-tags">
+<span class="event-tag">상장폐지</span>              </div>
+          </article>
+          <article class="event-card">
+            <div class="event-meta">
+              <span class="impact-badge negative">경계 신호 -4</span>
+              <span class="event-tag">공시</span>
+              <span class="event-source">DART</span>
+              <span class="event-time">20260820</span>
+            </div>
+            <a class="event-title" href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820900216" target="_blank" rel="noopener noreferrer">포커스에이아이 증권발행결과(자율공시)              (제3자배정 유상증자)</a>
               <div class="event-tags">
 <span class="event-tag">유상증자</span>              </div>
           </article>
           <article class="event-card">
             <div class="event-meta">
               <span class="impact-badge positive">우호 신호 +3</span>
+              <span class="event-tag">공시</span>
               <span class="event-source">DART</span>
               <span class="event-time">20260820</span>
             </div>
-            <a class="event-title" href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820800177" target="_blank" rel="noopener noreferrer">미래산업 단일판매ㆍ공급계약체결              </a>
+            <a class="event-title" href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820900220" target="_blank" rel="noopener noreferrer">씨이랩 단일판매ㆍ공급계약체결</a>
               <div class="event-tags">
 <span class="event-tag">공급계약</span>              </div>
           </article>
           <article class="event-card">
             <div class="event-meta">
               <span class="impact-badge positive">우호 신호 +3</span>
+              <span class="event-tag">공시</span>
               <span class="event-source">DART</span>
               <span class="event-time">20260820</span>
             </div>
-            <a class="event-title" href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820800160" target="_blank" rel="noopener noreferrer">HJ중공업 [기재정정]단일판매ㆍ공급계약체결              </a>
+            <a class="event-title" href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820900222" target="_blank" rel="noopener noreferrer">우원개발 [기재정정]단일판매ㆍ공급계약체결</a>
               <div class="event-tags">
 <span class="event-tag">공급계약</span><span class="event-tag">정정</span>              </div>
           </article>
           <article class="event-card">
             <div class="event-meta">
-              <span class="impact-badge positive">우호 신호 +3</span>
+              <span class="impact-badge negative">경계 신호 -3</span>
+              <span class="event-tag">공시</span>
               <span class="event-source">DART</span>
               <span class="event-time">20260820</span>
             </div>
-            <a class="event-title" href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820900104" target="_blank" rel="noopener noreferrer">에이직랜드 [기재정정]단일판매ㆍ공급계약체결              </a>
+            <a class="event-title" href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820000134" target="_blank" rel="noopener noreferrer">본느 [첨부정정]주요사항보고서(전환사채권발행결정)</a>
               <div class="event-tags">
-<span class="event-tag">공급계약</span><span class="event-tag">정정</span>              </div>
-          </article>
-          <article class="event-card">
-            <div class="event-meta">
-              <span class="impact-badge neutral">중립 0</span>
-              <span class="event-source">DART</span>
-              <span class="event-time">20260820</span>
-            </div>
-            <a class="event-title" href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820000110" target="_blank" rel="noopener noreferrer">모비데이즈 주식등의대량보유상황보고서(일반)</a>
-          </article>
-          <article class="event-card">
-            <div class="event-meta">
-              <span class="impact-badge neutral">중립 0</span>
-              <span class="event-source">DART</span>
-              <span class="event-time">20260820</span>
-            </div>
-            <a class="event-title" href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820000109" target="_blank" rel="noopener noreferrer">모비데이즈 임원ㆍ주요주주특정증권등소유상황보고서</a>
+<span class="event-tag">전환사채</span><span class="event-tag">정정</span>              </div>
           </article>
       </div>
     </section>
@@ -611,16 +618,12 @@
         <div>
           <p class="metric">전일 대비 자동 코멘트</p>
           <ol class="tiny-list">
-<li>전일 비교 데이터 확인이 필요합니다.</li>          </ol>
+<li>전일 동시간 대비 <strong>센티먼트 -6.00p</strong> 변화로 현재 점수는 42.4점입니다.</li><li>리스크 축은 <strong>VIX -0.57</strong>, <strong>달러원 -19.97</strong> 만큼 변동했습니다.</li><li>이벤트 발생량은 전일 대비 <strong>-50건</strong> 차이로 뉴스/공시 민감도를 점검할 구간입니다.</li>          </ol>
         </div>
         <div>
           <p class="metric">섹터 회전 탐지</p>
           <ol class="tiny-list">
-              <li>강세 후보 · 반도체 (2.0, 신뢰도 55%)</li>
-              <li>강세 후보 · 바이오 (1.94, 신뢰도 65%)</li>
-              <li>강세 후보 · 2차전지 (1.9, 신뢰도 45%)</li>
-              <li>경계 후보 · 에너지 (-1.57, 신뢰도 45%)</li>
-              <li>경계 후보 · 금융 (-1.44, 신뢰도 85%)</li>
+              <li>경계 후보 · 금융 (-1.33, 신뢰도 45%)</li>
           </ol>
           <p class="metric">이벤트 점수 + 대표 종목 수익률 확인 결합</p>
         </div>
@@ -632,13 +635,13 @@
       <ul class="breakdown">
         <li>시장 12</li>
         <li>뉴스 0.0</li>
-        <li>공시 3.2</li>
-        <li>섹터 1.95</li>
+        <li>공시 -5.9</li>
+        <li>섹터 0.0</li>
       </ul>
       <p class="metric">평가 표본 24건 · Hit Rate 41.7% · False Alarm 58.3%</p>
       <p class="metric">Bullish 0.0% / Bearish 33.3% / Neutral 45.0%</p>
       <p class="metric">검증 기준: 20~120분 뒤 동일 거래일 KOSPI/KOSDAQ 지수 레벨 수익률 기준</p>
-      <p class="metric">신뢰도는 예측 적중률이 아니라 현재 점수 계산에 사용된 데이터 충실도입니다.</p>
+      <p class="metric">데이터 충실도는 입력 데이터의 완전성이고, Hit Rate는 별도의 과거 방향 검증 결과입니다.</p>
     </details>
   </main>
 </body>
