@@ -1,11 +1,6 @@
 name: Intraday Sentiment Pipeline
 
 on:
-  schedule:
-    # Start preparation at :10 UTC, then align generation to :30.
-    # This absorbs most GitHub scheduler delays without extra API calls.
-    - cron: "10 23 * * 0-4"
-    - cron: "10 0-6 * * 1-5"
   workflow_dispatch:
     inputs:
       align_to_half_hour:
@@ -65,7 +60,7 @@ jobs:
         run: python -m compileall -q . && python -m unittest discover -s tests -v
 
       - name: Align scheduled generation to half hour
-        if: github.event_name == 'schedule' || inputs.align_to_half_hour == true
+        if: inputs.align_to_half_hour == true
         shell: bash
         run: |
           requested_target='${{ inputs.target_kst }}'
