@@ -435,6 +435,7 @@ def score_news_events(events: List[dict]) -> List[dict]:
 
     compound_negative = {
         "실적 부진": 3,
+        "실적 악화": 3,
         "실적악화": 3,
         "최대 적자": 4,
         "최대낙폭": 3,
