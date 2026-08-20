@@ -1047,8 +1047,22 @@ def build_timeline_heatmap(current_payload: dict, history: List[dict]) -> dict:
             "state": score_state["range_key"],
         }
 
-    observations = [format_observation(item) for item in recent[-40:]]
-    timeline = [format_observation(item) for item in recent[-12:]]
+    formatted_recent = []
+    previous_score = None
+    for item in recent:
+        observation = format_observation(item)
+        if previous_score is None:
+            observation["delta"] = None
+            observation["delta_text"] = "첫 관측"
+        else:
+            delta = round(observation["score"] - previous_score, 1)
+            observation["delta"] = delta
+            observation["delta_text"] = f"{delta:+.1f}p" if delta else "0.0p"
+        previous_score = observation["score"]
+        formatted_recent.append(observation)
+
+    observations = formatted_recent[-40:]
+    timeline = formatted_recent[-12:]
     return {
         "observations": observations,
         "timeline": timeline,
@@ -1059,6 +1073,79 @@ def build_timeline_heatmap(current_payload: dict, history: List[dict]) -> dict:
             {"name": "경계 20~39", "color": "#dbeafe"},
             {"name": "강한 경계 0~19", "color": "#bfdbfe"},
         ],
+    }
+
+
+def build_live_pulse_summary(payload: dict) -> dict:
+    sentiment = payload.get("sentiment", {})
+    score = float(sentiment.get("score", 50))
+    timeline = payload.get("heatmap", {}).get("timeline", [])
+    previous_score = None
+    if len(timeline) >= 2:
+        previous_score = float(timeline[-2].get("score", score))
+
+    if previous_score is None:
+        delta = None
+        movement_text = "이전 실행 비교 없음"
+        movement_class = "flat"
+    else:
+        delta = round(score - previous_score, 1)
+        if delta > 0:
+            movement_text = f"직전 실행 대비 +{delta:.1f}p"
+            movement_class = "positive"
+        elif delta < 0:
+            movement_text = f"직전 실행 대비 {delta:.1f}p"
+            movement_class = "negative"
+        else:
+            movement_text = "직전 실행과 동일"
+            movement_class = "flat"
+
+    breakdown = sentiment.get("score_breakdown", {})
+    driver_key = max(
+        ("market", "news", "dart", "sector"),
+        key=lambda key: abs(float(breakdown.get(key, 0) or 0)),
+    )
+    driver_value = round(float(breakdown.get(driver_key, 0) or 0), 2)
+    driver_names = {"market": "시장", "news": "뉴스", "dart": "공시", "sector": "섹터"}
+    driver_direction = "우호 기여" if driver_value > 0 else "경계 기여" if driver_value < 0 else "중립"
+
+    events = payload.get("events", {})
+    return {
+        "score": score,
+        "score_position": max(0, min(100, score)),
+        "delta": delta,
+        "movement_text": movement_text,
+        "movement_class": movement_class,
+        "top_driver": driver_names[driver_key],
+        "top_driver_value": driver_value,
+        "top_driver_direction": driver_direction,
+        "news_count": int(events.get("news_count", len(events.get("news", []))) or 0),
+        "dart_count": int(events.get("dart_count", len(events.get("dart", []))) or 0),
+    }
+
+
+def build_live_event_view(event: dict, event_type: str) -> dict:
+    score = float(event.get("impact_score", 0) or 0)
+    if score >= 2:
+        impact_label = "우호 신호"
+        impact_class = "positive"
+    elif score <= -2:
+        impact_label = "경계 신호"
+        impact_class = "negative"
+    else:
+        impact_label = "중립"
+        impact_class = "neutral"
+
+    score_text = f"{score:+g}" if score else "0"
+    tags = [str(tag).lstrip("+-") for tag in event.get("tags", []) if str(tag).lstrip("+-")]
+    return {
+        **event,
+        "event_type": event_type,
+        "source_label": event.get("source", "네이버증권") if event_type == "news" else "DART",
+        "impact_label": impact_label,
+        "impact_class": impact_class,
+        "impact_score_text": score_text,
+        "tag_labels": tags[:3],
     }
 
 
@@ -1173,11 +1260,16 @@ def save_intraday_snapshot(
     hour_end = hour_start.replace(minute=59, second=59)
 
     payload = {
-        "schema_version": "1.2",
+        "schema_version": "1.3",
         "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
         "window_start": hour_start.strftime("%Y-%m-%d %H:%M:%S"),
         "window_end": hour_end.strftime("%Y-%m-%d %H:%M:%S"),
         "run_source": os.getenv("GITHUB_EVENT_NAME", "local"),
+        "execution": {
+            "scheduled_target_kst": os.getenv("SCHEDULE_TARGET_KST", ""),
+            "delay_seconds": int(os.getenv("SCHEDULE_DELAY_SECONDS", "0") or 0),
+            "actual_timestamp_kst": now.strftime("%Y-%m-%d %H:%M:%S"),
+        },
         "market_signals": indexes,
         "events": {
             "news": news,
@@ -1260,6 +1352,7 @@ def render_live_html(payload: dict) -> None:
     sentiment_view = {
         "label": sentiment.get("label", "중립"),
         "score": sentiment.get("score", 50),
+        "range_key": sentiment.get("range_key", "neutral"),
         "raw_score": sentiment.get("raw_score", 0),
         "confidence": sentiment.get("confidence", 0),
         "breakdown": sentiment.get("score_breakdown", {"market": 0, "news": 0, "dart": 0, "sector": 0}),
@@ -1270,22 +1363,29 @@ def render_live_html(payload: dict) -> None:
         "confidence_tooltip": sentiment.get("confidence_tooltip", []),
     }
 
-    news_events = sorted(
-        payload.get("events", {}).get("news", []),
-        key=lambda x: abs(x.get("impact_score", 0)),
-        reverse=True,
-    )[:8]
-    dart_events = sorted(
-        payload.get("events", {}).get("dart", []),
-        key=lambda x: abs(x.get("impact_score", 0)),
-        reverse=True,
-    )[:8]
+    news_events = [
+        build_live_event_view(event, "news")
+        for event in sorted(
+            payload.get("events", {}).get("news", []),
+            key=lambda x: abs(x.get("impact_score", 0)),
+            reverse=True,
+        )[:8]
+    ]
+    dart_events = [
+        build_live_event_view(event, "dart")
+        for event in sorted(
+            payload.get("events", {}).get("dart", []),
+            key=lambda x: abs(x.get("impact_score", 0)),
+            reverse=True,
+        )[:8]
+    ]
 
     html = template.render(
         generated_at=payload.get("timestamp", ""),
         window_start=payload.get("window_start", ""),
         window_end=payload.get("window_end", ""),
         sentiment=sentiment_view,
+        pulse=build_live_pulse_summary(payload),
         market_overview=build_market_overview(payload.get("market_signals", {})),
         market=payload.get("market_signals", {}),
         key_points=payload.get("key_points", []),
