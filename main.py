@@ -342,6 +342,16 @@ def parse_price_value(value: str) -> float:
         return float("nan")
 
 
+def parse_change_percent(change: str) -> float:
+    match = re.search(r"\(([+-]?\d+(?:\.\d+)?)%\)", str(change))
+    if not match:
+        return float("nan")
+    try:
+        return float(match.group(1))
+    except ValueError:
+        return float("nan")
+
+
 def require_market_coverage(indexes: dict, minimum: int, required: tuple[str, ...] = ()) -> int:
     available = 0
     for item in indexes.values():
