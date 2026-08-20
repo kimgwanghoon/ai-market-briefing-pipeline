@@ -665,31 +665,44 @@ def generate_ai_briefing(
         kospi_chg = parse_change_percent(kospi.get("change", ""))
         vix_val = parse_price_value(vix.get("price", "0"))
         if kospi_chg == kospi_chg and kospi_chg > 0.5:
-            _chart_dir = "rising strongly upward with confident momentum"
-            _figure = "a powerful bull figure charging forward and upward"
-            _palette = "vibrant greens, warm golds, bright sky blue"
-            _mood = "optimistic, energetic upward momentum, morning sunlight"
+            _market_state = "constructive risk-on momentum with a clear upward visual rhythm"
+            _palette = "deep navy, restrained emerald, warm gold highlights, clean white accents"
+            _mood = "confident and energetic, with controlled optimism"
         elif kospi_chg == kospi_chg and kospi_chg < -0.5:
-            _chart_dir = "falling sharply downward under heavy pressure"
-            _figure = "a bear figure pressing down with weight and gravity"
-            _palette = "deep reds, cool steel blues, dramatic dark contrast"
-            _mood = "tense, declining pressure, heavy atmosphere, storm clouds"
+            _market_state = "risk-off pressure with a controlled downward visual rhythm"
+            _palette = "deep navy, muted crimson, cool steel blue, soft grey highlights"
+            _mood = "serious and cautious, tense without looking catastrophic"
         else:
-            _chart_dir = "moving sideways with mixed and uncertain signals"
-            _figure = "a bull and bear figure in cautious standoff, neither dominating"
-            _palette = "muted grey-blues, soft amber accents, balanced neutral tones"
-            _mood = "balanced uncertainty, quiet observation, overcast diffused light"
-        _tension = " Extreme volatility, sharp spikes in the chart." if (vix_val == vix_val and vix_val > 25) else ""
+            _market_state = "mixed sideways trading with balanced, unresolved visual tension"
+            _palette = "deep navy, slate blue, muted teal, subtle amber highlights"
+            _mood = "calm, analytical and watchful"
+        _volatility = (
+            "Show elevated volatility through layered light trails and tighter visual tension, "
+            "but avoid panic, disaster imagery, or exaggerated market crashes. "
+            if (vix_val == vix_val and vix_val > 25)
+            else "Keep the visual rhythm measured and orderly, suggesting normal market volatility. "
+        )
+        _session_light = (
+            "crisp early-morning light with a subtle dawn glow"
+            if IS_MORNING
+            else "refined evening light with subtle city illumination"
+        )
 
         image_prompt = (
-            f"Professional editorial illustration for a Korean stock market daily briefing. "
-            f"Main visual: A bold stock chart line {_chart_dir}, rendered as the dominant graphic element. "
-            f"Background: Yeouido financial district skyline silhouette at dusk or dawn. "
-            f"Foreground: {_figure}, abstract circuit-board patterns blending into financial charts. "
-            f"Mood: {_mood}.{_tension} "
-            f"Color palette: {_palette}. "
-            f"Style: modern flat editorial illustration, cinematic depth, professional magazine cover quality. "
-            f"No text, no numbers, no labels anywhere in the image."
+            "Create a premium square editorial cover illustration for a Korean daily market briefing. "
+            "Communicate financial-market movement through one clear focal composition: an elegant abstract "
+            "flow of illuminated data ribbons and geometric market layers moving across a refined Seoul "
+            "financial-district atmosphere. The visual should feel like a serious global finance magazine, "
+            "not a trading-app advertisement. "
+            f"Market state: {_market_state}. Mood: {_mood}. Lighting: {_session_light}. "
+            f"Color palette: {_palette}. {_volatility}"
+            "Use sophisticated editorial illustration, clean geometry, restrained cinematic depth, realistic "
+            "light, generous negative space, and a strong central visual hierarchy. Keep important details away "
+            "from the outer edges so the image remains effective when responsively cropped. "
+            "Do not depict bulls, bears, people, mascots, coins, money, rockets, candlestick charts, literal "
+            "screens, or cliché Wall Street imagery. Do not create fake interfaces or decorative financial data. "
+            "Absolutely no text, letters, numbers, ticker symbols, logos, flags, labels, captions, borders, "
+            "signatures, or watermarks anywhere in the image."
         )
 
         if GENERATE_AI_IMAGE:
