@@ -238,6 +238,7 @@
     .name { margin: 0 0 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
     .price { margin: 0; font-weight: 750; }
     .change { margin: 3px 0 0; font-size: 0.88rem; font-weight: 700; }
+    .market-meta { margin: 5px 0 0; color: var(--muted); font-size: 0.7rem; line-height: 1.35; }
 
     .event-list {
       margin: 0;
@@ -331,7 +332,8 @@
 
     .state-pill,
     .impact-badge,
-    .movement-badge {
+    .movement-badge,
+    .reliability-badge {
       display: inline-flex;
       align-items: center;
       width: fit-content;
@@ -344,6 +346,19 @@
     .state-strong_bullish, .state-bullish, .impact-badge.positive, .movement-badge.positive { color: #991b1b; background: #fee2e2; }
     .state-caution, .state-strong_caution, .impact-badge.negative, .movement-badge.negative { color: #1e40af; background: #dbeafe; }
     .state-neutral, .impact-badge.neutral, .movement-badge.flat { color: #334155; background: #e2e8f0; }
+    .reliability-badge.normal { color: #166534; background: #dcfce7; }
+    .reliability-badge.caution { color: #92400e; background: #fef3c7; }
+    .reliability-badge.limited { color: #991b1b; background: #fee2e2; }
+
+    .reliability-notice {
+      margin: 10px 0 0;
+      padding: 10px 12px;
+      border-radius: 10px;
+      color: #7f1d1d;
+      background: #fff1f2;
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
 
     .score-meter {
       position: relative;
@@ -445,12 +460,16 @@
         </div>
         <p class="metric">{{ sentiment.interpretation }}</p>
         <span class="movement-badge {{ pulse.movement_class }}">{{ pulse.movement_text }}</span>
+        <span class="reliability-badge {{ pulse.reliability_class }}">{{ pulse.reliability_status }}</span>
+        {% if pulse.reference_limited %}
+          <p class="reliability-notice">{{ pulse.reliability_guidance }}</p>
+        {% endif %}
       </div>
       <div>
         <div class="pulse-facts">
           <article class="fact">
-            <p class="fact-label">데이터 신뢰도</p>
-            <p class="fact-value">{{ sentiment.confidence }}% · {{ sentiment.data_quality_basis }}</p>
+            <p class="fact-label">데이터 충실도</p>
+            <p class="fact-value">{{ sentiment.data_completeness }}% · {{ sentiment.data_quality_basis }}</p>
           </article>
           <article class="fact">
             <p class="fact-label">가장 큰 점수 요인</p>
@@ -485,18 +504,19 @@
 
     <section class="card">
       <div class="section-head">
-        <h2 class="section-title">이번 실행 주요 뉴스</h2>
-        <p class="metric">영향도 절댓값 순</p>
+        <h2 class="section-title">오늘 핵심 이벤트</h2>
+        <p class="metric">뉴스·공시 통합 · 영향도 순 · 최대 5개</p>
       </div>
       <div class="event-grid">
-        {% for event in news_events[:6] %}
+        {% for event in top_events %}
           <article class="event-card">
             <div class="event-meta">
               <span class="impact-badge {{ event.impact_class }}">{{ event.impact_label }} {{ event.impact_score_text }}</span>
+              <span class="event-tag">{{ event.event_type_label }}</span>
               <span class="event-source">{{ event.source_label }}</span>
               <span class="event-time">{{ event.published_at }}</span>
             </div>
-            <a class="event-title" href="{{ event.url }}" target="_blank" rel="noopener noreferrer">{{ event.title }}</a>
+            <a class="event-title" href="{{ event.url }}" target="_blank" rel="noopener noreferrer">{{ event.display_title }}</a>
             {% if event.tag_labels %}
               <div class="event-tags">
                 {% for tag in event.tag_labels %}<span class="event-tag">{{ tag }}</span>{% endfor %}
@@ -504,33 +524,7 @@
             {% endif %}
           </article>
         {% else %}
-          <p class="metric">이번 실행 구간에 새로 수집된 주요 뉴스가 없습니다.</p>
-        {% endfor %}
-      </div>
-    </section>
-
-    <section class="card">
-      <div class="section-head">
-        <h2 class="section-title">이번 실행 주요 공시</h2>
-        <p class="metric">DART 당일 신규 공시</p>
-      </div>
-      <div class="event-grid">
-        {% for event in dart_events[:6] %}
-          <article class="event-card">
-            <div class="event-meta">
-              <span class="impact-badge {{ event.impact_class }}">{{ event.impact_label }} {{ event.impact_score_text }}</span>
-              <span class="event-source">{{ event.source_label }}</span>
-              <span class="event-time">{{ event.published_at }}</span>
-            </div>
-            <a class="event-title" href="{{ event.url }}" target="_blank" rel="noopener noreferrer">{{ event.corp_name }} {{ event.title }}</a>
-            {% if event.tag_labels %}
-              <div class="event-tags">
-                {% for tag in event.tag_labels %}<span class="event-tag">{{ tag }}</span>{% endfor %}
-              </div>
-            {% endif %}
-          </article>
-        {% else %}
-          <p class="metric">이번 실행에 새로 확인된 주요 공시가 없습니다.</p>
+          <p class="metric">이번 실행에 새로 확인된 핵심 뉴스·공시가 없습니다.</p>
         {% endfor %}
       </div>
     </section>
@@ -571,7 +565,7 @@
       <p class="metric">평가 표본 {{ reliability.evaluated }}건 · Hit Rate {{ reliability.hit_rate }} · False Alarm {{ reliability.false_alarm_rate }}</p>
       <p class="metric">Bullish {{ reliability.by_label.bullish }} / Bearish {{ reliability.by_label.bearish }} / Neutral {{ reliability.by_label.neutral }}</p>
       <p class="metric">검증 기준: {{ reliability.basis }}</p>
-      <p class="metric">신뢰도는 예측 적중률이 아니라 현재 점수 계산에 사용된 데이터 충실도입니다.</p>
+      <p class="metric">데이터 충실도는 입력 데이터의 완전성이고, Hit Rate는 별도의 과거 방향 검증 결과입니다.</p>
     </details>
   </main>
 </body>

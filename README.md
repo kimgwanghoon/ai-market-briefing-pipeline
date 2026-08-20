@@ -25,13 +25,14 @@
 | `template_live.html` | 장중 라이브 페이지 HTML 템플릿 (`public/live.html`) |
 | `template_weekly.html` | 주간 리포트 HTML 템플릿 (`public/weekly.html`) |
 | `.github/workflows/main.yml` | 평일 오전/오후 자동 실행 및 GitHub Pages 배포 |
+| `.github/workflows/quality.yml` | `master` push/PR 소스 품질 검사 (시장 데이터 생성·배포 없음) |
 | `.github/workflows/intraday.yml` | 장중 매시 실행 및 intraday 데이터 배포 |
 | `.github/workflows/cleanup-data.yml` | 평일 00:00(KST) JSON 정리 실행 |
 | `.github/workflows/weekly-report.yml` | 토요일 09:00(KST) 주간 리포트 생성/배포 |
 | `requirements.txt` | Python 의존성 |
 | `ai_generation.py` | JSON Schema 기반 AI 출력 계약과 모델 설정 |
 | `tests/` | 점수 스키마, HTML 안전성, 구조화 출력 회귀 테스트 |
-| `public/data/*.json` | 실행 스냅샷 누적 데이터 (히스토리/대시보드용) |
+| `public/data/*.json` | 실행 스냅샷 누적 데이터 (비교·검증용) |
 
 ## 환경 변수
 
@@ -72,13 +73,30 @@ python -m unittest discover -s tests -v
 
 - `main.yml`: 평일 08:00 / 18:00(KST) 데일리 브리핑
 - `intraday.yml`: 평일 08:10~15:10(KST)에 준비를 시작하고 08:30~15:30 정각에 장중 스냅샷 생성을 시도합니다. GitHub 스케줄러가 늦게 시작되면 대기 없이 실제 시작 시각에 생성합니다.
+- `quality.yml`: `master` 코드 변경과 PR에서는 테스트만 실행하며, 데일리 페이지를 임의 시각에 다시 생성하지 않습니다.
 - `cleanup-data.yml`: 평일 00:00(KST) 30일 초과 JSON 자동 정리
 - `weekly-report.yml`: 토요일 09:00(KST) 주간 시장 리포트 생성/발송
+
+### 무료 외부 스케줄러 연동
+
+`cron-job.org` 같은 HTTP 스케줄러에서는 아래 GitHub API를 `POST`로 호출할 수 있습니다.
+
+```text
+https://api.github.com/repos/<owner>/<repo>/actions/workflows/intraday.yml/dispatches
+```
+
+요청 본문은 준비 시각에 호출해 :30까지 정렬하려면 다음과 같이 설정합니다.
+
+```json
+{"ref":"master","inputs":{"align_to_half_hour":"true"}}
+```
+
+정확한 목표 슬롯을 지정하려면 `target_kst`를 `YYYY-MM-DD HH:30:00` 형식으로 함께 전달합니다. 토큰은 해당 저장소의 Actions 쓰기 권한만 가진 fine-grained PAT를 사용하고 외부 스케줄러의 비밀 헤더에만 저장합니다. 내부 cron과 외부 호출이 같은 목표 시각에 겹쳐도 `scheduled_target_kst`가 이미 저장돼 있으면 두 번째 실행은 데이터 수집·AI 호출·알림을 건너뜁니다.
 
 ## 장중 점수 모델
 
 - `intraday.py`는 `시장/뉴스/공시/섹터` 4개 컴포넌트를 결합해 raw 점수(-100~100)를 만들고, 이를 표시 점수(0~100)로 변환합니다.
-- 장중 히트맵과 타임라인은 예약 슬롯으로 보정하지 않고, 워크플로가 실제 실행해 저장한 KST 시각의 스냅샷만 표시합니다.
+- 라이브 상단의 직전 실행 비교는 예약 슬롯이 아니라 실제 저장된 최신 스냅샷을 기준으로 계산합니다.
 - 예약 실행 스냅샷에는 목표 시각과 실제 생성 지연 시간을 `execution` 메타데이터로 기록합니다.
 - 최근 intraday 히스토리를 기반으로 컴포넌트 분포를 robust 정규화(중앙값/MAD)하고, 그리드 서치로 가중치를 보정합니다.
 - 산출 결과에는 `model_version`, `weights`, `normalized_components`, `calibration_metric`, `calibration_samples`를 함께 기록합니다.

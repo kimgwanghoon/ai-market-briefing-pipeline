@@ -46,6 +46,47 @@ OPENAI_API_KEY = os.getenv("AI_API_KEY")
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
 DART_API_KEY = os.getenv("DART_API_KEY", "").strip()
 
+DART_MATERIAL_KEYWORDS = (
+    "영업(잠정)실적",
+    "매출액또는손익구조",
+    "단일판매",
+    "공급계약",
+    "신규시설투자",
+    "시설투자",
+    "유상증자",
+    "무상증자",
+    "전환사채",
+    "신주인수권부사채",
+    "교환사채",
+    "자기주식취득",
+    "자기주식처분",
+    "현금ㆍ현물배당",
+    "배당결정",
+    "합병결정",
+    "분할결정",
+    "타법인주식및출자증권",
+    "최대주주변경",
+    "횡령",
+    "배임",
+    "감사의견",
+    "불성실공시",
+    "관리종목",
+    "상장폐지",
+    "파산",
+    "회생절차",
+    "투자판단관련주요경영사항",
+)
+
+DART_ROUTINE_KEYWORDS = (
+    "임원ㆍ주요주주특정증권등소유상황보고서",
+    "주식등의대량보유상황보고서",
+    "기업설명회",
+    "증권발행실적보고서",
+    "분기보고서",
+    "반기보고서",
+    "사업보고서",
+)
+
 
 def parse_snapshot_dt(snapshot: dict) -> datetime:
     return KST.localize(datetime.strptime(snapshot.get("timestamp", ""), "%Y-%m-%d %H:%M:%S"))
@@ -66,6 +107,16 @@ def load_intraday_history(limit: int = 400) -> List[dict]:
         if len(snapshots) >= limit:
             break
     return snapshots
+
+
+def has_execution_target(history: List[dict], target_kst: str) -> bool:
+    target = str(target_kst or "").strip()
+    if not target:
+        return False
+    return any(
+        str(item.get("execution", {}).get("scheduled_target_kst", "")).strip() == target
+        for item in history
+    )
 
 
 def score_text(text: str, positive: Dict[str, int], negative: Dict[str, int]) -> Tuple[int, List[str]]:
@@ -203,18 +254,6 @@ def describe_display_score(display_score: float) -> dict:
     }
 
 
-def display_score_color(display_score: float) -> str:
-    if display_score >= 80:
-        return "#fecaca"
-    if display_score >= 60:
-        return "#fee2e2"
-    if display_score <= 19.9:
-        return "#bfdbfe"
-    if display_score <= 39.9:
-        return "#dbeafe"
-    return "#e2e8f0"
-
-
 def get_snapshot_display_score(item: dict) -> float:
     sentiment = item.get("sentiment", {})
     if "raw_score" in sentiment:
@@ -241,12 +280,12 @@ def build_confidence_tooltip(confidence: int, data_quality: dict) -> List[str]:
     else:
         level_text = "데이터가 부족해 보수적으로 해석해야 합니다."
     return [
-        "신뢰도 안내",
-        "신뢰도는 예측 적중률이 아니라, 현재 점수 계산에 사용된 데이터의 충실도를 의미합니다.",
-        f"현재 신뢰도: {confidence}%",
+        "데이터 충실도 안내",
+        "데이터 충실도는 예측 적중률이 아니라, 현재 점수 계산에 사용된 데이터의 완전성을 의미합니다.",
+        f"현재 데이터 충실도: {confidence}%",
         f"해석: {level_text}",
         f"기준: {data_quality.get('basis', '데이터 기준 없음')}",
-        "주의: 이 값이 미래 방향 적중률을 직접 뜻하지는 않습니다.",
+        "방향 적중률은 별도의 과거 검증 지표로 표시합니다.",
     ]
 
 
@@ -286,6 +325,27 @@ def parse_event_dt(value: str, now: datetime) -> tuple[datetime, str] | None:
     return None
 
 
+def normalize_dart_title(title: str) -> str:
+    normalized = re.sub(r"\[[^\]]*(?:정정|첨부)[^\]]*\]", "", str(title))
+    normalized = re.sub(r"\((?:기재정정|첨부정정|정정)\)", "", normalized)
+    normalized = normalized.replace("정정", "")
+    return re.sub(r"[^0-9A-Za-z가-힣]", "", normalized).lower()
+
+
+def is_material_dart_event(title: str) -> bool:
+    normalized = normalize_dart_title(title)
+    if not normalized:
+        return False
+    if any(normalize_dart_title(keyword) in normalized for keyword in DART_ROUTINE_KEYWORDS):
+        return False
+    return any(normalize_dart_title(keyword) in normalized for keyword in DART_MATERIAL_KEYWORDS)
+
+
+def dart_event_dedupe_key(event: dict) -> str:
+    corp_name = re.sub(r"[^0-9A-Za-z가-힣]", "", str(event.get("corp_name", ""))).lower()
+    return f"{corp_name}:{normalize_dart_title(event.get('title', ''))}"
+
+
 def filter_unseen_events(
     events: List[dict],
     history: List[dict],
@@ -301,6 +361,10 @@ def filter_unseen_events(
             event_id = event.get("event_id") or event.get("url")
             if event_id:
                 seen.add(str(event_id))
+            if category == "dart":
+                dedupe_key = str(event.get("dedupe_key") or dart_event_dedupe_key(event))
+                if dedupe_key:
+                    seen.add(dedupe_key)
 
     unique = []
     current_ids = set()
@@ -314,9 +378,13 @@ def filter_unseen_events(
         if category == "dart" and published_at.date() != now.date():
             continue
         event_id = str(event.get("event_id") or event.get("url") or "")
-        if not event_id or event_id in seen or event_id in current_ids:
+        identities = {event_id}
+        if category == "dart":
+            identities.add(str(event.get("dedupe_key") or dart_event_dedupe_key(event)))
+        identities.discard("")
+        if not identities or identities & seen or identities & current_ids:
             continue
-        current_ids.add(event_id)
+        current_ids.update(identities)
         unique.append(event)
     return unique
 
@@ -391,18 +459,27 @@ def fetch_dart_events(limit: int = 30) -> List[dict]:
 
     items = payload.get("list", [])
     events: List[dict] = []
-    for item in items[:limit]:
+    seen_keys = set()
+    for item in items:
         rcept_no = item.get("rcept_no", "")
+        title = item.get("report_nm", "")
+        if not is_material_dart_event(title):
+            continue
         url = f"https://dart.fss.or.kr/dsaf001/main.do?rcpNo={rcept_no}" if rcept_no else ""
-        events.append(
-            {
-                "event_id": rcept_no,
-                "corp_name": item.get("corp_name", ""),
-                "title": item.get("report_nm", ""),
-                "published_at": item.get("rcept_dt", ""),
-                "url": url,
-            }
-        )
+        event = {
+            "event_id": rcept_no,
+            "corp_name": item.get("corp_name", ""),
+            "title": title,
+            "published_at": item.get("rcept_dt", ""),
+            "url": url,
+        }
+        event["dedupe_key"] = dart_event_dedupe_key(event)
+        if not event["dedupe_key"] or event["dedupe_key"] in seen_keys:
+            continue
+        seen_keys.add(event["dedupe_key"])
+        events.append(event)
+        if len(events) >= limit:
+            break
 
     return events
 
@@ -468,6 +545,9 @@ def score_dart_events(events: List[dict]) -> List[dict]:
         "배당": 2,
         "합병": 1,
         "투자판단": 1,
+        "시설투자": 2,
+        "무상증자": 2,
+        "타법인주식": 1,
     }
     negative = {
         "유상증자": 4,
@@ -475,6 +555,11 @@ def score_dart_events(events: List[dict]) -> List[dict]:
         "신주인수권부사채": 3,
         "감사의견": 3,
         "불성실": 3,
+        "상장폐지": 5,
+        "관리종목": 4,
+        "파산": 5,
+        "회생절차": 4,
+        "최대주주변경": 1,
         "정정": 0,
     }
 
@@ -766,6 +851,7 @@ def build_sentiment(indexes: Dict[str, dict], news: List[dict], darts: List[dict
         "range_rule": display_meta["range_rule"],
         "interpretation": display_meta["interpretation"],
         "confidence": data_quality["score"],
+        "data_completeness": data_quality["score"],
         "market_score": round(market_score, 2),
         "news_score": round(news_score, 2),
         "dart_score": round(dart_score, 2),
@@ -940,14 +1026,56 @@ def detect_sector_rotation(news: List[dict], darts: List[dict]) -> dict:
 
 
 def compute_reliability(history: List[dict]) -> dict:
-    if len(history) < 6:
+    def result(
+        evaluated: int,
+        hit_rate: float | None,
+        false_alarm_rate: float | None,
+        by_label: dict,
+        basis: str,
+    ) -> dict:
+        if evaluated < 20 or hit_rate is None or false_alarm_rate is None:
+            status = "검증 표본 부족"
+            status_class = "limited"
+            guidance = "방향성 판단은 참고용으로만 확인하세요."
+            reference_limited = True
+        elif hit_rate < 50 or false_alarm_rate > 50:
+            status = "방향성 참고 제한"
+            status_class = "limited"
+            guidance = "최근 적중률이 낮아 지수·이벤트 원문을 함께 확인하세요."
+            reference_limited = True
+        elif hit_rate < 60:
+            status = "방향성 추가 확인"
+            status_class = "caution"
+            guidance = "단독 판단보다 시장 지표와 함께 해석하세요."
+            reference_limited = False
+        else:
+            status = "과거 검증 양호"
+            status_class = "normal"
+            guidance = "과거 검증은 양호하지만 미래 성과를 보장하지 않습니다."
+            reference_limited = False
+
         return {
-            "evaluated": 0,
-            "hit_rate": "N/A",
-            "false_alarm_rate": "N/A",
-            "by_label": {"bullish": "N/A", "bearish": "N/A", "neutral": "N/A"},
-            "basis": "표본 부족",
+            "evaluated": evaluated,
+            "hit_rate": "N/A" if hit_rate is None else f"{hit_rate:.1f}%",
+            "hit_rate_value": hit_rate,
+            "false_alarm_rate": "N/A" if false_alarm_rate is None else f"{false_alarm_rate:.1f}%",
+            "false_alarm_rate_value": false_alarm_rate,
+            "by_label": by_label,
+            "basis": basis,
+            "status": status,
+            "status_class": status_class,
+            "guidance": guidance,
+            "reference_limited": reference_limited,
         }
+
+    if len(history) < 6:
+        return result(
+            0,
+            None,
+            None,
+            {"bullish": "N/A", "bearish": "N/A", "neutral": "N/A"},
+            "표본 부족",
+        )
 
     ordered = sorted(history, key=parse_snapshot_dt)
     evaluated = 0
@@ -1002,13 +1130,13 @@ def compute_reliability(history: List[dict]) -> dict:
                 false_alarm += 1
 
     if evaluated == 0:
-        return {
-            "evaluated": 0,
-            "hit_rate": "N/A",
-            "false_alarm_rate": "N/A",
-            "by_label": {"bullish": "N/A", "bearish": "N/A", "neutral": "N/A"},
-            "basis": "후행 수익률 계산 불가",
-        }
+        return result(
+            0,
+            None,
+            None,
+            {"bullish": "N/A", "bearish": "N/A", "neutral": "N/A"},
+            "후행 수익률 계산 불가",
+        )
 
     by_label = {}
     for label, stats in label_stats.items():
@@ -1019,71 +1147,46 @@ def compute_reliability(history: List[dict]) -> dict:
 
     hit_rate = round((hit / evaluated) * 100, 1)
     false_alarm_rate = round((false_alarm / evaluated) * 100, 1)
+    return result(
+        evaluated,
+        hit_rate,
+        false_alarm_rate,
+        by_label,
+        "20~120분 뒤 동일 거래일 KOSPI/KOSDAQ 지수 레벨 수익률 기준",
+    )
+
+
+def build_score_comparison(current_payload: dict, history: List[dict]) -> dict:
+    current_dt = parse_snapshot_dt(current_payload)
+    previous = None
+    previous_dt = None
+    for item in history:
+        try:
+            item_dt = parse_snapshot_dt(item)
+        except (TypeError, ValueError):
+            continue
+        if item_dt >= current_dt:
+            continue
+        if previous is None or previous_dt is None or item_dt > previous_dt:
+            previous = item
+            previous_dt = item_dt
+
+    if previous is None:
+        return {"previous_timestamp": "", "previous_score": None, "delta": None}
+
+    current_score = get_snapshot_display_score(current_payload)
+    previous_score = get_snapshot_display_score(previous)
     return {
-        "evaluated": evaluated,
-        "hit_rate": f"{hit_rate}%",
-        "false_alarm_rate": f"{false_alarm_rate}%",
-        "by_label": by_label,
-        "basis": "20~120분 뒤 동일 거래일 KOSPI/KOSDAQ 지수 레벨 수익률 기준",
-    }
-
-
-def build_timeline_heatmap(current_payload: dict, history: List[dict]) -> dict:
-    # The workflow may start late or retry at an unscheduled minute. Preserve
-    # each stored execution timestamp instead of snapping it to a planned slot.
-    snapshots_by_timestamp: Dict[str, dict] = {}
-    for item in [*history, current_payload]:
-        dt = parse_snapshot_dt(item)
-        snapshots_by_timestamp[dt.isoformat()] = item
-    recent = sorted(snapshots_by_timestamp.values(), key=parse_snapshot_dt)[-60:]
-
-    def format_observation(item: dict) -> dict:
-        display_score = get_snapshot_display_score(item)
-        score_state = describe_display_score(display_score)
-        return {
-            "time": parse_snapshot_dt(item).strftime("%m-%d %H:%M"),
-            "score": display_score,
-            "label": score_state["label"],
-            "color": display_score_color(display_score),
-            "state": score_state["range_key"],
-        }
-
-    formatted_recent = []
-    previous_score = None
-    for item in recent:
-        observation = format_observation(item)
-        if previous_score is None:
-            observation["delta"] = None
-            observation["delta_text"] = "첫 관측"
-        else:
-            delta = round(observation["score"] - previous_score, 1)
-            observation["delta"] = delta
-            observation["delta_text"] = f"{delta:+.1f}p" if delta else "0.0p"
-        previous_score = observation["score"]
-        formatted_recent.append(observation)
-
-    observations = formatted_recent[-40:]
-    timeline = formatted_recent[-12:]
-    return {
-        "observations": observations,
-        "timeline": timeline,
-        "legend": [
-            {"name": "강한 우호 80+", "color": "#fecaca"},
-            {"name": "우호 60~79", "color": "#fee2e2"},
-            {"name": "중립 40~59", "color": "#e2e8f0"},
-            {"name": "경계 20~39", "color": "#dbeafe"},
-            {"name": "강한 경계 0~19", "color": "#bfdbfe"},
-        ],
+        "previous_timestamp": previous.get("timestamp", ""),
+        "previous_score": previous_score,
+        "delta": round(current_score - previous_score, 1),
     }
 
 
 def build_live_pulse_summary(payload: dict) -> dict:
     sentiment = payload.get("sentiment", {})
     score = float(sentiment.get("score", 50))
-    timeline = payload.get("heatmap", {}).get("timeline", [])
-    previous_score = None
-    if len(timeline) >= 2:
-        previous_score = float(timeline[-2].get("score", score))
+    previous_score = payload.get("comparison", {}).get("previous_score")
 
     if previous_score is None:
         delta = None
@@ -1111,6 +1214,7 @@ def build_live_pulse_summary(payload: dict) -> dict:
     driver_direction = "우호 기여" if driver_value > 0 else "경계 기여" if driver_value < 0 else "중립"
 
     events = payload.get("events", {})
+    reliability = payload.get("reliability", {})
     return {
         "score": score,
         "score_position": max(0, min(100, score)),
@@ -1122,6 +1226,10 @@ def build_live_pulse_summary(payload: dict) -> dict:
         "top_driver_direction": driver_direction,
         "news_count": int(events.get("news_count", len(events.get("news", []))) or 0),
         "dart_count": int(events.get("dart_count", len(events.get("dart", []))) or 0),
+        "reliability_status": reliability.get("status", "검증 표본 부족"),
+        "reliability_class": reliability.get("status_class", "limited"),
+        "reliability_guidance": reliability.get("guidance", "방향성 판단은 참고용으로만 확인하세요."),
+        "reference_limited": bool(reliability.get("reference_limited", True)),
     }
 
 
@@ -1142,12 +1250,33 @@ def build_live_event_view(event: dict, event_type: str) -> dict:
     return {
         **event,
         "event_type": event_type,
+        "event_type_label": "뉴스" if event_type == "news" else "공시",
         "source_label": event.get("source", "네이버증권") if event_type == "news" else "DART",
+        "display_title": (
+            event.get("title", "")
+            if event_type == "news"
+            else f"{event.get('corp_name', '')} {event.get('title', '')}".strip()
+        ),
         "impact_label": impact_label,
         "impact_class": impact_class,
         "impact_score_text": score_text,
         "tag_labels": tags[:3],
     }
+
+
+def build_top_live_events(events: dict, max_count: int = 5) -> List[dict]:
+    combined = [
+        *[build_live_event_view(event, "news") for event in events.get("news", [])],
+        *[build_live_event_view(event, "dart") for event in events.get("dart", [])],
+    ]
+    return sorted(
+        combined,
+        key=lambda event: (
+            abs(float(event.get("impact_score", 0) or 0)),
+            str(event.get("published_at", "")),
+        ),
+        reverse=True,
+    )[:max_count]
 
 
 def build_rule_points(indexes: Dict[str, dict], sentiment: dict, news: List[dict], darts: List[dict]) -> Tuple[List[str], str]:
@@ -1252,7 +1381,7 @@ def save_intraday_snapshot(
     day_over_day: List[str],
     sector_rotation: dict,
     reliability: dict,
-    heatmap: dict,
+    comparison: dict,
     calibration: dict,
 ) -> dict:
     now = datetime.now(KST)
@@ -1261,7 +1390,7 @@ def save_intraday_snapshot(
     hour_end = hour_start.replace(minute=59, second=59)
 
     payload = {
-        "schema_version": "1.3",
+        "schema_version": "1.4",
         "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
         "window_start": hour_start.strftime("%Y-%m-%d %H:%M:%S"),
         "window_end": hour_end.strftime("%Y-%m-%d %H:%M:%S"),
@@ -1285,7 +1414,7 @@ def save_intraday_snapshot(
         "day_over_day": day_over_day,
         "sector_rotation": sector_rotation,
         "reliability": reliability,
-        "heatmap": heatmap,
+        "comparison": comparison,
         "calibration": calibration,
         "validation_basis": reliability.get("basis", ""),
     }
@@ -1356,6 +1485,7 @@ def render_live_html(payload: dict) -> None:
         "range_key": sentiment.get("range_key", "neutral"),
         "raw_score": sentiment.get("raw_score", 0),
         "confidence": sentiment.get("confidence", 0),
+        "data_completeness": sentiment.get("data_completeness", sentiment.get("confidence", 0)),
         "breakdown": sentiment.get("score_breakdown", {"market": 0, "news": 0, "dart": 0, "sector": 0}),
         "data_quality_basis": sentiment.get("data_quality", {}).get("basis", ""),
         "range_rule": sentiment.get("range_rule", "40~59.9는 중립 구간"),
@@ -1364,22 +1494,7 @@ def render_live_html(payload: dict) -> None:
         "confidence_tooltip": sentiment.get("confidence_tooltip", []),
     }
 
-    news_events = [
-        build_live_event_view(event, "news")
-        for event in sorted(
-            payload.get("events", {}).get("news", []),
-            key=lambda x: abs(x.get("impact_score", 0)),
-            reverse=True,
-        )[:8]
-    ]
-    dart_events = [
-        build_live_event_view(event, "dart")
-        for event in sorted(
-            payload.get("events", {}).get("dart", []),
-            key=lambda x: abs(x.get("impact_score", 0)),
-            reverse=True,
-        )[:8]
-    ]
+    top_events = build_top_live_events(payload.get("events", {}), max_count=5)
 
     html = template.render(
         generated_at=payload.get("timestamp", ""),
@@ -1394,9 +1509,7 @@ def render_live_html(payload: dict) -> None:
         day_over_day=payload.get("day_over_day", []),
         sector_rotation=payload.get("sector_rotation", {}),
         reliability=payload.get("reliability", {}),
-        heatmap=payload.get("heatmap", {}),
-        news_events=news_events,
-        dart_events=dart_events,
+        top_events=top_events,
         pages_url=resolve_pages_url(),
     )
     (OUTPUT_DIR / "live.html").write_text(html, encoding="utf-8")
@@ -1404,6 +1517,11 @@ def render_live_html(payload: dict) -> None:
 
 def main() -> None:
     history = load_intraday_history(limit=400)
+    scheduled_target = os.getenv("SCHEDULE_TARGET_KST", "").strip()
+    if has_execution_target(history, scheduled_target):
+        print(f"Skipped duplicate intraday target: {scheduled_target}")
+        return
+
     stats = build_component_stats(history)
     calibration_result = calibrate_weights(history, stats)
     calibration = {
@@ -1422,7 +1540,7 @@ def main() -> None:
         required=("kospi", "kosdaq"),
     )
     news_events = score_news_events(filter_unseen_events(fetch_naver_news(limit=20), history, "news"))
-    dart_events = score_dart_events(filter_unseen_events(fetch_dart_events(limit=40), history, "dart"))
+    dart_events = score_dart_events(filter_unseen_events(fetch_dart_events(limit=20), history, "dart"))
     sector_rotation = detect_sector_rotation(news_events, dart_events)
     sentiment = build_sentiment(indexes, news_events, dart_events, sector_rotation, calibration)
     points, watchpoint = build_llm_points(indexes, sentiment, news_events, dart_events)
@@ -1434,7 +1552,9 @@ def main() -> None:
     }
     day_over_day = build_day_over_day_comments(preview_payload, history)
     reliability = compute_reliability(history)
-    heatmap = build_timeline_heatmap(preview_payload, history)
+    comparison = build_score_comparison(preview_payload, history)
+    preview_payload["comparison"] = comparison
+    preview_payload["reliability"] = reliability
 
     payload = save_intraday_snapshot(
         indexes,
@@ -1446,7 +1566,7 @@ def main() -> None:
         day_over_day,
         sector_rotation,
         reliability,
-        heatmap,
+        comparison,
         calibration,
     )
     render_live_html(payload)

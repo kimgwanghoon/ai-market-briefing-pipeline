@@ -76,6 +76,58 @@ IS_MORNING = True
 EDITION_TITLE = ""
 
 
+def format_quote_time(value: object) -> str:
+    if value in (None, "", 0):
+        return "기준시각 확인 필요"
+    try:
+        if isinstance(value, (int, float)) or str(value).isdigit():
+            parsed = datetime.fromtimestamp(int(value), tz=pytz.UTC).astimezone(KST)
+        elif hasattr(value, "to_pydatetime"):
+            parsed = value.to_pydatetime()
+            if parsed.tzinfo is None:
+                parsed = KST.localize(parsed)
+            parsed = parsed.astimezone(KST)
+        else:
+            text = str(value).strip().replace("T", " ").replace("Z", "+00:00")
+            parsed = datetime.fromisoformat(text)
+            if parsed.tzinfo is None:
+                parsed = KST.localize(parsed)
+            parsed = parsed.astimezone(KST)
+        return parsed.strftime("%m-%d %H:%M KST")
+    except (TypeError, ValueError, OSError):
+        return str(value).replace("T", " ")[:16] or "기준시각 확인 필요"
+
+
+def market_status_label(raw_state: object, fallback: str) -> str:
+    state = str(raw_state or "").strip().upper()
+    mapping = {
+        "OPEN": "장중",
+        "REGULAR": "장중",
+        "PRE": "장전",
+        "PREPRE": "장전",
+        "POST": "장후",
+        "POSTPOST": "장후",
+        "CLOSE": fallback,
+        "CLOSED": fallback,
+    }
+    return mapping.get(state, fallback)
+
+
+def yahoo_market_status(meta: dict, ticker: str) -> str:
+    fallback = "최근 환율" if ticker == "KRW=X" else "최근 종가"
+    explicit = market_status_label(meta.get("marketState"), "")
+    if explicit:
+        return explicit
+    regular = meta.get("currentTradingPeriod", {}).get("regular", {})
+    try:
+        now_epoch = int(datetime.now(tz=pytz.UTC).timestamp())
+        if int(regular.get("start", 0)) <= now_epoch <= int(regular.get("end", 0)):
+            return "장중" if ticker != "KRW=X" else "환율 거래중"
+    except (TypeError, ValueError):
+        pass
+    return fallback
+
+
 def bold_filter(text: str) -> Markup:
     escaped = escape(str(text))
     return Markup(re.sub(r"\*+([^*]+)\*+", r"<strong>\1</strong>", str(escaped)))
@@ -84,7 +136,14 @@ def bold_filter(text: str) -> Markup:
 def get_korean_index_data(market_type: str) -> dict:
     url = f"https://m.stock.naver.com/api/index/{market_type}/basic"
     headers = {"User-Agent": "Mozilla/5.0"}
-    default = {"price": "N/A", "change": "-", "color": NEUTRAL_COLOR, "trend": "보합"}
+    default = {
+        "price": "N/A",
+        "change": "-",
+        "color": NEUTRAL_COLOR,
+        "trend": "보합",
+        "market_status": "데이터 없음",
+        "as_of": "기준시각 확인 필요",
+    }
 
     try:
         res = requests.get(url, headers=headers, timeout=10)
@@ -108,6 +167,8 @@ def get_korean_index_data(market_type: str) -> dict:
             "change": f"{sign} {str(diff).replace('-', '')} ({ratio:+.2f}%)",
             "color": color,
             "trend": trend,
+            "market_status": market_status_label(data.get("marketStatus"), "최근 종가"),
+            "as_of": format_quote_time(data.get("localTradedAt") or data.get("tradeDateTime")),
         }
     except Exception as exc:
         logging.warning("get_korean_index_data(%s) failed: %s", market_type, exc)
@@ -115,7 +176,14 @@ def get_korean_index_data(market_type: str) -> dict:
 
 
 def get_index_data(ticker: str) -> dict:
-    default = {"price": "N/A", "change": "-", "color": NEUTRAL_COLOR, "trend": "보합"}
+    default = {
+        "price": "N/A",
+        "change": "-",
+        "color": NEUTRAL_COLOR,
+        "trend": "보합",
+        "market_status": "데이터 없음",
+        "as_of": "기준시각 확인 필요",
+    }
 
     try:
         url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
@@ -129,6 +197,7 @@ def get_index_data(ticker: str) -> dict:
         chart = res.json().get("chart", {})
         result = chart.get("result") or []
         if result:
+            meta = result[0].get("meta", {})
             closes = result[0].get("indicators", {}).get("quote", [{}])[0].get("close", [])
             closes = [float(v) for v in closes if v is not None]
             if len(closes) >= 2:
@@ -149,6 +218,8 @@ def get_index_data(ticker: str) -> dict:
                     "change": f"{sign} {abs(diff):.2f} ({pct_change:+.2f}%)",
                     "color": color,
                     "trend": trend,
+                    "market_status": yahoo_market_status(meta, ticker),
+                    "as_of": format_quote_time(meta.get("regularMarketTime")),
                 }
     except Exception as exc:
         logging.warning("get_index_data(%s) Yahoo Finance API failed: %s", ticker, exc)
@@ -182,6 +253,8 @@ def get_index_data(ticker: str) -> dict:
                 "change": f"{sign} {abs(diff):.2f} ({pct_change:+.2f}%)",
                 "color": color,
                 "trend": trend,
+                "market_status": "최근 환율" if ticker == "KRW=X" else "최근 종가",
+                "as_of": format_quote_time(close.index[-1]),
             }
         except Exception as exc:
             logging.warning("get_index_data(%s) yfinance retry failed: %s", ticker, exc)
@@ -435,6 +508,8 @@ def build_market_overview(indexes: dict) -> List[dict]:
                 "price": item.get("price", "N/A"),
                 "change": item.get("change", "-"),
                 "color": item.get("color", "#64748b"),
+                "market_status": item.get("market_status", "기준 확인 필요"),
+                "as_of": item.get("as_of", "기준시각 확인 필요"),
             }
         )
     return cards
