@@ -3,87 +3,284 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>주간 시장 리포트 | 2026-W33</title>
+  <title>주간 시장 리포트 | 2026-08-17 ~ 2026-08-20</title>
+  <meta name="description" content="장중 실제 스냅샷을 일별로 집계한 주간 시장 리포트" />
   <style>
     :root {
-      --bg-a: #f8fafc;
-      --bg-b: #e2e8f0;
+      --bg: #eef2f7;
       --card: #ffffff;
       --ink: #0f172a;
       --muted: #64748b;
       --line: #dbe4ef;
       --accent: #0f766e;
+      --positive: #b91c1c;
+      --positive-soft: #fee2e2;
+      --negative: #1d4ed8;
+      --negative-soft: #dbeafe;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-      color: var(--ink);
-      background: linear-gradient(160deg, var(--bg-a), var(--bg-b));
       min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 90% 5%, #bae6fd 0, transparent 28%),
+        linear-gradient(155deg, #f8fafc, var(--bg));
+      font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
     }
-    .page { max-width: 920px; margin: 0 auto; padding: 36px 16px 64px; }
-    .card {
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: var(--card);
-      padding: 20px;
-      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-      margin-top: 16px;
+    .page { max-width: 1120px; margin: 0 auto; padding: 28px 16px 64px; }
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 30px;
+      border-radius: 24px;
+      color: #f8fafc;
+      background: linear-gradient(135deg, #0f172a, #164e63);
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
     }
-    h1 { margin: 0 0 8px; font-size: clamp(1.7rem, 4vw, 2.4rem); }
-    .meta { margin: 0; color: var(--muted); }
-    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-    @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
-    .metric { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: #f8fafc; }
-    .metric p { margin: 0; }
-    .label { color: var(--muted); font-size: 0.86rem; }
-    .value { font-weight: 750; font-size: 1.12rem; margin-top: 4px; }
-    .list { margin: 0; padding-left: 18px; line-height: 1.6; }
-    a { color: var(--accent); text-decoration: none; }
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -90px;
+      top: -130px;
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      background: rgba(45, 212, 191, 0.16);
+    }
+    .eyebrow { margin: 0 0 10px; color: #99f6e4; font-size: 0.76rem; font-weight: 800; letter-spacing: 0.12em; }
+    h1 { max-width: 760px; margin: 0 0 10px; font-size: clamp(1.7rem, 4vw, 2.6rem); line-height: 1.2; }
+    .hero-meta { margin: 0; color: #cbd5e1; font-size: 0.9rem; }
+    .nav { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+    .nav a { padding: 6px 10px; border: 1px solid #5eead4; border-radius: 999px; color: #ccfbf1; background: rgba(15,118,110,.22); font-size: .82rem; font-weight: 750; text-decoration: none; }
+    .card { margin-top: 16px; padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: 0 8px 24px rgba(15,23,42,.07); }
+    .section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+    h2 { margin: 0; color: var(--accent); font-size: 1.06rem; }
+    .meta, .note { margin: 0; color: var(--muted); font-size: .84rem; line-height: 1.55; }
+    .summary-grid { display: grid; grid-template-columns: minmax(250px,.8fr) minmax(0,1.2fr); gap: 24px; align-items: center; }
+    .score-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .score { font-size: clamp(3.7rem, 8vw, 5.5rem); line-height: .95; letter-spacing: -.06em; }
+    .denominator { color: var(--muted); font-weight: 700; }
+    .pill, .change-pill, .event-score { display: inline-flex; width: fit-content; padding: 5px 9px; border-radius: 999px; font-size: .76rem; font-weight: 800; }
+    .pill { color: #115e59; background: #ccfbf1; }
+    .positive { color: var(--positive); }
+    .negative { color: var(--negative); }
+    .flat { color: #475569; }
+    .change-pill.positive, .event-score.positive { color: var(--positive); background: var(--positive-soft); }
+    .change-pill.negative, .event-score.negative { color: var(--negative); background: var(--negative-soft); }
+    .change-pill.flat { color: #475569; background: #e2e8f0; }
+    .score-track { position: relative; height: 12px; margin: 18px 0 10px; border-radius: 999px; background: linear-gradient(90deg,#93c5fd,#e2e8f0 50%,#fca5a5); }
+    .score-marker { position: absolute; top: 50%; width: 18px; height: 18px; border: 3px solid #fff; border-radius: 50%; background: #0f172a; box-shadow: 0 2px 8px rgba(15,23,42,.3); transform: translate(-50%,-50%); }
+    .facts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+    .fact, .market, .day, .event { padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: #f8fafc; }
+    .fact-label, .market-label { margin: 0 0 5px; color: var(--muted); font-size: .75rem; }
+    .fact-value, .market-value { margin: 0; font-weight: 800; line-height: 1.4; }
+    .watch { margin: 14px 0 0; padding: 12px 14px; border-left: 4px solid var(--accent); border-radius: 9px; background: #f0fdfa; line-height: 1.6; }
+    .market-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
+    .market-route { margin: 5px 0 0; color: var(--muted); font-size: .75rem; }
+    .daily-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: 10px; }
+    .day-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+    .day-date { margin: 0; color: var(--muted); font-size: .78rem; font-weight: 750; }
+    .day-score { margin: 4px 0; font-size: 1.35rem; font-weight: 850; }
+    .mini-track { height: 6px; overflow: hidden; border-radius: 999px; background: #e2e8f0; }
+    .mini-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#0f766e,#2dd4bf); }
+    .day-detail { margin: 8px 0 0; color: var(--muted); font-size: .72rem; line-height: 1.5; }
+    .event-columns { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+    .event-column-title { margin: 0 0 9px; font-size: .9rem; font-weight: 850; }
+    .event-list { display: grid; gap: 8px; }
+    .event-meta { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 7px; }
+    .event-source { color: var(--muted); font-size: .72rem; }
+    .event a, .event-title { margin: 0; color: var(--ink); font-weight: 750; line-height: 1.45; text-decoration: none; }
+    .event a:hover { color: var(--accent); text-decoration: underline; }
+    .outlook { border-color: #99f6e4; background: linear-gradient(145deg,#ffffff,#f0fdfa); }
+    .outlook-hero { display: grid; grid-template-columns: minmax(220px,.75fr) minmax(0,1.25fr); gap: 20px; align-items: start; }
+    .outlook-range { margin: 8px 0; font-size: clamp(2rem,5vw,3rem); font-weight: 900; letter-spacing: -.04em; }
+    .outlook-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-top: 14px; }
+    .scenario { padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.82); }
+    .scenario h3 { margin: 0 0 8px; font-size: .9rem; }
+    .scenario ul, .rationale { margin: 0; padding-left: 18px; line-height: 1.55; font-size: .83rem; }
+    .disclaimer { margin: 14px 0 0; color: var(--muted); font-size: .75rem; }
+    @media (max-width:760px) {
+      .page { padding-top: 16px; }
+      .hero { padding: 22px 18px; border-radius: 18px; }
+      .summary-grid, .outlook-hero, .event-columns { grid-template-columns: 1fr; }
+      .market-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    }
+    @media (max-width:430px) {
+      .card { padding: 16px; }
+      .facts, .outlook-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
   <main class="page">
-    <h1>주간 시장 리포트 | 2026-W33</h1>
-    <p class="meta">생성 시각: 2026-08-15 09:43:01 (KST) · <a href="index.html">데일리</a> · <a href="live.html">장중</a> · <a href="https://kimgwanghoon.github.io/ai-market-briefing-pipeline">Pages 홈</a></p>
+    <header class="hero">
+      <p class="eyebrow">WEEKLY MARKET REVIEW</p>
+      <h1>주간 시장 리포트 | 2026-08-17 ~ 2026-08-20</h1>
+      <p class="hero-meta">실제 장중 스냅샷 집계 · 생성 시각 2026-08-22 09:43:03 KST</p>
+      <nav class="nav" aria-label="시장 브리핑 메뉴">
+        <a href="index.html">데일리 브리핑</a>
+        <a href="live.html">장중 모니터</a>
+        <a href="https://kimgwanghoon.github.io/ai-market-briefing-pipeline">Pages 홈</a>
+      </nav>
+    </header>
 
     <section class="card">
-      <h2>주간 요약</h2>
-      <div class="grid">
-        <article class="metric"><p class="label">평균 점수</p><p class="value">55.49 (중립)</p></article>
-        <article class="metric"><p class="label">최고/최저</p><p class="value">73.4 / 45.0</p></article>
-        <article class="metric"><p class="label">집계 샘플 수</p><p class="value">21</p></article>
-        <article class="metric"><p class="label">주요 리스크 이벤트</p><p class="value">“비에이치아이, 수주 확대·올해 사상 최대 실적 가시화” iM</p></article>
+      <div class="section-head">
+        <h2>이번 주 결론</h2>
+        <p class="meta">일별 평균을 동일 가중치로 집계</p>
       </div>
-      <p style="margin-top:12px;"><strong>핵심 관전 포인트:</strong> 오늘의 핵심 관전 포인트: **시장 센티먼트**가 54.2점으로 중립을 유지하고 있어 향후 방향성에 주목해야 합니다.</p>
+      <div class="summary-grid">
+        <div>
+          <div class="score-row">
+            <strong class="score">47.6</strong>
+            <span class="denominator">/ 100</span>
+            <span class="pill">중립</span>
+          </div>
+          <div class="score-track" aria-label="주간 평균 센티먼트 47.6점">
+            <span class="score-marker" style="left: 47.6%"></span>
+          </div>
+          <span class="change-pill negative">주초 대비 -15.7p</span>
+        </div>
+        <div class="facts">
+          <article class="fact"><p class="fact-label">주초 → 주말</p><p class="fact-value">65.4 → 49.7</p></article>
+          <article class="fact"><p class="fact-label">주간 최고 / 최저</p><p class="fact-value">67.1 / 31.1</p></article>
+          <article class="fact"><p class="fact-label">거래일 커버리지</p><p class="fact-value">4일</p></article>
+          <article class="fact"><p class="fact-label">실제 실행 샘플</p><p class="fact-value">26건</p></article>
+        </div>
+      </div>
+      <p class="watch"><strong>다음 확인 사항:</strong> <strong>VIX</strong>와 <strong>달러원</strong>이 동반 상승하면 변동성·환율 부담의 지속 여부를 확인하고, 두 지표가 안정되면 지수 레벨과 이벤트 점수가 함께 개선되는지 확인하세요.</p>
     </section>
 
     <section class="card">
-      <h2>최근 샘플(최신 10개)</h2>
-      <ol class="list">
-        
-          <li>2026-08-12 14:12:27 · 점수 59.3 · 라벨 중립</li>
-        
-          <li>2026-08-12 15:51:45 · 점수 53.3 · 라벨 중립</li>
-        
-          <li>2026-08-13 09:07:33 · 점수 58.1 · 라벨 중립</li>
-        
-          <li>2026-08-13 12:06:33 · 점수 45.0 · 라벨 중립</li>
-        
-          <li>2026-08-13 14:16:29 · 점수 49.1 · 라벨 중립</li>
-        
-          <li>2026-08-13 15:54:53 · 점수 63.3 · 라벨 우호</li>
-        
-          <li>2026-08-14 09:08:12 · 점수 52.1 · 라벨 중립</li>
-        
-          <li>2026-08-14 12:05:33 · 점수 53.3 · 라벨 중립</li>
-        
-          <li>2026-08-14 14:13:18 · 점수 57.3 · 라벨 중립</li>
-        
-          <li>2026-08-14 15:52:08 · 점수 54.2 · 라벨 중립</li>
-        
-      </ol>
+      <div class="section-head"><h2>주간 주요 지표 변화</h2><p class="meta">첫 관측값 → 마지막 관측값</p></div>
+      <div class="market-grid">
+          <article class="market">
+            <p class="market-label">KOSPI</p>
+            <p class="market-value negative">-1.80%</p>
+            <p class="market-route">6,977.94 → 6,852.58</p>
+          </article>
+          <article class="market">
+            <p class="market-label">KOSDAQ</p>
+            <p class="market-value negative">-2.75%</p>
+            <p class="market-route">864.65 → 840.89</p>
+          </article>
+          <article class="market">
+            <p class="market-label">S&amp;P 500</p>
+            <p class="market-value negative">-1.00%</p>
+            <p class="market-route">7,785.76 → 7,707.98</p>
+          </article>
+          <article class="market">
+            <p class="market-label">NASDAQ</p>
+            <p class="market-value negative">-1.49%</p>
+            <p class="market-route">26,729.16 → 26,331.09</p>
+          </article>
+          <article class="market">
+            <p class="market-label">VIX</p>
+            <p class="market-value positive">+4.49%</p>
+            <p class="market-route">14.25 → 14.89</p>
+          </article>
+          <article class="market">
+            <p class="market-label">USD/KRW</p>
+            <p class="market-value negative">-1.75%</p>
+            <p class="market-route">1,416.48 → 1,391.68</p>
+          </article>
+      </div>
+      <p class="note" style="margin-top:10px;">장중 수집 시점의 지수 레벨 비교이며 종가 수익률과 다를 수 있습니다.</p>
+    </section>
+
+    <section class="card">
+      <div class="section-head"><h2>일별 센티먼트 흐름</h2><p class="meta">실행 시각 나열 대신 거래일별 집계</p></div>
+      <div class="daily-grid">
+          <article class="day">
+            <div class="day-head"><p class="day-date">08-17</p><span class="negative">-9.5p</span></div>
+            <p class="day-score">51.3 <span class="meta">중립</span></p>
+            <div class="mini-track"><span style="width: 51.3%"></span></div>
+            <p class="day-detail">첫 65.4 → 마지막 55.9 · 7회 실행</p>
+          </article>
+          <article class="day">
+            <div class="day-head"><p class="day-date">08-18</p><span class="negative">-1.0p</span></div>
+            <p class="day-score">48.5 <span class="meta">중립</span></p>
+            <div class="mini-track"><span style="width: 48.5%"></span></div>
+            <p class="day-detail">첫 46.8 → 마지막 45.8 · 7회 실행</p>
+          </article>
+          <article class="day">
+            <div class="day-head"><p class="day-date">08-19</p><span class="negative">-2.0p</span></div>
+            <p class="day-score">37.3 <span class="meta">경계</span></p>
+            <div class="mini-track"><span style="width: 37.3%"></span></div>
+            <p class="day-detail">첫 35.6 → 마지막 33.6 · 7회 실행</p>
+          </article>
+          <article class="day">
+            <div class="day-head"><p class="day-date">08-20</p><span class="positive">+6.5p</span></div>
+            <p class="day-score">53.2 <span class="meta">중립</span></p>
+            <div class="mini-track"><span style="width: 53.2%"></span></div>
+            <p class="day-detail">첫 43.2 → 마지막 49.7 · 5회 실행</p>
+          </article>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-head"><h2>주요 이벤트</h2><p class="meta">현재 규칙으로 재평가·중복 제거</p></div>
+      <div class="event-columns">
+        <div>
+          <p class="event-column-title positive">기회 요인</p>
+          <div class="event-list">
+              <article class="event">
+                <div class="event-meta"><span class="event-score positive">+3</span><span class="event-source">한국경제</span></div>
+<a href="https://finance.naver.com/news/news_read.naver?article_id=0005321763&amp;office_id=015&amp;mode=mainnews&amp;type=&amp;date=2026-08-18&amp;page=1" target="_blank" rel="noopener noreferrer">&#34;리노공업, 실적은 사상 최대…성과급 관련 파업 목표가↓&#34;-LS</a>              </article>
+              <article class="event">
+                <div class="event-meta"><span class="event-score positive">+3</span><span class="event-source">DART</span></div>
+<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260818800047" target="_blank" rel="noopener noreferrer">HJ중공업 단일판매ㆍ공급계약체결</a>              </article>
+              <article class="event">
+                <div class="event-meta"><span class="event-score positive">+3</span><span class="event-source">DART</span></div>
+<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260818900121" target="_blank" rel="noopener noreferrer">중앙백신 유동성공급계약의체결</a>              </article>
+              <article class="event">
+                <div class="event-meta"><span class="event-score positive">+3</span><span class="event-source">DART</span></div>
+<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260818900105" target="_blank" rel="noopener noreferrer">윈하이텍 단일판매ㆍ공급계약체결</a>              </article>
+              <article class="event">
+                <div class="event-meta"><span class="event-score positive">+3</span><span class="event-source">DART</span></div>
+<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260818800175" target="_blank" rel="noopener noreferrer">코오롱 단일판매ㆍ공급계약체결(자회사의 주요경영사항)</a>              </article>
+          </div>
+        </div>
+        <div>
+          <p class="event-column-title negative">리스크 요인</p>
+          <div class="event-list">
+              <article class="event">
+                <div class="event-meta"><span class="event-score negative">-5</span><span class="event-source">DART</span></div>
+<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260820800237" target="_blank" rel="noopener noreferrer">STX 기타시장안내              (상장폐지 이의신청서 제출)</a>              </article>
+              <article class="event">
+                <div class="event-meta"><span class="event-score negative">-4</span><span class="event-source">DART</span></div>
+<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260818900122" target="_blank" rel="noopener noreferrer">센서뷰 유상증자또는주식관련사채등의청약결과(자율공시)</a>              </article>
+              <article class="event">
+                <div class="event-meta"><span class="event-score negative">-4</span><span class="event-source">DART</span></div>
+<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260818000126" target="_blank" rel="noopener noreferrer">실리콘투 주요사항보고서(유상증자결정)</a>              </article>
+              <article class="event">
+                <div class="event-meta"><span class="event-score negative">-4</span><span class="event-source">DART</span></div>
+<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260818900225" target="_blank" rel="noopener noreferrer">에이럭스 [기재정정]유상증자결정(종속회사의주요경영사항)</a>              </article>
+              <article class="event">
+                <div class="event-meta"><span class="event-score negative">-4</span><span class="event-source">DART</span></div>
+<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260819000161" target="_blank" rel="noopener noreferrer">스탠드업테라퓨티스 주요사항보고서(유상증자결정)</a>              </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card outlook">
+      <div class="section-head"><h2>다음 주 조건부 전망</h2><p class="meta">신뢰도 제한적</p></div>
+      <div class="outlook-hero">
+        <div>
+          <span class="pill">중립권 등락 가능성 우세</span>
+          <p class="outlook-range">33.8~59.0점</p>
+          <p class="note">예상 센티먼트 범위</p>
+        </div>
+        <ul class="rationale">
+<li>주간 일평균 센티먼트 47.6점, 마지막 관측 49.7점입니다.</li><li>주초 대비 주말 변화는 -15.7p, 주간 고저 차이는 36.0p입니다.</li><li>규칙 기반 주요 이벤트는 우호 5건, 경계 5건입니다.</li>        </ul>
+      </div>
+      <div class="outlook-grid">
+        <article class="scenario"><h3 class="positive">상방 전환 조건</h3><ul><li>VIX와 USD/KRW가 동반 안정되고 KOSPI·NASDAQ이 함께 개선되는 경우</li><li>주요 우호 이벤트가 후속 가격 흐름으로 확인되는 경우: &#34;리노공업, 실적은 사상 최대…성과급 관련 파업 목표가↓&#34;-LS</li></ul></article>
+        <article class="scenario"><h3 class="negative">하방 위험 조건</h3><ul><li>VIX·USD/KRW 상승과 국내외 지수 약세가 동시에 나타나는 경우</li><li>주요 경계 이벤트의 영향이 확대되는 경우: STX 기타시장안내              (상장폐지 이의신청서 제출)</li></ul></article>
+      </div>
+      <p class="disclaimer">과거 주간 스냅샷을 기반으로 한 조건부 시나리오이며 투자수익이나 방향을 보장하지 않습니다.</p>
     </section>
   </main>
 </body>
