@@ -309,6 +309,19 @@ class SentimentContractTests(unittest.TestCase):
         self.assertEqual(len(top_events), 5)
         self.assertEqual(abs(top_events[0]["impact_score"]), 4)
         self.assertTrue({item["event_type_label"] for item in top_events} <= {"뉴스", "공시"})
+        self.assertEqual(sum(item["event_type_label"] == "뉴스" for item in top_events), 3)
+        self.assertEqual(sum(item["event_type_label"] == "공시" for item in top_events), 2)
+
+    def test_news_scoring_recognizes_market_warning_and_recovery_language(self):
+        scored = intraday.score_news_events(
+            [
+                {"title": "투자 유의 경고에 업황 둔화 우려"},
+                {"title": "수출 회복과 실적 호조로 지수 급등"},
+            ]
+        )
+
+        self.assertLess(scored[0]["impact_score"], 0)
+        self.assertGreater(scored[1]["impact_score"], 0)
 
     def test_duplicate_execution_target_is_skipped(self):
         history = [{"execution": {"scheduled_target_kst": "2026-08-18 10:30:00"}}]
@@ -535,6 +548,38 @@ class NewsCurationTests(unittest.TestCase):
 
 
 class CoverGenerationTests(unittest.TestCase):
+    def test_cover_prompt_changes_composition_with_current_market_mood(self):
+        def metric(change: str, price: str = "100.00") -> dict:
+            return {"price": price, "change": change}
+
+        bullish = main.build_market_cover_prompt(
+            "코스피·나스닥 동반 강세",
+            metric("▲ 1.00 (+1.20%)"),
+            metric("▲ 1.00 (+0.90%)"),
+            metric("▲ 1.00 (+0.70%)"),
+            metric("▲ 1.00 (+1.10%)"),
+            metric("▼ 1.00 (-4.00%)", "16.00"),
+            metric("▼ 1.00 (-0.30%)"),
+            metric("▼ 1.00 (-0.20%)"),
+            True,
+        )
+        defensive = main.build_market_cover_prompt(
+            "한미 증시 동반 약세",
+            metric("▼ 1.00 (-1.20%)"),
+            metric("▼ 1.00 (-1.50%)"),
+            metric("▼ 1.00 (-0.80%)"),
+            metric("▼ 1.00 (-1.10%)"),
+            metric("▲ 1.00 (+12.00%)", "28.00"),
+            metric("▲ 1.00 (+0.80%)"),
+            metric("▲ 1.00 (+0.70%)"),
+            False,
+        )
+
+        self.assertIn("broad risk-on participation", bullish)
+        self.assertIn("elevated volatility", defensive)
+        self.assertIn("KOSPI +1.20%", bullish)
+        self.assertNotEqual(bullish, defensive)
+
     def test_generates_cover_when_briefing_validation_falls_back(self):
         image_bytes = b"generated cover"
         client = SimpleNamespace(

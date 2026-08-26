@@ -101,12 +101,44 @@ def _split_summary(summary_items: List[str]) -> tuple[List[str], List[str]]:
     return sections["korea"], sections["us"]
 
 
-def _event_lines(events: List[dict], max_items: int = 3) -> str:
-    ranked = sorted(
-        events,
-        key=lambda event: abs(float(event.get("impact_score", 0) or 0)),
+def _event_rank(event: dict) -> tuple[float, str]:
+    return (
+        abs(float(event.get("impact_score", 0) or 0)),
+        str(event.get("published_at", "")),
+    )
+
+
+def _balanced_event_selection(events: List[dict], max_items: int = 3) -> List[dict]:
+    """Prefer two news items and one disclosure, then backfill empty slots."""
+    ranked_news = sorted(
+        (event for event in events if event.get("event_type_label") == "뉴스"),
+        key=_event_rank,
         reverse=True,
-    )[:max_items]
+    )
+    ranked_dart = sorted(
+        (event for event in events if event.get("event_type_label") == "공시"),
+        key=_event_rank,
+        reverse=True,
+    )
+
+    news_quota = min(2, max_items)
+    dart_quota = max_items - news_quota
+    selected = [*ranked_news[:news_quota], *ranked_dart[:dart_quota]]
+
+    if len(selected) < max_items:
+        selected_ids = {id(event) for event in selected}
+        remaining = sorted(
+            (event for event in events if id(event) not in selected_ids),
+            key=_event_rank,
+            reverse=True,
+        )
+        selected.extend(remaining[: max_items - len(selected)])
+
+    return selected[:max_items]
+
+
+def _event_lines(events: List[dict], max_items: int = 3) -> str:
+    ranked = _balanced_event_selection(events, max_items=max_items)
     lines = []
     for event in ranked:
         score = float(event.get("impact_score", 0) or 0)

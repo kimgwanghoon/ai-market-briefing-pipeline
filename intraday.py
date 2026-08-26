@@ -493,6 +493,11 @@ def score_news_events(events: List[dict]) -> List[dict]:
         "흑자": 2,
         "상향": 2,
         "반등": 1,
+        "급등": 3,
+        "호조": 2,
+        "회복": 2,
+        "돌파": 2,
+        "승인": 2,
         "매수": 1,
         "성장": 2,
         "증가": 1,
@@ -506,6 +511,13 @@ def score_news_events(events: List[dict]) -> List[dict]:
         "소송": 2,
         "횡령": 5,
         "리스크": 2,
+        "유의": 2,
+        "우려": 2,
+        "경고": 2,
+        "둔화": 2,
+        "악화": 3,
+        "위축": 2,
+        "부담": 1,
         "감소": 1,
         "부진": 2,
         "축소": 1,
@@ -1266,18 +1278,26 @@ def build_live_event_view(event: dict, event_type: str) -> dict:
 
 
 def build_top_live_events(events: dict, max_count: int = 5) -> List[dict]:
-    combined = [
-        *[build_live_event_view(event, "news") for event in events.get("news", [])],
-        *[build_live_event_view(event, "dart") for event in events.get("dart", [])],
-    ]
-    return sorted(
-        combined,
+    def rank(event: dict) -> tuple[float, str]:
+        return (
+            abs(float(event.get("impact_score", 0) or 0)),
+            str(event.get("published_at", "")),
+        )
+
+    news = sorted(
+        [build_live_event_view(event, "news") for event in events.get("news", [])],
+        key=rank,
+        reverse=True,
+    )[: min(3, max_count)]
+    darts = sorted(
+        [build_live_event_view(event, "dart") for event in events.get("dart", [])],
         key=lambda event: (
             abs(float(event.get("impact_score", 0) or 0)),
             str(event.get("published_at", "")),
         ),
         reverse=True,
-    )[:max_count]
+    )[: min(2, max(0, max_count - len(news)))]
+    return [*news, *darts]
 
 
 def build_rule_points(indexes: Dict[str, dict], sentiment: dict, news: List[dict], darts: List[dict]) -> Tuple[List[str], str]:

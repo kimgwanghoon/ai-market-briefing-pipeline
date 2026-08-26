@@ -79,6 +79,36 @@ class DiscordEmbedTests(unittest.TestCase):
         self.assertIn("AI 수요 확대", fields["🗞️ 이번 실행 이벤트 · 뉴스 1 / 공시 1"])
         self.assertEqual(embed["url"], "https://example.github.io/report/live.html")
 
+    def test_intraday_embed_reserves_two_of_three_event_slots_for_news(self):
+        payload = {
+            "timestamp": "2026-08-20 12:30:00",
+            "sentiment": {"label": "중립", "score": 50, "data_completeness": 90},
+            "market_signals": {
+                key: metric()
+                for key in ("kospi", "kosdaq", "nasdaq", "vix", "usdkrw")
+            },
+            "events": {
+                "news_count": 2,
+                "dart_count": 3,
+                "news": [
+                    {"title": "뉴스 A", "url": "https://example.com/a", "impact_score": 0},
+                    {"title": "뉴스 B", "url": "https://example.com/b", "impact_score": 1},
+                ],
+                "dart": [
+                    {"corp_name": "기업", "title": f"공시 {score}", "impact_score": score}
+                    for score in (5, 4, 3)
+                ],
+            },
+        }
+
+        embed = build_intraday_embed(payload, "https://example.github.io/report")
+        event_field = next(field["value"] for field in embed["fields"] if field["name"].startswith("🗞️"))
+
+        self.assertIn("뉴스 A", event_field)
+        self.assertIn("뉴스 B", event_field)
+        self.assertIn("공시 5", event_field)
+        self.assertNotIn("공시 4", event_field)
+
     def test_weekly_embed_exposes_scenario_conditions(self):
         payload = {
             "title": "주간 시장 리포트 | 2026-08-17 ~ 2026-08-21",

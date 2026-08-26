@@ -443,6 +443,136 @@ def build_market_headline(kospi: dict, nasdaq: dict, vix: dict) -> str:
     return "지수 혼조 속 금리·환율 점검"
 
 
+def build_market_cover_prompt(
+    headline: str,
+    kospi: dict,
+    kosdaq: dict,
+    sp500: dict,
+    nasdaq: dict,
+    vix: dict,
+    usdkrw: dict,
+    us10y: dict,
+    is_morning: bool,
+) -> str:
+    changes = {
+        "KOSPI": parse_change_percent(kospi.get("change", "")),
+        "KOSDAQ": parse_change_percent(kosdaq.get("change", "")),
+        "S&P 500": parse_change_percent(sp500.get("change", "")),
+        "NASDAQ": parse_change_percent(nasdaq.get("change", "")),
+        "VIX change": parse_change_percent(vix.get("change", "")),
+        "USD/KRW": parse_change_percent(usdkrw.get("change", "")),
+        "US 10Y": parse_change_percent(us10y.get("change", "")),
+    }
+    vix_level = parse_price_value(vix.get("price", ""))
+
+    def mean_for(*keys: str) -> float:
+        values = [changes[key] for key in keys if changes[key] == changes[key]]
+        return sum(values) / len(values) if values else float("nan")
+
+    domestic = mean_for("KOSPI", "KOSDAQ")
+    global_market = mean_for("S&P 500", "NASDAQ")
+    vix_change = changes["VIX change"]
+    fx_change = changes["USD/KRW"]
+    yield_change = changes["US 10Y"]
+
+    if (vix_level == vix_level and vix_level >= 25) or (vix_change == vix_change and vix_change >= 8):
+        scenario = "elevated volatility and defensive positioning"
+        composition = (
+            "a dense field of translucent planes bent by crosswinds, with a narrow but intact path of light "
+            "through the center; use asymmetric depth and visible tension"
+        )
+        palette = "charcoal navy, cold steel blue, restrained crimson, sparse white light"
+        mood = "alert and defensive without panic or disaster imagery"
+    elif domestic == domestic and global_market == global_market and domestic > 0.4 and global_market > 0.25:
+        scenario = "broad risk-on participation across Korean and US equities"
+        composition = (
+            "an expansive rising corridor of layered light and open geometric planes accelerating toward a "
+            "bright horizon; emphasize breadth, lift and available space"
+        )
+        palette = "deep navy, luminous teal, restrained emerald, warm gold highlights"
+        mood = "confident and energetic with controlled optimism"
+    elif domestic == domestic and global_market == global_market and domestic < -0.4 and global_market < -0.25:
+        scenario = "broad risk-off pressure across Korean and US equities"
+        composition = (
+            "compressed descending planes, receding light and a guarded central anchor; create downward weight "
+            "without literal arrows, charts or crash imagery"
+        )
+        palette = "deep navy, muted crimson, cool grey, narrow silver highlights"
+        mood = "serious, cautious and tightly controlled"
+    elif domestic == domestic and global_market == global_market and domestic - global_market > 0.8:
+        scenario = "Korean equities outperforming a weaker US backdrop"
+        composition = (
+            "a clearly divided visual field: a warmer rising current inspired by Seoul on one side and a cooler, "
+            "subdued global current on the other, meeting at an off-center boundary"
+        )
+        palette = "warm teal and gold contrasted with cool navy and desaturated blue"
+        mood = "constructive locally but globally unresolved"
+    elif domestic == domestic and global_market == global_market and global_market - domestic > 0.8:
+        scenario = "US equities outperforming a weaker Korean backdrop"
+        composition = (
+            "a split-depth scene with a bright distant global current advancing while the nearer Seoul-inspired "
+            "field remains subdued and compressed"
+        )
+        palette = "bright cyan and gold in the distance, slate blue and muted red in the foreground"
+        mood = "globally constructive with local caution"
+    elif ((fx_change == fx_change and fx_change > 0.5) or (yield_change == yield_change and yield_change > 0.5)):
+        scenario = "equities facing tighter rate or currency conditions"
+        composition = (
+            "converging metallic arcs tightening around an illuminated core, balanced by a distant open exit; "
+            "suggest financial pressure through spacing and material tension"
+        )
+        palette = "midnight blue, graphite, muted amber and restrained copper"
+        mood = "analytical, constrained and watchful"
+    else:
+        scenario = "mixed sideways markets with no dominant directional consensus"
+        composition = (
+            "two opposing translucent currents meeting at a quiet central horizon, with suspended planes and "
+            "balanced negative space that communicate unresolved direction"
+        )
+        palette = "deep navy, slate blue, muted teal and subtle amber"
+        mood = "calm, analytical and undecided"
+
+    valid_drivers = {key: value for key, value in changes.items() if value == value}
+    dominant_driver = max(valid_drivers, key=lambda key: abs(valid_drivers[key])) if valid_drivers else "mixed signals"
+
+    def format_signal(key: str) -> str:
+        value = changes[key]
+        return f"{value:+.2f}%" if value == value else "unavailable"
+
+    vix_level_text = f"{vix_level:g}" if vix_level == vix_level else "unavailable"
+    signal_context = (
+        f"KOSPI {format_signal('KOSPI')}, KOSDAQ {format_signal('KOSDAQ')}, "
+        f"S&P 500 {format_signal('S&P 500')}, NASDAQ {format_signal('NASDAQ')}, "
+        f"VIX level {vix_level_text}"
+    )
+    signal_context += (
+        f", VIX change {format_signal('VIX change')}, USD/KRW {format_signal('USD/KRW')}, "
+        f"US 10Y {format_signal('US 10Y')}"
+    )
+    session_light = (
+        "crisp early-morning light with a subtle dawn glow"
+        if is_morning
+        else "refined evening light with subtle city illumination"
+    )
+
+    return (
+        "Create a premium square editorial cover illustration for a Korean daily market briefing. "
+        "The image must visualize the current measured market mood, not generic finance decoration. "
+        f"Headline for semantic direction only, never render it as text: {headline}. "
+        f"Current signals for art direction only, never render these values: {signal_context}. "
+        f"Scenario: {scenario}. Dominant changing signal: {dominant_driver}. "
+        f"Composition: {composition}. Mood: {mood}. Lighting: {session_light}. Palette: {palette}. "
+        "Make the spatial structure visibly different from a generic finance cover and let the scenario control "
+        "the direction, density, balance and focal point. Use sophisticated editorial illustration, clean geometry, "
+        "restrained cinematic depth, realistic light, generous negative space and a strong hierarchy. Keep important "
+        "details away from the outer edges for responsive cropping. Do not default to the same city skyline, flowing "
+        "data ribbons or centered tunnel composition on every run. "
+        "Do not depict bulls, bears, people, mascots, coins, money, rockets, candlestick charts, literal screens, "
+        "fake interfaces or cliché Wall Street imagery. Absolutely no text, letters, numbers, ticker symbols, logos, "
+        "flags, labels, captions, borders, signatures or watermarks anywhere in the image."
+    )
+
+
 def require_market_coverage(indexes: dict, minimum: int, required: tuple[str, ...] = ()) -> int:
     available = 0
     for item in indexes.values():
@@ -813,49 +943,16 @@ def generate_ai_briefing(
 """.strip()
 
     def generate_market_cover(cover_headline: str) -> str:
-        kospi_chg = parse_change_percent(kospi.get("change", ""))
-        vix_val = parse_price_value(vix.get("price", "0"))
-        if kospi_chg == kospi_chg and kospi_chg > 0.5:
-            market_state = "constructive risk-on momentum with a clear upward visual rhythm"
-            palette = "deep navy, restrained emerald, warm gold highlights, clean white accents"
-            mood = "confident and energetic, with controlled optimism"
-        elif kospi_chg == kospi_chg and kospi_chg < -0.5:
-            market_state = "risk-off pressure with a controlled downward visual rhythm"
-            palette = "deep navy, muted crimson, cool steel blue, soft grey highlights"
-            mood = "serious and cautious, tense without looking catastrophic"
-        else:
-            market_state = "mixed sideways trading with balanced, unresolved visual tension"
-            palette = "deep navy, slate blue, muted teal, subtle amber highlights"
-            mood = "calm, analytical and watchful"
-        volatility = (
-            "Show elevated volatility through layered light trails and tighter visual tension, "
-            "but avoid panic, disaster imagery, or exaggerated market crashes. "
-            if (vix_val == vix_val and vix_val > 25)
-            else "Keep the visual rhythm measured and orderly, suggesting normal market volatility. "
-        )
-        session_light = (
-            "crisp early-morning light with a subtle dawn glow"
-            if IS_MORNING
-            else "refined evening light with subtle city illumination"
-        )
-
-        image_prompt = (
-            "Create a premium square editorial cover illustration for a Korean daily market briefing. "
-            f"Use this grounded market headline only as a semantic art-direction theme, never render it as text: "
-            f"{cover_headline}. "
-            "Communicate financial-market movement through one clear focal composition: an elegant abstract "
-            "flow of illuminated data ribbons and geometric market layers moving across a refined Seoul "
-            "financial-district atmosphere. The visual should feel like a serious global finance magazine, "
-            "not a trading-app advertisement. "
-            f"Market state: {market_state}. Mood: {mood}. Lighting: {session_light}. "
-            f"Color palette: {palette}. {volatility}"
-            "Use sophisticated editorial illustration, clean geometry, restrained cinematic depth, realistic "
-            "light, generous negative space, and a strong central visual hierarchy. Keep important details away "
-            "from the outer edges so the image remains effective when responsively cropped. "
-            "Do not depict bulls, bears, people, mascots, coins, money, rockets, candlestick charts, literal "
-            "screens, or cliché Wall Street imagery. Do not create fake interfaces or decorative financial data. "
-            "Absolutely no text, letters, numbers, ticker symbols, logos, flags, labels, captions, borders, "
-            "signatures, or watermarks anywhere in the image."
+        image_prompt = build_market_cover_prompt(
+            cover_headline,
+            kospi,
+            kosdaq,
+            sp500,
+            nasdaq,
+            vix,
+            usdkrw,
+            us10y,
+            IS_MORNING,
         )
 
         if not GENERATE_AI_IMAGE:
