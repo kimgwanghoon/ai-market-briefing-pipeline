@@ -72,7 +72,7 @@ python -m unittest discover -s tests -v
 
 ## 스케줄 정책
 
-- `main.yml`: 평일 08:00 / 18:00(KST) 데일리 브리핑
+- `main.yml`: 외부 스케줄러의 `workflow_dispatch` 호출을 받아 평일 08:00 / 18:00(KST)에 데일리 브리핑을 생성합니다. GitHub 내부 cron은 사용하지 않습니다.
 - `intraday.yml`: 외부 스케줄러의 `workflow_dispatch` 호출을 받아 평일 08:10~15:10(KST)에 준비를 시작하고 08:30~15:30 정각에 장중 스냅샷을 생성합니다. GitHub 내부 cron은 사용하지 않습니다.
 - `quality.yml`: `master` 코드 변경과 PR에서는 테스트만 실행하며, 데일리 페이지를 임의 시각에 다시 생성하지 않습니다.
 - `cleanup-data.yml`: 평일 00:00(KST) 30일 초과 JSON 자동 정리
@@ -81,6 +81,20 @@ python -m unittest discover -s tests -v
 ### 무료 외부 스케줄러 연동
 
 QStash 같은 HTTP 스케줄러에서는 아래 GitHub API를 `POST`로 호출할 수 있습니다.
+
+데일리 브리핑:
+
+```text
+https://api.github.com/repos/<owner>/<repo>/actions/workflows/main.yml/dispatches
+```
+
+```json
+{"ref":"master"}
+```
+
+QStash cron은 `0 8,18 * * MON-FRI`, 시간대는 `Asia/Seoul`로 설정합니다.
+
+장중 브리핑:
 
 ```text
 https://api.github.com/repos/<owner>/<repo>/actions/workflows/intraday.yml/dispatches
