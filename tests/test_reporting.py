@@ -191,16 +191,37 @@ class SentimentContractTests(unittest.TestCase):
             ["news-2"],
         )
 
-    def test_news_outside_current_observation_hour_is_excluded(self):
+    def test_news_rolling_hour_excludes_old_and_future_events(self):
         events = [
-            {"event_id": "old", "published_at": "2026-08-18 09:59"},
+            {"event_id": "old", "published_at": "2026-08-18 09:29"},
+            {"event_id": "previous-hour", "published_at": "2026-08-18 09:59"},
+            {"event_id": "future", "published_at": "2026-08-18 10:31"},
             {"event_id": "current", "published_at": "2026-08-18 10:01"},
         ]
         now = KST.localize(datetime(2026, 8, 18, 10, 30))
         self.assertEqual(
             [item["event_id"] for item in filter_unseen_events(events, [], "news", now)],
-            ["current"],
+            ["previous-hour", "current"],
         )
+
+    def test_observation_uses_cutoff_not_legacy_future_hour_end(self):
+        now = KST.localize(datetime(2026, 8, 18, 15, 30, 18))
+        history = [{"timestamp": "2026-08-18 15:00:25",
+                    "collection_cutoff": "2026-08-18 15:00:10",
+                    "window_end": "2026-08-18 15:59:59"}]
+        start, end = intraday.observation_window(history, now)
+        self.assertEqual(start, KST.localize(datetime(2026, 8, 18, 15, 0)))
+        self.assertEqual(end, now)
+        events = [{"event_id": "boundary", "published_at": "2026-08-18 15:00"},
+                  {"event_id": "new", "published_at": "2026-08-18 15:20"}]
+        self.assertEqual(len(filter_unseen_events(events, history, "news", now)), 2)
+
+    def test_observation_ignores_previous_day_and_handles_missed_run(self):
+        now = KST.localize(datetime(2026, 8, 18, 11, 0))
+        start, end = intraday.observation_window([{"timestamp": "2026-08-18 09:00:20"}], now)
+        self.assertEqual(start.hour, 9)
+        start, end = intraday.observation_window([{"timestamp": "2026-08-17 15:30:20"}], now)
+        self.assertEqual(start.hour, 10)
 
     def test_score_comparison_uses_latest_actual_execution(self):
         history = [

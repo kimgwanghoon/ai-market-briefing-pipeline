@@ -347,6 +347,22 @@ def dart_event_dedupe_key(event: dict) -> str:
     return f"{corp_name}:{normalize_dart_title(event.get('title', ''))}"
 
 
+def observation_window(history: List[dict], now: datetime) -> tuple[datetime, datetime]:
+    previous = []
+    for snapshot in history:
+        # Old window_end values describe a future hour bucket, not a cutoff.
+        value = snapshot.get("collection_cutoff") or snapshot.get("timestamp", "")
+        try:
+            cutoff = KST.localize(datetime.strptime(value, "%Y-%m-%d %H:%M:%S"))
+        except (ValueError, TypeError):
+            continue
+        if cutoff.date() == now.date() and cutoff < now:
+            previous.append(cutoff)
+    start = max(previous) if previous else now - timedelta(hours=1)
+    # News timestamps have minute precision; overlap the boundary minute and dedupe IDs.
+    return start.replace(second=0, microsecond=0), now
+
+
 def filter_unseen_events(
     events: List[dict],
     history: List[dict],
@@ -354,8 +370,7 @@ def filter_unseen_events(
     now: datetime | None = None,
 ) -> List[dict]:
     now = now or datetime.now(KST)
-    window_start = now.replace(minute=0, second=0, microsecond=0)
-    window_end = window_start + timedelta(hours=1)
+    window_start, window_end = observation_window(history, now)
     seen = set()
     for snapshot in history:
         for event in snapshot.get("events", {}).get(category, []):
@@ -374,7 +389,9 @@ def filter_unseen_events(
         if parsed is None:
             continue
         published_at, precision = parsed
-        if category == "news" and (precision != "minute" or not window_start <= published_at < window_end):
+        if category == "news" and (precision != "minute" or not window_start <= published_at <= window_end):
+            continue
+        if published_at > now:
             continue
         if category == "dart" and published_at.date() != now.date():
             continue
@@ -1410,17 +1427,18 @@ def save_intraday_snapshot(
     reliability: dict,
     comparison: dict,
     calibration: dict,
+    window: tuple[datetime, datetime] | None = None,
 ) -> dict:
     now = datetime.now(KST)
     stamp = now.strftime("%Y-%m-%d-%H%M")
-    hour_start = now.replace(minute=0, second=0, microsecond=0)
-    hour_end = hour_start.replace(minute=59, second=59)
+    window_start, window_end = window or observation_window([], now)
 
     payload = {
-        "schema_version": "1.4",
+        "schema_version": "1.5",
         "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
-        "window_start": hour_start.strftime("%Y-%m-%d %H:%M:%S"),
-        "window_end": hour_end.strftime("%Y-%m-%d %H:%M:%S"),
+        "window_start": window_start.strftime("%Y-%m-%d %H:%M:%S"),
+        "window_end": window_end.strftime("%Y-%m-%d %H:%M:%S"),
+        "collection_cutoff": window_end.strftime("%Y-%m-%d %H:%M:%S"),
         "run_source": os.getenv("GITHUB_EVENT_NAME", "local"),
         "execution": {
             "scheduled_target_kst": os.getenv("SCHEDULE_TARGET_KST", ""),
@@ -1535,8 +1553,12 @@ def main() -> None:
         minimum=int(os.getenv("MIN_MARKET_COVERAGE", "5")),
         required=("kospi", "kosdaq"),
     )
-    news_events = score_news_events(filter_unseen_events(fetch_naver_news(limit=20), history, "news"))
-    dart_events = score_dart_events(filter_unseen_events(fetch_dart_events(limit=20), history, "dart"))
+    raw_news = fetch_naver_news(limit=20)
+    raw_darts = fetch_dart_events(limit=20)
+    collection_cutoff = datetime.now(KST)
+    window = observation_window(history, collection_cutoff)
+    news_events = score_news_events(filter_unseen_events(raw_news, history, "news", collection_cutoff))
+    dart_events = score_dart_events(filter_unseen_events(raw_darts, history, "dart", collection_cutoff))
     sector_rotation = detect_sector_rotation(news_events, dart_events)
     sentiment = build_sentiment(indexes, news_events, dart_events, sector_rotation, calibration)
     points, watchpoint = build_llm_points(indexes, sentiment, news_events, dart_events)
@@ -1564,6 +1586,7 @@ def main() -> None:
         reliability,
         comparison,
         calibration,
+        window=window,
     )
     render_live_html(payload)
     send_discord_intraday(payload)
