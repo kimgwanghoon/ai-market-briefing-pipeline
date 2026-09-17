@@ -477,57 +477,65 @@ def build_market_cover_prompt(
 
     if (vix_level == vix_level and vix_level >= 25) or (vix_change == vix_change and vix_change >= 8):
         scenario = "elevated volatility and defensive positioning"
-        composition = (
-            "a dense field of translucent planes bent by crosswinds, with a narrow but intact path of light "
-            "through the center; use asymmetric depth and visible tension"
+        panel_plan = (
+            "Use a three-panel silent comic with the same small cast of fictional adult market participants: "
+            "first they notice a sudden change in the air, then a violent gust scatters loose papers and shakes "
+            "the market district, and finally they regroup cautiously behind a sturdy shelter while watching for "
+            "the next move. Keep the ending alert rather than catastrophic"
         )
         palette = "charcoal navy, cold steel blue, restrained crimson, sparse white light"
         mood = "alert and defensive without panic or disaster imagery"
     elif domestic == domestic and global_market == global_market and domestic > 0.4 and global_market > 0.25:
         scenario = "broad risk-on participation across Korean and US equities"
-        composition = (
-            "an expansive rising corridor of layered light and open geometric planes accelerating toward a "
-            "bright horizon; emphasize breadth, lift and available space"
+        panel_plan = (
+            "Use one full-bleed comic panel: a diverse group of fictional adult market participants moves together "
+            "up a broad sunlit staircase through an opening market district, with confident expressions, energetic "
+            "motion and plenty of open space ahead. Show broad participation, not reckless euphoria"
         )
         palette = "deep navy, luminous teal, restrained emerald, warm gold highlights"
         mood = "confident and energetic with controlled optimism"
     elif domestic == domestic and global_market == global_market and domestic < -0.4 and global_market < -0.25:
         scenario = "broad risk-off pressure across Korean and US equities"
-        composition = (
-            "compressed descending planes, receding light and a guarded central anchor; create downward weight "
-            "without literal arrows, charts or crash imagery"
+        panel_plan = (
+            "Use one dramatic full-bleed comic panel: the same kind of fictional market participants lean into a "
+            "cold headwind on a descending city walkway, protecting their belongings and helping one another keep "
+            "balance. Show broad pressure and caution without depicting a crash or disaster"
         )
         palette = "deep navy, muted crimson, cool grey, narrow silver highlights"
         mood = "serious, cautious and tightly controlled"
     elif domestic == domestic and global_market == global_market and domestic - global_market > 0.8:
         scenario = "Korean equities outperforming a weaker US backdrop"
-        composition = (
-            "a clearly divided visual field: a warmer rising current inspired by Seoul on one side and a cooler, "
-            "subdued global current on the other, meeting at an off-center boundary"
+        panel_plan = (
+            "Use a two-panel split comic with matching visual scale: the Seoul-inspired panel shows participants "
+            "moving forward in warm light, while the overseas-market panel shows a similar group slowing down in "
+            "cooler weather. Make the relative-strength contrast obvious through action and expression"
         )
         palette = "warm teal and gold contrasted with cool navy and desaturated blue"
         mood = "constructive locally but globally unresolved"
     elif domestic == domestic and global_market == global_market and global_market - domestic > 0.8:
         scenario = "US equities outperforming a weaker Korean backdrop"
-        composition = (
-            "a split-depth scene with a bright distant global current advancing while the nearer Seoul-inspired "
-            "field remains subdued and compressed"
+        panel_plan = (
+            "Use a two-panel split comic with matching visual scale: the overseas-market panel shows participants "
+            "advancing confidently in brighter light, while the Seoul-inspired panel shows a similar group pausing "
+            "under a subdued sky. Make the relative-strength contrast obvious through action and expression"
         )
         palette = "bright cyan and gold in the distance, slate blue and muted red in the foreground"
         mood = "globally constructive with local caution"
     elif ((fx_change == fx_change and fx_change > 0.5) or (yield_change == yield_change and yield_change > 0.5)):
         scenario = "equities facing tighter rate or currency conditions"
-        composition = (
-            "converging metallic arcs tightening around an illuminated core, balanced by a distant open exit; "
-            "suggest financial pressure through spacing and material tension"
+        panel_plan = (
+            "Use a three-panel silent comic: participants first walk normally, then rising water and heavier luggage "
+            "make each step harder, and finally they pause to rebalance their load while an open path remains visible. "
+            "Use these physical metaphors to show rate and currency pressure without literal currency symbols"
         )
         palette = "midnight blue, graphite, muted amber and restrained copper"
         mood = "analytical, constrained and watchful"
     else:
         scenario = "mixed sideways markets with no dominant directional consensus"
-        composition = (
-            "two opposing translucent currents meeting at a quiet central horizon, with suspended planes and "
-            "balanced negative space that communicate unresolved direction"
+        panel_plan = (
+            "Use a four-panel silent comic grid with the same recurring fictional participants: one cautiously steps "
+            "forward, one steps back, one waits and observes, and the final panel shows the group comparing opposing "
+            "paths at a crossroads. The sequence must communicate indecision rather than a hidden bullish or bearish bias"
         )
         palette = "deep navy, slate blue, muted teal and subtle amber"
         mood = "calm, analytical and undecided"
@@ -556,20 +564,22 @@ def build_market_cover_prompt(
     )
 
     return (
-        "Create a premium square editorial cover illustration for a Korean daily market briefing. "
-        "The image must visualize the current measured market mood, not generic finance decoration. "
+        "Create a premium square wordless editorial comic for a Korean daily market briefing. "
+        "Use a polished modern webtoon and newspaper editorial-comic hybrid: expressive fictional adult characters, "
+        "clean ink lines, cinematic framing, refined cel shading and professional magazine-grade color. "
+        "The current measured market mood must be understandable at a glance from character expressions, body language, "
+        "weather, movement and environmental metaphors, not from generic finance decoration. "
         f"Headline for semantic direction only, never render it as text: {headline}. "
         f"Current signals for art direction only, never render these values: {signal_context}. "
         f"Scenario: {scenario}. Dominant changing signal: {dominant_driver}. "
-        f"Composition: {composition}. Mood: {mood}. Lighting: {session_light}. Palette: {palette}. "
-        "Make the spatial structure visibly different from a generic finance cover and let the scenario control "
-        "the direction, density, balance and focal point. Use sophisticated editorial illustration, clean geometry, "
-        "restrained cinematic depth, realistic light, generous negative space and a strong hierarchy. Keep important "
-        "details away from the outer edges for responsive cropping. Do not default to the same city skyline, flowing "
-        "data ribbons or centered tunnel composition on every run. "
-        "Do not depict bulls, bears, people, mascots, coins, money, rockets, candlestick charts, literal screens, "
-        "fake interfaces or cliché Wall Street imagery. Absolutely no text, letters, numbers, ticker symbols, logos, "
-        "flags, labels, captions, borders, signatures or watermarks anywhere in the image."
+        f"Panel direction: {panel_plan}. Mood: {mood}. Lighting: {session_light}. Palette: {palette}. "
+        "Make every panel readable at thumbnail size, keep the recurring characters visually consistent, and use clear "
+        "panel gutters only when the panel direction requests multiple panels. Keep faces and essential action away from "
+        "the outer edges for responsive cropping. Avoid abstract-only compositions, repeated city skylines, flowing data "
+        "ribbons and centered tunnel imagery. Do not imitate any named artist, studio, comic or copyrighted character. "
+        "Do not depict bulls, bears, mascots, coins, money, rockets, candlestick charts, trading screens, fake interfaces "
+        "or cliché Wall Street imagery. No speech balloons. Absolutely no text, letters, numbers, ticker symbols, logos, "
+        "flags, labels, captions, panel numbers, borders around the whole image, signatures or watermarks."
     )
 
 

@@ -578,7 +578,31 @@ class CoverGenerationTests(unittest.TestCase):
         self.assertIn("broad risk-on participation", bullish)
         self.assertIn("elevated volatility", defensive)
         self.assertIn("KOSPI +1.20%", bullish)
+        self.assertIn("one full-bleed comic panel", bullish)
+        self.assertIn("three-panel silent comic", defensive)
+        self.assertIn("wordless editorial comic", bullish)
+        self.assertIn("No speech balloons", defensive)
         self.assertNotEqual(bullish, defensive)
+
+    def test_cover_prompt_uses_split_panels_for_cross_market_divergence(self):
+        def metric(change: str, price: str = "100.00") -> dict:
+            return {"price": price, "change": change}
+
+        divergent = main.build_market_cover_prompt(
+            "코스피·나스닥 엇갈린 온도차",
+            metric("▲ 1.00 (+1.50%)"),
+            metric("▲ 1.00 (+1.10%)"),
+            metric("▼ 1.00 (-0.40%)"),
+            metric("▼ 1.00 (-0.60%)"),
+            metric("▲ 1.00 (+2.00%)", "18.00"),
+            metric("▲ 1.00 (+0.20%)"),
+            metric("▲ 1.00 (+0.10%)"),
+            True,
+        )
+
+        self.assertIn("Korean equities outperforming", divergent)
+        self.assertIn("two-panel split comic", divergent)
+        self.assertIn("relative-strength contrast", divergent)
 
     def test_generates_cover_when_briefing_validation_falls_back(self):
         image_bytes = b"generated cover"
