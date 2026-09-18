@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Morning Briefing: 간밤의 미장 &amp; 국장 프리뷰</title>
-  <meta name="description" content="지수 혼조 속 금리·환율 점검" />
-  <meta property="og:title" content="Morning Briefing: 간밤의 미장 &amp; 국장 프리뷰" />
-  <meta property="og:description" content="지수 혼조 속 금리·환율 점검" />
+  <title>Evening Briefing: 오늘 국장 마감 &amp; 미장 프리뷰</title>
+  <meta name="description" content="코스피·나스닥 동반 강세" />
+  <meta property="og:title" content="Evening Briefing: 오늘 국장 마감 &amp; 미장 프리뷰" />
+  <meta property="og:description" content="코스피·나스닥 동반 강세" />
   <meta property="og:image" content="cover_20260901_0800.png" />
   <style>
     :root {
@@ -523,34 +523,151 @@
       }
     }
   </style>
-</head>
+<style>
+/* Shared reading-first design for daily and live editions. */
+:root{--ink:#18252d;--muted:#596871;--line:#d9dfe2;--accent:#164f64;--accent-soft:#edf4f7}
+body{background:#fff;color:var(--ink);font-size:16px;line-height:1.75}
+.page{max-width:1160px;padding:40px 32px 70px}
+.header,.hero-header{text-align:left;border:0;border-top:5px solid #18252d;border-image:none;padding:22px 0 24px;margin:0 0 30px;border-bottom:1px solid var(--line);background:none;box-shadow:none;border-radius:0}
+.badge{padding:0;background:none;border:0;border-radius:0;font-size:13px;letter-spacing:.13em;color:var(--accent)}
+h1{font-family:Georgia,"Batang",serif;font-size:clamp(2rem,4vw,3.2rem);letter-spacing:-.045em;line-height:1.35;margin:16px 0}
+.hero-focus{font-size:clamp(1.7rem,3.5vw,2.6rem);text-align:left;max-width:none;margin:18px 0;padding:0;background:none;border:0;box-shadow:none;border-radius:0;font-weight:750;line-height:1.45;letter-spacing:-.04em}
+.hero-focus:before{display:none}.header h1{font-family:inherit;font-size:16px;letter-spacing:0;color:var(--muted);font-weight:500}
+.time,.meta,.metric,.market-meta,.news-meta,.risk-note{color:var(--muted);font-size:14px;line-height:1.7}
+.quick-links,.top-links{justify-content:flex-start;gap:24px;margin-top:20px;flex-wrap:wrap}
+.quick-links a,.top-links a{border:0;border-bottom:2px solid var(--ink);border-radius:0;padding:8px 0;color:var(--ink);background:none;font-size:15px}
+a:focus-visible,summary:focus-visible{outline:3px solid #197aa1;outline-offset:4px}
+.card,.headline-card,.news-section,.indexes-section,.risk-section{border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:none;background:none;padding:26px 0;margin:0 0 22px}
+.section-title{font-size:21px;color:var(--ink);letter-spacing:-.025em;margin-bottom:20px}.section-head{align-items:baseline;flex-wrap:wrap;gap:8px}
+.summary,.tiny-list{font-size:16px;line-height:1.9}.summary li{padding:8px 0;margin:0 0 8px;border:0;background:none}.summary-title{font-size:16px;color:var(--accent);margin:22px 0 10px}
+.cover-section{margin:0 0 30px}.cover-frame{border-radius:0;box-shadow:none;border:0;max-width:640px;margin:auto}.cover{width:100%;height:auto;max-height:none;object-fit:contain;display:block;aspect-ratio:auto}.cover-overlay{position:static;background:#f2f5f7;color:var(--ink);padding:12px 18px}.cover-kicker{color:var(--muted);font-size:13px}.cover-headline{color:var(--ink);font-size:16px;margin:4px 0}
+.news-list{padding:0}.news-item{border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;box-shadow:none;padding:22px 0;gap:20px}.news-title{font-size:19px;line-height:1.6}.news-title a{color:var(--ink)}.news-rank{background:none;color:#89969d;font-family:Georgia,serif;font-size:32px}.news-thumb{border-radius:0}.news-why{font-size:15px;color:var(--muted);line-height:1.8}
+.market-overview-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:0}.market-card{border:0!important;border-bottom:1px solid var(--line)!important;border-radius:0;background:none;box-shadow:none;padding:18px 14px}.market-card .price{font-size:24px}.market-card .name{font-size:14px}
+.pulse-card{display:grid;grid-template-columns:minmax(210px,1fr) minmax(0,2fr);gap:40px;border-top:0;padding-top:0;background:none}.score-number{font-family:Georgia,serif;font-size:72px;letter-spacing:-.06em}.score-kicker{font-size:15px;letter-spacing:0}.score-meter{height:7px;opacity:.85}.state-pill,.movement-badge,.reliability-badge{border-radius:3px;font-size:14px}.pulse-facts{margin-bottom:24px;gap:0}.fact{border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;padding:12px 0}.fact-value,.fact-label{font-size:14px}.watch{border-radius:0;border:0;border-left:3px solid var(--accent);padding:16px 20px;background:#f0f5f7;font-size:16px;line-height:1.85}
+.event-grid{grid-template-columns:1fr;gap:0}.event-card{border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;padding:20px 0}.event-title{font-size:20px;line-height:1.65;color:var(--ink)}.event-meta{font-size:14px}.event-tag,.impact-badge{border-radius:3px}.insight-grid{gap:32px}.risk-item{background:#f4f6f7;border:0;border-radius:0;padding:18px}.footer{border-top:2px solid var(--ink);padding-top:20px;text-align:left;font-size:13px;color:var(--muted)}details summary{cursor:pointer;font-size:15px;min-height:44px}details .pulse-facts{margin-top:16px}.reliability-notice{font-size:14px}
+.insight-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:760px){.page{padding:24px 20px 50px}.pulse-card{grid-template-columns:1fr;gap:20px}.market-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-header,.header{margin-bottom:20px}.news-title,.event-title{font-size:18px}.news-thumb{width:90px;height:80px}.insight-grid,.risk-grid{grid-template-columns:1fr}.section-head{display:block}.score-number{font-size:60px}}
+@media(max-width:420px){.page{padding-left:16px;padding-right:16px}.news-item{gap:12px}.news-thumb{width:64px;height:64px}.market-card{padding:14px 8px}.market-card .price{font-size:21px}.pulse-facts{grid-template-columns:1fr}.event-meta{flex-wrap:wrap}h1{overflow-wrap:anywhere}}
+</style></head>
 <body>
   <main class="page">
     <header class="header">
-      <span class="badge">AUTOMATED BRIEFING</span>
-      <h1>Morning Briefing: 간밤의 미장 &amp; 국장 프리뷰</h1>
-      <p class="hero-focus">지수 혼조 속 금리·환율 점검</p>
-      <p class="time">생성 시각(KST): 2026-09-18 08:00:32</p>
+      <span class="badge">MARKET JOURNAL · 데일리</span>
+      <h1>Evening Briefing: 오늘 국장 마감 &amp; 미장 프리뷰</h1>
+      <p class="hero-focus">코스피·나스닥 동반 강세</p>
+      <p class="time">생성 시각(KST): 2026-09-18 18:00:32</p>
       <nav class="quick-links" aria-label="시장 브리핑 메뉴">
         <a href="live.html">장중</a>
         <a href="weekly.html">주간</a>
       </nav>
     </header>
 
+    <section class="headline-card">
+      <h2 class="section-title">오늘 시장, 핵심만</h2>
+      <div class="insight-grid">
+        <div><h3 class="summary-title">한국 시장</h3><ol class="summary"><li><strong>코스피</strong> 6,894.23 (▲ 178.82 (+2.66%)), <strong>코스닥</strong> 827.12 (▲ 4.94 (+0.60%))로 집계됐으며 결측값은 확인이 필요합니다.</li><li><strong>EWY</strong> 182.39 (▲ 6.85 (+3.90%))와 <strong>달러원</strong> 1,384.58 (▲ 7.98 (+0.58%))의 관측 방향을 함께 확인하세요.</li><li>수급과 거래대금 데이터는 제공되지 않았으므로 <strong>지수 관측값</strong> 이상의 원인 해석은 보류합니다.</li></ol></div>
+        <div><h3 class="summary-title">미국 시장</h3><ol class="summary"><li><strong>S&amp;P500</strong> 7,637.76 (▲ 85.95 (+1.14%)), <strong>다우</strong> 51,778.04 (▲ 316.14 (+0.61%)), <strong>나스닥</strong> 26,418.30 (▲ 439.87 (+1.69%))로 집계됐습니다.</li><li><strong>VIX</strong> 15.22 (▼ 0.22 (-1.42%)), <strong>미10년물</strong> 4.95 (▼ 0.06 (-1.18%)), <strong>WTI</strong> 95.56 (▼ 6.35 (-6.23%))의 동행 여부를 확인하세요.</li><li>오늘의 <strong>핵심 관전 포인트</strong>: <strong>VIX</strong>(15.22)가 반등하면 변동성 확대 여부를 확인하고, <strong>미10년물</strong>(4.95)과 <strong>달러원</strong>(1,384.58)이 동반 상승하면 금리·환율 부담이 이어지는지 추가 지표로 확인하세요.</li></ol></div>
+      </div>
+    </section>
+
+    <section class="cover-section">
+      <div class="cover-frame">
+        <img class="cover" src="cover_20260901_0800.png" onerror="this.onerror=null;this.src='cover.svg';" alt="코스피·나스닥 동반 강세 브리핑 커버" />
+        <div class="cover-overlay">
+          <span class="cover-kicker">만화로 읽는 시장 분위기</span>
+          <p class="cover-headline">코스피·나스닥 동반 강세</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="news-section">
+      <h2 class="section-title">오늘 주목할 뉴스</h2>
+      <ul class="news-list">
+        <li class="news-item">
+          <img class="news-thumb" src="https://mimgnews.pstatic.net/image/origin/015/2026/09/18/5334002.jpg?type=nf220_150" alt="" loading="lazy" referrerpolicy="no-referrer" />
+          <div class="news-content">
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/015/0005334002" target="_blank" rel="noopener">두산, 호실적·주주환원에 &#39;껑충&#39;</a></p>
+            <p class="news-meta">
+<span class="news-scope">Market</span>              한국경제 · 1분전            </p>
+            <p class="news-why">한국경제신문의 투자 전문 유료 플랫폼 &#39;한경 프리미엄9&#39;(www.hankyung.com/premium9)에 실린 기사입니다. &#39;한경 프리미엄9&#39;을 구독하시면 더 많은 주식 투자 기사를 찾아볼 수 있습니다. 두산그룹</p>
+          </div>
+        </li>
+        <li class="news-item">
+          <span class="news-rank">2</span>
+          <div class="news-content">
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/015/0005334001" target="_blank" rel="noopener">KB證, 외화채권 발행 주관액 고공행진</a></p>
+            <p class="news-meta">
+<span class="news-scope">Market</span>              한국경제 · 1분전            </p>
+            <p class="news-why">국내 채권발행시장(DCM)의 강자인 KB증권이 외화채권 시장에서도 발행 주관 규모를 끌어올리며 입지를 굳히고 있다. 18일 금융투자증권에 따르면 KB증권은 2021년 글로벌 DCM 전담 조직을 신설한 뒤 국내 증권사</p>
+          </div>
+        </li>
+        <li class="news-item">
+          <img class="news-thumb" src="https://mimgnews.pstatic.net/image/origin/011/2026/09/18/4663454.jpg?type=nf220_150" alt="" loading="lazy" referrerpolicy="no-referrer" />
+          <div class="news-content">
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/011/0004663454" target="_blank" rel="noopener">SOXL 대신 QLD·TQQQ…식지 않는 서학개미 레버리지 베팅</a></p>
+            <p class="news-meta">
+<span class="news-scope">Market</span>              서울경제 · 1분전            </p>
+            <p class="news-why">국내 단일 종목 레버리지 상품의 거래가 급감한 사이 서학개미(미국 주식에 투자하는 개인투자자)의 레버리지 투자 열풍은 이어지고 있는 것으로 나타났다. 상반기 반도체 3배 상품인 SOXL에 집중됐던 매수세가 최근에는</p>
+          </div>
+        </li>
+        <li class="news-item">
+          <span class="news-rank">4</span>
+          <div class="news-content">
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/015/0005334000" target="_blank" rel="noopener">美 &#39;토큰 주식&#39; 24시간 거래 길 열렸다</a></p>
+            <p class="news-meta">
+<span class="news-scope">Market</span>              한국경제 · 1분전            </p>
+            <p class="news-why">암호화폐거래소를 통해 ‘엔비디아 0.1주’를 24시간 거래할 수 있는 길이 미국에서 열렸다. 주식을 팔 때는 매도 대금을 즉시 받을 수 있게 된다. 미국 정부가 ‘토큰 주식’ 거래를 해당 주식 발행사(기업)의 허가를</p>
+          </div>
+        </li>
+        <li class="news-item">
+          <img class="news-thumb" src="https://mimgnews.pstatic.net/image/origin/003/2026/09/18/14200589.jpg?type=nf220_150" alt="" loading="lazy" referrerpolicy="no-referrer" />
+          <div class="news-content">
+            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/003/0014200589" target="_blank" rel="noopener">[올댓차이나] 中 증시, AI 산업 성장 기대에 반등 마감…창업판 2.25%↑</a></p>
+            <p class="news-meta">
+<span class="news-scope">Market</span>              뉴시스 · 1분전            </p>
+            <p class="news-why">중국 증시는 18일 국제유가 하락에 투자심리가 개선한 가운데 인공지능(AI) 산업 성장에 대한 기대로 매수 선행하면서 반등 마감했다. 상하이 종합지수는 이날 전일 대비 36.27 포인트, 0.94% 올라간 3911.</p>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <section class="risk-section">
+      <h2 class="section-title">함께 살펴볼 위험 신호</h2>
+      <div class="risk-grid">
+        <article class="risk-item">
+          <p class="risk-name">VIX</p>
+          <p class="risk-meta">현재 15.22 (▼ 0.22 (-1.42%)) · 최근 대비 <span style="color: #1d4ed8">하락</span></p>
+        </article>
+        <article class="risk-item">
+          <p class="risk-name">USD/KRW</p>
+          <p class="risk-meta">현재 1,384.58 (▲ 7.98 (+0.58%)) · 최근 대비 <span style="color: #b91c1c">상승</span></p>
+        </article>
+        <article class="risk-item">
+          <p class="risk-name">US 10Y</p>
+          <p class="risk-meta">현재 4.95 (▼ 0.06 (-1.18%)) · 최근 대비 <span style="color: #4b5563">보합</span></p>
+        </article>
+        <article class="risk-item">
+          <p class="risk-name">WTI</p>
+          <p class="risk-meta">현재 95.56 (▼ 6.35 (-6.23%)) · 최근 대비 <span style="color: #1d4ed8">하락</span></p>
+        </article>
+      </div>
+      <p class="risk-note">누적 스냅샷 8건 기준으로 직전 기록과 방향을 비교합니다.</p>
+    </section>
+
     <section class="indexes-section">
       <h2 class="section-title">주요 지수 및 리스크 신호</h2>
 <div class="market-overview-grid">
-    <article class="item market-card" style="border-left: 3px solid #4b5563">
+    <article class="item market-card" style="border-left: 3px solid #b91c1c">
       <p class="name">KOSPI</p>
-      <p class="price">6,715.41</p>
-      <p class="change" style="color: #4b5563; font-size: 0.95rem;">- 0.00 (+0.00%)</p>
-      <p class="market-meta">최근 종가 · 09-18 08:00 KST</p>
+      <p class="price">6,894.23</p>
+      <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 178.82 (+2.66%)</p>
+      <p class="market-meta">최근 종가 · 09-18 16:15 KST</p>
     </article>
-    <article class="item market-card" style="border-left: 3px solid #4b5563">
+    <article class="item market-card" style="border-left: 3px solid #b91c1c">
       <p class="name">KOSDAQ</p>
-      <p class="price">822.18</p>
-      <p class="change" style="color: #4b5563; font-size: 0.95rem;">- 0.00 (+0.00%)</p>
-      <p class="market-meta">최근 종가 · 09-18 08:00 KST</p>
+      <p class="price">827.12</p>
+      <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 4.94 (+0.60%)</p>
+      <p class="market-meta">최근 종가 · 09-18 16:15 KST</p>
     </article>
     <article class="item market-card" style="border-left: 3px solid #b91c1c">
       <p class="name">EWY</p>
@@ -578,120 +695,19 @@
     </article>
     <article class="item market-card" style="border-left: 3px solid #b91c1c">
       <p class="name">USD/KRW</p>
-      <p class="price">1,380.37</p>
-      <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 3.77 (+0.27%)</p>
-      <p class="market-meta">환율 거래중 · 09-18 08:00 KST</p>
+      <p class="price">1,384.58</p>
+      <p class="change" style="color: #b91c1c; font-size: 0.95rem;">▲ 7.98 (+0.58%)</p>
+      <p class="market-meta">환율 거래중 · 09-18 18:00 KST</p>
     </article>
     <article class="item market-card" style="border-left: 3px solid #1d4ed8">
       <p class="name">VIX</p>
-      <p class="price">15.44</p>
-      <p class="change" style="color: #1d4ed8; font-size: 0.95rem;">▼ 2.27 (-12.82%)</p>
-      <p class="market-meta">최근 종가 · 09-18 05:15 KST</p>
+      <p class="price">15.22</p>
+      <p class="change" style="color: #1d4ed8; font-size: 0.95rem;">▼ 0.22 (-1.42%)</p>
+      <p class="market-meta">장중 · 09-18 17:45 KST</p>
     </article>
 </div>    </section>
 
-    <section class="cover-section">
-      <div class="cover-frame">
-        <img class="cover" src="cover_20260901_0800.png" onerror="this.onerror=null;this.src='cover.svg';" alt="지수 혼조 속 금리·환율 점검 브리핑 커버" />
-        <div class="cover-overlay">
-          <span class="cover-kicker">AI Editorial Cover</span>
-          <p class="cover-headline">지수 혼조 속 금리·환율 점검</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="news-section">
-      <h3 class="section-title">📰 주요 뉴스</h3>
-      <ul class="news-list">
-        <li class="news-item">
-          <img class="news-thumb" src="https://mimgnews.pstatic.net/image/origin/277/2026/09/18/5818161.jpg?type=nf220_150" alt="" loading="lazy" referrerpolicy="no-referrer" />
-          <div class="news-content">
-            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/277/0005818161" target="_blank" rel="noopener">금리 인상 충격 딛고 뉴욕증시 반등…국내 증시도 상승 출발 전망[굿모닝 증시]</a></p>
-            <p class="news-meta">
-<span class="news-scope">Market</span>              아시아경제 · 2분전            </p>
-            <p class="news-why">미국 뉴욕증시가 연방준비제도(Fed)의 기준금리 인상에 따른 충격에서 벗어나 반등에 성공했다. 국내 증시 역시 상승 출발할 것으로 전망된다. 17일(현지시간) 다우존스30 산업평균지수는 전장보다 316.14포인트(0</p>
-          </div>
-        </li>
-        <li class="news-item">
-          <img class="news-thumb" src="https://mimgnews.pstatic.net/image/origin/023/2026/09/18/3999177.jpg?type=nf220_150" alt="" loading="lazy" referrerpolicy="no-referrer" />
-          <div class="news-content">
-            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/023/0003999177" target="_blank" rel="noopener">외국인, 지난달 코스피 1조9000억원 순매수...올해 처음 국내 주식 ‘사자’</a></p>
-            <p class="news-meta">
-<span class="news-scope">Market</span>              조선일보 · 3분전            </p>
-            <p class="news-why">3줄 요약 ㆍ외국인, 8개월 만에 국내 주식 3440억원 순매수 ㆍ채권시장서 4조7000억원 순유출...4개월 만에 역전 ㆍ주식·채권 합산 4조3920억원 순유출 기록 외국인 투자자가 지난달 국내 주식을 3000억원</p>
-          </div>
-        </li>
-        <li class="news-item">
-          <img class="news-thumb" src="https://mimgnews.pstatic.net/image/origin/015/2026/09/18/5333728.jpg?type=nf220_150" alt="" loading="lazy" referrerpolicy="no-referrer" />
-          <div class="news-content">
-            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/015/0005333728" target="_blank" rel="noopener">&#34;美국채, 안전자산 기능 약화…채권 대비 주식 매력 높아&#34;-NH</a></p>
-            <p class="news-meta">
-<span class="news-scope">Market</span>              한국경제 · 3분전            </p>
-            <p class="news-why">NH투자증권은 18일 수급 부담 확대와 포트폴리오 리스크 헤지 기능 약화로 채권에 요구되는 리스크 프리미엄이 높아지고 있다며 금리 상승에 따른 이자수익(Carry) 매력에도 불구하고 채권의 위험자산 성격이 강화되고</p>
-          </div>
-        </li>
-        <li class="news-item">
-          <img class="news-thumb" src="https://mimgnews.pstatic.net/image/origin/293/2026/09/18/90633.jpg?type=nf220_150" alt="" loading="lazy" referrerpolicy="no-referrer" />
-          <div class="news-content">
-            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/293/0000090633" target="_blank" rel="noopener">[현대차증권 재무체력]③ 수익원 바뀌어도 흔들린 이익 안정성</a></p>
-            <p class="news-meta">
-<span class="news-scope">Market</span>              블로터 · 5분전            </p>
-            <p class="news-why">현대차증권은 지난 10년간 수익원을 넓혀왔지만 영업이익 변동성은 줄이지 못했다. 2010년대 후반 수수료와 이자수익을 기반으로 이익을 키운 뒤 최근에는 투자은행(IB)과 운용, 투자중개가 번갈아 실적을 떠받쳤다. 한</p>
-          </div>
-        </li>
-        <li class="news-item">
-          <img class="news-thumb" src="https://mimgnews.pstatic.net/image/origin/277/2026/09/18/5818159.jpg?type=nf220_150" alt="" loading="lazy" referrerpolicy="no-referrer" />
-          <div class="news-content">
-            <p class="news-title"><a href="https://n.news.naver.com/mnews/article/277/0005818159" target="_blank" rel="noopener">북미 회담 성사되려나…北 고위급 방미에 美 비건 &#34;트럼프, 평양 회담 제안할수도&#34;</a></p>
-            <p class="news-meta">
-<span class="news-scope">Market</span>              아시아경제 · 6분전            </p>
-            <p class="news-why">북한 고위급 당국자가 다음 주 미국 뉴욕에서 열리는 유엔총회에 참석한다. 도널드 트럼프 미국 대통령이 북한을 향해 잇달아 대화 신호를 보내는 가운데, 스티븐 비건 전 미 국무부 대북특별대표는 트럼프 대통령이 김정은</p>
-          </div>
-        </li>
-      </ul>
-    </section>
-
-    <section class="risk-section">
-      <h2 class="section-title">리스크 대시보드</h2>
-      <div class="risk-grid">
-        <article class="risk-item">
-          <p class="risk-name">VIX</p>
-          <p class="risk-meta">현재 15.44 (▼ 2.27 (-12.82%)) · 최근 대비 <span style="color: #1d4ed8">하락</span></p>
-        </article>
-        <article class="risk-item">
-          <p class="risk-name">USD/KRW</p>
-          <p class="risk-meta">현재 1,380.37 (▲ 3.77 (+0.27%)) · 최근 대비 <span style="color: #1d4ed8">하락</span></p>
-        </article>
-        <article class="risk-item">
-          <p class="risk-name">US 10Y</p>
-          <p class="risk-meta">현재 4.95 (▼ 0.06 (-1.18%)) · 최근 대비 <span style="color: #1d4ed8">하락</span></p>
-        </article>
-        <article class="risk-item">
-          <p class="risk-name">WTI</p>
-          <p class="risk-meta">현재 101.21 (▼ 1.22 (-1.19%)) · 최근 대비 <span style="color: #b91c1c">상승</span></p>
-        </article>
-      </div>
-      <p class="risk-note">누적 스냅샷 8건 기준으로 직전 기록과 방향을 비교합니다.</p>
-    </section>
-
-    <section class="headline-card">
-      <h3 class="section-title">📋 AI 브리핑</h3>
-      
-      <h3 class="summary-title">한국 시장</h3>
-      <ol class="summary">
-        <li><strong>코스피</strong> 6,715.41 (- 0.00 (+0.00%)), <strong>코스닥</strong> 822.18 (- 0.00 (+0.00%))로 집계됐으며 결측값은 확인이 필요합니다.</li>
-        <li><strong>EWY</strong> 182.39 (▲ 6.85 (+3.90%))와 <strong>달러원</strong> 1,380.37 (▲ 3.77 (+0.27%))의 관측 방향을 함께 확인하세요.</li>
-        <li>수급과 거래대금 데이터는 제공되지 않았으므로 <strong>지수 관측값</strong> 이상의 원인 해석은 보류합니다.</li>
-      </ol>
-      <h3 class="summary-title">미국 시장</h3>
-      <ol class="summary">
-        <li><strong>S&amp;P500</strong> 7,637.76 (▲ 85.95 (+1.14%)), <strong>다우</strong> 51,778.04 (▲ 316.14 (+0.61%)), <strong>나스닥</strong> 26,418.30 (▲ 439.87 (+1.69%))로 집계됐습니다.</li>
-        <li><strong>VIX</strong> 15.44 (▼ 2.27 (-12.82%)), <strong>미10년물</strong> 4.95 (▼ 0.06 (-1.18%)), <strong>WTI</strong> 101.21 (▼ 1.22 (-1.19%))의 동행 여부를 확인하세요.</li>
-        <li>오늘의 <strong>핵심 관전 포인트</strong>: <strong>VIX</strong>(15.44)가 반등하면 변동성 확대 여부를 확인하고, <strong>미10년물</strong>(4.95)과 <strong>달러원</strong>(1,380.37)이 동반 상승하면 금리·환율 부담이 이어지는지 추가 지표로 확인하세요.</li>
-      </ol>
-    </section>
-
-    <p class="footer">Generated by market-briefing-hub</p>
+    <p class="footer">MARKET JOURNAL · AI Market Briefing Pipeline · 지표별 기준시각을 확인하세요.</p>
   </main>
 </body>
 </html>
