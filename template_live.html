@@ -434,12 +434,13 @@
       .card { padding: 16px; }
     }
   </style>
+  {% include "template_editorial_style.html" %}
 </head>
 <body>
   <main class="page">
     <header class="hero-header">
-      <span class="badge">LIVE · ACTUAL SNAPSHOT</span>
-      <h1>장중 시장 분위기 모니터</h1>
+      <span class="badge">MARKET JOURNAL · 라이브</span>
+      <h1>지금 시장의 흐름</h1>
       <p class="meta">생성 시각 {{ generated_at }} KST · 뉴스 관측 구간 {{ window_start }} ~ {{ window_end }} KST</p>
       <p class="meta">뉴스는 분 단위 경계를 겹쳐 확인하며 중복은 제외합니다. 공시는 당일 신규 수집분, 시장 지표는 각 기준시각의 값입니다.</p>
       <nav class="top-links" aria-label="시장 브리핑 메뉴">
@@ -450,7 +451,7 @@
 
     <section class="card pulse-card">
       <div>
-        <p class="score-kicker">Hybrid sentiment</p>
+        <p class="score-kicker">오늘의 시장 온도</p>
         <div class="score-main">
           <strong class="score-number">{{ sentiment.score }}</strong>
           <span class="score-denominator">/ 100</span>
@@ -467,7 +468,7 @@
         {% endif %}
       </div>
       <div>
-        <div class="pulse-facts">
+        <details><summary>점수와 데이터 자세히 보기</summary><div class="pulse-facts">
           <article class="fact">
             <p class="fact-label">데이터 충실도</p>
             <p class="fact-value">{{ sentiment.data_completeness }}% · {{ sentiment.data_quality_basis }}</p>
@@ -484,7 +485,8 @@
             <p class="fact-label">점수 해석</p>
             <p class="fact-value">{{ sentiment.range_rule }}</p>
           </article>
-        </div>
+        </div></details>
+        <h2 class="section-title">지금 알아둘 시황</h2>
         <ol class="summary">
           {% for point in key_points %}
             <li>{{ point | bold }}</li>
@@ -506,7 +508,7 @@
     <section class="card">
       <div class="section-head">
         <h2 class="section-title">오늘 핵심 이벤트</h2>
-        <p class="metric">뉴스·공시 통합 · 영향도 순 · 최대 5개</p>
+        <p class="metric">새로 확인한 뉴스와 주요 공시</p>
       </div>
       <div class="event-grid">
         {% for event in top_events %}

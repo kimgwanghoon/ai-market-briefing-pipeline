@@ -397,7 +397,7 @@ class HtmlSafetyTests(unittest.TestCase):
                 )
             html = (Path(tmp_dir) / "index.html").read_text(encoding="utf-8")
 
-        self.assertIn("AI Editorial Cover", html)
+        self.assertIn("만화로 읽는 시장 분위기", html)
         self.assertIn("코스피·나스닥 엇갈린 온도차", html)
         self.assertIn("왜 중요한가", html)
         self.assertIn("news.jpg", html)
@@ -488,7 +488,7 @@ class HtmlSafetyTests(unittest.TestCase):
                 intraday.render_live_html(payload)
             html = (Path(tmp_dir) / "live.html").read_text(encoding="utf-8")
 
-        self.assertIn("LIVE · ACTUAL SNAPSHOT", html)
+        self.assertIn("MARKET JOURNAL · 라이브", html)
         self.assertIn("직전 실행 대비 +7.0p", html)
         self.assertNotIn("실제 실행 흐름", html)
         self.assertIn("데이터 충실도", html)
