@@ -4,3 +4,9 @@ __pycache__/
 public/data/
 public/live.html
 public/weekly.html
+node_modules/
+.next/
+.env*
+!.env.example
+*.tsbuildinfo
+.venv/

@@ -12,6 +12,9 @@ concurrency:
 permissions:
   contents: write
 
+env:
+  STORAGE_BACKEND: ${{ vars.STORAGE_BACKEND || 'json' }}
+
 jobs:
   weekly-report:
     runs-on: ubuntu-latest
@@ -22,12 +25,14 @@ jobs:
           ref: master
 
       - name: Checkout published history
+        if: vars.STORAGE_BACKEND != 'supabase'
         uses: actions/checkout@v4
         with:
           ref: gh-pages
           path: pages-history
 
       - name: Restore published data
+        if: vars.STORAGE_BACKEND != 'supabase'
         run: if [ -d pages-history/data ]; then mkdir -p public/data && cp -a pages-history/data/. public/data/; fi
 
       - name: Setup Python
@@ -40,18 +45,23 @@ jobs:
         run: python -m pip install --upgrade pip && pip install -r requirements.txt
 
       - name: Run quality checks
-        run: python -m compileall -q . && python -m unittest discover -s tests -v
+        run: python -m compileall -q pipeline main.py intraday.py weekly_report.py && python -m unittest discover -s tests -v
 
       - name: Generate weekly report
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           GITHUB_PAGES_URL: ${{ secrets.GITHUB_PAGES_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SITE_URL: ${{ vars.SITE_URL }}
         run: python weekly_report.py
 
       - name: Prepare weekly publish directory
+        if: vars.STORAGE_BACKEND != 'supabase'
         run: mkdir -p weekly_publish/data/reports && cp public/weekly.html weekly_publish/weekly.html && cp -r public/data/reports/. weekly_publish/data/reports/
 
       - name: Deploy weekly artifacts to GitHub Pages
+        if: vars.STORAGE_BACKEND != 'supabase'
         uses: peaceiris/actions-gh-pages@v4.1.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

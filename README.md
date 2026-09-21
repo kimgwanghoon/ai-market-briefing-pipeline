@@ -123,3 +123,23 @@ QStash cron은 `10 8-15 * * MON-FRI`, 시간대는 `Asia/Seoul`로 설정합니�
 - 예약 실행 스냅샷에는 목표 시각과 실제 생성 지연 시간을 `execution` 메타데이터로 기록합니다.
 - 최근 intraday 히스토리를 기반으로 컴포넌트 분포를 robust 정규화(중앙값/MAD)하고, 그리드 서치로 가중치를 보정합니다.
 - 산출 결과에는 `model_version`, `weights`, `normalized_components`, `calibration_metric`, `calibration_samples`를 함께 기록합니다.
+# Supabase / Vercel 전환
+
+새 리서치 서비스 구현과 전환 절차는 [전환 설계](docs/SUPABASE_TRANSITION.md)를 참고하세요.
+현재 운영 경로는 기본 `json`이며, Repository Variable `STORAGE_BACKEND=supabase`를 설정해야 DB 경로를 사용합니다.
+
+- 화면: `apps/web` (Next.js, Vercel Root Directory)
+- DB: `supabase/migrations/001_research_desk.sql`
+- 배치: `pipeline/jobs/run.py` (기존 QStash 워크플로 진입점 유지)
+- 업종·종목 후보: `config/universe.json`
+- GitHub Secrets: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+- Vercel 환경변수: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` (읽기용 키)
+
+```bash
+python -m unittest discover -s tests -v
+cd apps/web
+npm ci
+npm run build
+npm run typecheck
+npm run test:db
+```

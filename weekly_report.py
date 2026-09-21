@@ -385,4 +385,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    from pipeline.storage.supabase import database_enabled
+    if database_enabled():
+        from pipeline.jobs.run import run
+        run('weekly')
+    else:
+        main()

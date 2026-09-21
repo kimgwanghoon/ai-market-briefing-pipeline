@@ -1,0 +1,10 @@
+[
+  {"name":"삼성전자","ticker":"005930.KS","sector":"반도체","keywords":["반도체","메모리","HBM"],"risk":"메모리 가격과 설비투자 기대의 변화"},
+  {"name":"SK하이닉스","ticker":"000660.KS","sector":"반도체","keywords":["반도체","메모리","HBM"],"risk":"고객 투자와 제품 공급 일정의 변화"},
+  {"name":"현대차","ticker":"005380.KS","sector":"자동차","keywords":["자동차","완성차"],"risk":"관세·환율과 판매 수요 변화"},
+  {"name":"기아","ticker":"000270.KS","sector":"자동차","keywords":["자동차","완성차"],"risk":"판매 믹스와 인센티브 비용 증가"},
+  {"name":"NAVER","ticker":"035420.KS","sector":"인터넷","keywords":["플랫폼","인터넷","검색"],"risk":"경쟁 심화와 AI 투자비 부담"},
+  {"name":"삼성바이오로직스","ticker":"207940.KS","sector":"바이오","keywords":["바이오","CDMO"],"risk":"수주와 생산 일정의 변동"},
+  {"name":"HD현대일렉트릭","ticker":"267260.KS","sector":"전력기기","keywords":["전력기기","변압기","전력망"],"risk":"수주 기대 선반영과 납기·원가 부담"},
+  {"name":"한화에어로스페이스","ticker":"012450.KS","sector":"방산","keywords":["방산","방위산업"],"risk":"수출 계약·인도 일정과 정책 변화"}
+]

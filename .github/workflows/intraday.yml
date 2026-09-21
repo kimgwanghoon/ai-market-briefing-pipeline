@@ -33,6 +33,9 @@ concurrency:
 permissions:
   contents: write
 
+env:
+  STORAGE_BACKEND: ${{ vars.STORAGE_BACKEND || 'json' }}
+
 jobs:
   intraday:
     runs-on: ubuntu-latest
@@ -44,12 +47,14 @@ jobs:
           ref: master
 
       - name: Checkout published history
+        if: vars.STORAGE_BACKEND != 'supabase'
         uses: actions/checkout@v4
         with:
           ref: gh-pages
           path: pages-history
 
       - name: Restore published data and live page
+        if: vars.STORAGE_BACKEND != 'supabase'
         run: |
           if [ -d pages-history/data ]; then
             mkdir -p public/data
@@ -70,7 +75,7 @@ jobs:
         run: python -m pip install --upgrade pip && pip install -r requirements.txt
 
       - name: Run quality checks
-        run: python -m compileall -q . && python -m unittest discover -s tests -v
+        run: python -m compileall -q pipeline main.py intraday.py weekly_report.py && python -m unittest discover -s tests -v
 
       - name: Align scheduled generation to target time
         if: inputs.align_to_target == true || inputs.align_to_half_hour == true
@@ -118,14 +123,19 @@ jobs:
           DART_API_KEY: ${{ secrets.DART_API_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           GITHUB_PAGES_URL: ${{ secrets.GITHUB_PAGES_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SITE_URL: ${{ vars.SITE_URL }}
           OPENAI_TEXT_MODEL: gpt-4o-mini-2024-07-18
           GENERATE_AI_IMAGE: false
         run: python intraday.py
 
       - name: Prepare intraday publish directory
+        if: vars.STORAGE_BACKEND != 'supabase'
         run: mkdir -p intraday_publish/data/intraday && cp public/live.html intraday_publish/live.html && cp -r public/data/intraday/. intraday_publish/data/intraday/
 
       - name: Deploy to GitHub Pages
+        if: vars.STORAGE_BACKEND != 'supabase'
         uses: peaceiris/actions-gh-pages@v4.1.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
