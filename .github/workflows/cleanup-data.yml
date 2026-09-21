@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   cleanup:
-    if: vars.STORAGE_BACKEND != 'supabase'
+    if: vars.STORAGE_BACKEND == 'json'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source branch

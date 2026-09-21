@@ -13,6 +13,7 @@ KST = ZoneInfo('Asia/Seoul')
 
 
 def target_time(kind, now):
+    now = now.astimezone(KST)
     explicit = os.getenv('SCHEDULE_TARGET_KST', '').strip()
     if explicit:
         dt = datetime.fromisoformat(iso(explicit))
@@ -20,7 +21,11 @@ def target_time(kind, now):
             raise ValueError('Cannot collect a future target')
         return dt
     if kind == 'daily':
-        return now.replace(hour=8 if now.hour < 12 else 18, minute=0, second=0, microsecond=0)
+        # Only the regular edition hours share a scheduled target. An off-hour
+        # manual run must not reserve a future edition or collide with a past one.
+        if now.hour in (8, 18):
+            return now.replace(minute=0, second=0, microsecond=0)
+        return now.replace(second=0, microsecond=0)
     if kind == 'weekly':
         return (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
     return now.replace(minute=30 if now.hour == 15 and now.minute >= 30 else 0, second=0, microsecond=0)

@@ -10,6 +10,34 @@ from pipeline.jobs.run import target_time, weekly, notify, run
 
 
 class SupabaseContractTests(unittest.TestCase):
+    @patch.dict(os.environ, {'SCHEDULE_TARGET_KST': ''})
+    def test_daily_targets_never_reserve_future_editions(self):
+        kst = ZoneInfo('Asia/Seoul')
+        for hour in range(24):
+            now = datetime(2026, 9, 21, hour, 17, 41, tzinfo=kst)
+            target = target_time('daily', now)
+            self.assertLessEqual(target, now)
+            self.assertEqual(target.hour, hour)
+            self.assertEqual(target.minute, 0 if hour in (8, 18) else 17)
+        manual = target_time('daily', datetime(2026, 9, 21, 13, tzinfo=kst))
+        evening = target_time('daily', datetime(2026, 9, 21, 18, tzinfo=kst))
+        self.assertNotEqual(manual, evening)
+
+    @patch.dict(os.environ, {'SCHEDULE_TARGET_KST': ''})
+    def test_daily_target_normalizes_utc(self):
+        now = datetime(2026, 9, 21, 9, 1, tzinfo=ZoneInfo('UTC'))
+        self.assertEqual(target_time('daily', now).isoformat(), '2026-09-21T18:00:00+09:00')
+
+    def test_workflow_cutover_defaults_and_rollback_are_consistent(self):
+        from pathlib import Path
+        root = Path(__file__).resolve().parents[1] / '.github/workflows'
+        for name in ('main.yml', 'intraday.yml', 'weekly-report.yml'):
+            content = (root / name).read_text()
+            self.assertIn("vars.STORAGE_BACKEND || 'supabase'", content)
+            self.assertNotIn("vars.STORAGE_BACKEND != 'supabase'", content)
+            self.assertIn("vars.SITE_URL || 'https://ai-market-research-desk.vercel.app'", content)
+        self.assertIn("vars.STORAGE_BACKEND == 'json'", (root / 'cleanup-data.yml').read_text())
+
     def test_kst_and_source_evidence(self):
         self.assertEqual(iso('2026-09-18 09:00:00'), '2026-09-18T09:00:00+09:00')
         p = {'timestamp': '2026-09-18 09:01:00', 'window_start': '2026-09-18 08:50:00',

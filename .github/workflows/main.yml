@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 env:
-  STORAGE_BACKEND: ${{ vars.STORAGE_BACKEND || 'json' }}
+  STORAGE_BACKEND: ${{ vars.STORAGE_BACKEND || 'supabase' }}
 
 jobs:
   build-and-deploy:
@@ -23,14 +23,14 @@ jobs:
           ref: master
 
       - name: Checkout published history
-        if: vars.STORAGE_BACKEND != 'supabase'
+        if: vars.STORAGE_BACKEND == 'json'
         uses: actions/checkout@v4
         with:
           ref: gh-pages
           path: pages-history
 
       - name: Restore published data
-        if: vars.STORAGE_BACKEND != 'supabase'
+        if: vars.STORAGE_BACKEND == 'json'
         run: if [ -d pages-history/data ]; then mkdir -p public/data && cp -a pages-history/data/. public/data/; fi
 
       - name: Setup Python
@@ -42,7 +42,7 @@ jobs:
         run: python -m pip install --upgrade pip && pip install -r requirements.txt
 
       - name: Restore snapshot history from gh-pages
-        if: vars.STORAGE_BACKEND != 'supabase'
+        if: vars.STORAGE_BACKEND == 'json'
         run: |
           mkdir -p public/data
           git fetch origin gh-pages --depth=1 2>/dev/null || true
@@ -65,14 +65,14 @@ jobs:
           GITHUB_PAGES_URL: ${{ secrets.GITHUB_PAGES_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SITE_URL: ${{ vars.SITE_URL }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://ai-market-research-desk.vercel.app' }}
           OPENAI_TEXT_MODEL: gpt-4o-mini-2024-07-18
           OPENAI_IMAGE_MODEL: gpt-image-1-mini
           GENERATE_AI_IMAGE: true
         run: python main.py
 
       - name: Deploy to GitHub Pages
-        if: vars.STORAGE_BACKEND != 'supabase'
+        if: vars.STORAGE_BACKEND == 'json'
         uses: peaceiris/actions-gh-pages@v4.1.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
