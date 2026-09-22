@@ -35,5 +35,6 @@ jobs:
       - run: npm run build
       - run: npm run typecheck
       - run: npm run test:db
+      - run: npm run test:research
       - run: npx playwright install --with-deps chromium
       - run: npm run test:ui

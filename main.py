@@ -134,6 +134,36 @@ def bold_filter(text: str) -> Markup:
     return Markup(re.sub(r"\*+([^*]+)\*+", r"<strong>\1</strong>", str(escaped)))
 
 
+def quote_provenance(source, value, basis='regular_trade'):
+    from pipeline.analysis.research import source_time
+    return {'source': source, 'source_timestamp': source_time(value),
+            'collected_at': datetime.now(KST).isoformat(), 'price_basis': basis}
+
+
+def yahoo_quote_values(result):
+    """Keep price/time paired; daily bars may lag regular-market metadata."""
+    import math
+    meta = result.get('meta', {})
+    price, stamp = meta.get('regularMarketPrice'), meta.get('regularMarketTime')
+    previous = meta.get('previousClose')
+    if previous is None:
+        # Last completed daily bar before the regular trade's exchange date.
+        from zoneinfo import ZoneInfo
+        zone = ZoneInfo(meta.get('exchangeTimezoneName', 'America/New_York'))
+        if stamp:
+            trade_day = datetime.fromtimestamp(stamp, zone).date()
+            bars = zip(result.get('timestamp', []), result.get('indicators', {}).get('quote', [{}])[0].get('close', []))
+            candidates = [(t, float(p)) for t, p in bars if p is not None and datetime.fromtimestamp(t, zone).date() < trade_day]
+            if candidates:
+                previous = max(candidates)[1]
+    if price is None or previous is None or not stamp:
+        raise ValueError('Paired regular-market observation unavailable')
+    price, previous = float(price), float(previous)
+    if not all(math.isfinite(x) and x > 0 for x in (price, previous)):
+        raise ValueError('Invalid market price')
+    return price, previous, stamp
+
+
 def get_korean_index_data(market_type: str) -> dict:
     url = f"https://m.stock.naver.com/api/index/{market_type}/basic"
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -170,6 +200,7 @@ def get_korean_index_data(market_type: str) -> dict:
             "trend": trend,
             "market_status": market_status_label(data.get("marketStatus"), "최근 종가"),
             "as_of": format_quote_time(data.get("localTradedAt") or data.get("tradeDateTime")),
+            **quote_provenance('Naver Finance', data.get('localTradedAt') or data.get('tradeDateTime')),
         }
     except Exception as exc:
         logging.warning("get_korean_index_data(%s) failed: %s", market_type, exc)
@@ -199,11 +230,8 @@ def get_index_data(ticker: str) -> dict:
         result = chart.get("result") or []
         if result:
             meta = result[0].get("meta", {})
-            closes = result[0].get("indicators", {}).get("quote", [{}])[0].get("close", [])
-            closes = [float(v) for v in closes if v is not None]
-            if len(closes) >= 2:
-                today_close = closes[-1]
-                yesterday_close = closes[-2]
+            if meta:
+                today_close, yesterday_close, quote_stamp = yahoo_quote_values(result[0])
                 diff = today_close - yesterday_close
                 pct_change = (diff / yesterday_close) * 100
 
@@ -220,7 +248,8 @@ def get_index_data(ticker: str) -> dict:
                     "color": color,
                     "trend": trend,
                     "market_status": yahoo_market_status(meta, ticker),
-                    "as_of": format_quote_time(meta.get("regularMarketTime")),
+                    "as_of": format_quote_time(quote_stamp),
+                    **quote_provenance('Yahoo Finance', quote_stamp),
                 }
     except Exception as exc:
         logging.warning("get_index_data(%s) Yahoo Finance API failed: %s", ticker, exc)
@@ -229,7 +258,7 @@ def get_index_data(ticker: str) -> dict:
         if wait_seconds:
             time.sleep(wait_seconds)
         try:
-            data = yf.Ticker(ticker).history(period="7d")
+            data = yf.Ticker(ticker).history(period="7d", auto_adjust=False)
             close = data.get("Close")
             if close is None:
                 continue
@@ -254,8 +283,9 @@ def get_index_data(ticker: str) -> dict:
                 "change": f"{sign} {abs(diff):.2f} ({pct_change:+.2f}%)",
                 "color": color,
                 "trend": trend,
-                "market_status": "최근 환율" if ticker == "KRW=X" else "최근 종가",
+                "market_status": "일봉 대체값 · 최신 체결 확인 필요",
                 "as_of": format_quote_time(close.index[-1]),
+                **quote_provenance('Yahoo Finance / yfinance', close.index[-1], 'daily_bar_unadjusted'),
             }
         except Exception as exc:
             logging.warning("get_index_data(%s) yfinance retry failed: %s", ticker, exc)

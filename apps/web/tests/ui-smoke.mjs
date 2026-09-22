@@ -13,11 +13,15 @@ const rows=['daily','live','weekly'].map((kind,i)=>({id:id.replace(/^1/,String(i
  research:{method:'검증용 관찰 목록',empty_reason:'',sectors:[{name:'반도체',stance:'관찰',basis:'이벤트 기준',evidence:[event]}],stocks:[{name:'검증용 종목',ticker:'TEST',sector:'반도체',status:'신규 관찰',reason:event.title,risk:'실적 기대 변화',invalidation:'근거 변경 시 재검토',basis:'검증용',quote:{price:100000,as_of:'2026-09-18T09:00:00+09:00'},evidence:[event]}]},
  summary:{count:8,trading_days:2},daily_points:[{day:'09-17',score_avg:50,count:4},{day:'09-18',score_avg:55,count:4}],market_performance:[{label:'KOSPI',start:'2,490',end:'2,500',change_text:'+0.40%'}],
  next_week_outlook:{bias:'데이터 축적 중',confidence:'자료 부족',rationale:['관측 자료를 축적 중입니다.'],upside_conditions:[],downside_conditions:[]}}}));
+rows[1].payload.sentiment={score:51.7,label:'중립',normalized_components:{market:1,news:0,dart:-1,sector:0},weights:{market:.35,news:.2,dart:.25,sector:.2}};
+rows[1].payload.reliability={evaluated:13,hit_rate:'53.8%',false_alarm_rate:'23.1%',status:'검증 표본 부족'};
+rows.push({...rows[1],id:'44444444-4444-4444-8444-444444444444',generated_at:new Date(Date.now()-3600000).toISOString(),payload:{...rows[1].payload,sentiment:{...rows[1].payload.sentiment,score:50}}});
 let mode='ready'; const seen=[];
 const server=createServer((req,res)=>{const url=new URL(req.url,'http://localhost');seen.push(url.searchParams);
  if(mode==='error'){res.writeHead(503);res.end('{}');return;}
  let data=mode==='empty'?[]:rows;
  for(const key of ['kind','id'])if(url.searchParams.has(key))data=data.filter(r=>'eq.'+r[key]===url.searchParams.get(key));
+ for(const value of url.searchParams.getAll('generated_at'))if(value.startsWith('lt.'))data=data.filter(r=>Date.parse(r.generated_at)<Date.parse(value.slice(3)));
  if(url.searchParams.get('search_text')?.includes('없는검색어'))data=[];
  data=data.slice(Number(url.searchParams.get('offset')||0),Number(url.searchParams.get('offset')||0)+Number(url.searchParams.get('limit')||12));
  res.setHeader('Content-Type','application/json');res.end(JSON.stringify(data));});
@@ -48,6 +52,13 @@ try{
    await page.goto('http://127.0.0.1:3219/daily');
    await page.getByText('원문 근거 확인').click();
    assert.ok(await page.locator('details[open]').count());
+   await page.goto('http://127.0.0.1:3219/live');
+   await page.getByRole('heading',{name:'전회 대비 변화'}).waitFor();
+   await page.getByRole('heading',{name:'시장 온도와 산정 근거'}).waitFor();
+   await page.getByText('산정 방식 자세히 보기').click();
+   await page.getByText('지표별 출처·관측시각 확인').click();
+   assert.ok(await page.locator('details[open]').count()>=2);
+   await page.goto('http://127.0.0.1:3219/daily');
    if(process.env.SCREENSHOT_DIR){await mkdir(process.env.SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:`${process.env.SCREENSHOT_DIR}/daily-${width}.png`,fullPage:true});}
  }
  await page.goto('http://127.0.0.1:3219/archive');

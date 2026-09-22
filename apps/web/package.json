@@ -8,6 +8,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test:db": "node tests/db-contract.mjs",
+    "test:research": "node --experimental-strip-types tests/research.mjs",
     "test:ui": "node tests/ui-smoke.mjs"
   },
   "dependencies": {

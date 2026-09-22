@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {indicator, conflicts, observationAge} from '../lib/research.ts';
+const normalized_components={market:1,news:0,dart:-1,sector:0};
+const weights={market:.35,news:.2,dart:.25,sector:.2};
+const score=Math.round((50+25/1.5*.1)*10)/10;
+const result=indicator({sentiment:{score,normalized_components,weights}});
+assert.ok(result);
+assert.ok(Math.abs(50+result.parts.reduce((s,x)=>s+x.value,0)+result.clamp+result.rounding-score)<1e-8);
+assert.equal(indicator({sentiment:{score:80,normalized_components,weights}}),null);
+assert.equal(indicator({sentiment:{score:50}}),null);
+assert.ok(observationAge({source_timestamp:'2026-09-22T05:00:00+09:00'},'2026-09-22T09:00:00+09:00').includes('4시간'));
+assert.equal(observationAge({},'2026-09-22T09:00:00+09:00'),'원본 기준시각 미기록');
+const a={payload:{indexes:{ewy:{price:'189.16',as_of:'09-22 05:00 KST'}}}};
+const b={payload:{market_signals:{ewy:{price:'181.31',as_of:'09-22 05:00 KST'}}}};
+assert.deepEqual(conflicts(a,b),['EWY']);
+b.payload.market_signals.ewy.as_of='09-19 05:00 KST';
+assert.deepEqual(conflicts(a,b),[]);
+console.log('Research: score reconstruction, incompatible history, age and EWY conflict checks passed');

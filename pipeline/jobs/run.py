@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 
 from pipeline.storage.supabase import Store, iso
 from pipeline.analysis.watchlist import build_watchlist
+from pipeline.analysis.research import snapshot, enrich_events
 
 KST = ZoneInfo('Asia/Seoul')
 
@@ -42,16 +43,17 @@ def daily(store):
                     {'sp500': '^GSPC', 'dow': '^DJI', 'nasdaq': '^IXIC', 'ewy': 'EWY',
                      'vix': '^VIX', 'usdkrw': 'KRW=X', 'us10y': '^TNX', 'wti': 'CL=F'}.items()})
     m.require_market_coverage(indexes, minimum=6, required=('kospi', 'kosdaq'))
+    history = store.history('daily', limit=7)
+    observation = snapshot(indexes, history + store.history('live', limit=16))
     raw_news = m.crawl_naver_news(now)
     cutoff = datetime.now(KST)
     for item in raw_news:
         item.pop('dt', None)
     headline, points, cover = m.generate_ai_briefing(*(indexes[k] for k in
                                ('kospi','kosdaq','sp500','dow','nasdaq','ewy','vix','usdkrw','us10y','wti')))
-    history = store.history('daily', limit=7)
     news = m.select_top_news(raw_news, max_count=5)
     research = build_watchlist(raw_news, history[0].get('research') if history else None)
-    return {'timestamp': datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S'), 'headline': headline,
+    return {'market_snapshot': observation, 'timestamp': datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S'), 'headline': headline,
             'edition_title': m.EDITION_TITLE, 'summary_items': points, 'indexes': indexes,
             'news_items': news, 'events': {'news': raw_news, 'dart': []},
             'cover_image': cover, 'research': research, 'collection_cutoff': cutoff.isoformat(),
@@ -68,6 +70,7 @@ def live(store):
                    'model_version': 'v2.0-calibrated', 'mode': result.get('mode', 'default')}
     indexes = i.fetch_market_signals()
     i.require_market_coverage(indexes, minimum=5, required=('kospi', 'kosdaq'))
+    observation = snapshot(indexes, history[:16] + store.history('daily', limit=7))
     news, darts = i.fetch_naver_news(limit=20), i.fetch_dart_events(limit=20)
     cutoff = datetime.now(i.KST)
     start, end = i.observation_window(history, cutoff)
@@ -76,7 +79,7 @@ def live(store):
     sectors = i.detect_sector_rotation(news, darts)
     sentiment = i.build_sentiment(indexes, news, darts, sectors, calibration)
     points, watchpoint = i.build_llm_points(indexes, sentiment, news, darts)
-    payload = {'timestamp': datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S'),
+    payload = {'market_snapshot': observation, 'timestamp': datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S'),
                'window_start': start.strftime('%Y-%m-%d %H:%M:%S'), 'window_end': end.strftime('%Y-%m-%d %H:%M:%S'),
                'collection_cutoff': end.strftime('%Y-%m-%d %H:%M:%S'), 'market_signals': indexes,
                'events': {'news': news, 'dart': darts, 'news_count': len(news), 'dart_count': len(darts)},
@@ -134,6 +137,7 @@ def run(kind):
     run_id, cover_url = claim['id'], None
     try:
         payload = {'daily': daily, 'live': live, 'weekly': weekly}[kind](store)
+        enrich_events(payload)
         payload['id'] = run_id
         if kind == 'daily':
             from main import OUTPUT_DIR

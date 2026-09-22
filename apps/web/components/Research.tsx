@@ -1,0 +1,24 @@
+import Link from 'next/link';
+import { Briefing, time } from '@/lib/data';
+import { components, conflicts, indicator, marketNames, marketsOf, number, observationAge, signed } from '@/lib/research';
+
+export function Research({row, previous, peer, comparisonError=false}: {row:Briefing; previous?:Briefing; peer?:Briefing; comparisonError?:boolean}) {
+  const p=row.payload, markets=marketsOf(p), old=previous ? marketsOf(previous.payload) : {};
+  const s=p.sentiment, explained=indicator(p), r=p.reliability;
+  const issues=[...new Set([...conflicts(row,previous),...conflicts(row,peer)])];
+  const values=Object.values(markets);
+  const valid=values.filter(m=>number(m.price)!==null).length;
+  return <>
+    {issues.length>0 && <p className="notice" role="alert">동일 기준시각의 보고서 간 가격 불일치: {issues.join(', ')}. 과거 원문을 보존한 자료이며 해당 지표의 해석은 원문 확인 전 보류하세요.</p>}
+    <section className="research-summary"><span className="eyebrow">EXECUTIVE SUMMARY</span><h2>이번 보고서의 관점</h2>{values.length>0 && <p className="muted"><b>관측</b> {Object.entries(markets).slice(0,3).map(([k,m])=>`${marketNames[k] || k} ${m.price} (${m.change})`).join(' · ')}</p>}<p><b>해석</b> {(p.key_points?.find(x=>!x.includes('하이브리드 점수')) || p.summary_items?.find(x=>!x.startsWith('[')) || p.next_week_outlook?.bias || row.title).replaceAll('**','')}</p><p className="muted">확인할 조건 · {(p.watchpoint || p.summary?.top_watchpoint || '후속 관측으로 현재 판단을 재검토합니다.').replaceAll('**','')}</p></section>
+    {previous ? <section><div className="section-heading"><span>WHAT CHANGED</span><h2>전회 대비 변화</h2></div><p className="muted"><Link href={`/${previous.kind}?id=${previous.id}`}>{time(previous.generated_at)} 보고서 ↗</Link> → {time(row.generated_at)}</p><div className="table-wrap"><table><thead><tr><th>항목</th><th>직전</th><th>현재</th><th>변화</th></tr></thead><tbody>
+      {s && previous.payload.sentiment && <tr><td>시장 온도</td><td>{previous.payload.sentiment.score}</td><td>{s.score}</td><td>{signed(s.score-previous.payload.sentiment.score)}pt</td></tr>}
+      {Object.entries(markets).filter(([key,m])=>old[key] && number(m.price)!==null && number(old[key].price)!==null).map(([key,m])=><tr key={key}><td>{marketNames[key] || key}<small className="block">{old[key].as_of || '시각 미제공'} → {m.as_of || '시각 미제공'}</small></td><td>{old[key].price}</td><td>{m.price}</td><td>{signed(number(m.price)!-number(old[key].price)!)}<small className="block">{key === 'us10y' ? '수익률 차이 · %p' : key === 'usdkrw' ? '환율 차이 · 원' : ['ewy','wti'].includes(key) ? '가격 차이 · USD' : '지수 차이 · pt'}</small></td></tr>)}
+    </tbody></table></div><p className="muted">각 보고서에 저장된 관측값의 차이입니다. 변화의 인과관계나 매매 신호를 뜻하지 않습니다.</p></section> : <p className="muted">{comparisonError ? '비교 자료 조회에 실패했습니다. 잠시 후 다시 확인하세요.' : '직전 동종 보고서가 없어 변화 비교를 보류합니다.'}</p>}
+    {s && <section><div className="section-heading"><span>HOUSE INDICATOR</span><h2>시장 온도와 산정 근거</h2></div><p><strong>{s.score.toFixed(1)} / 100 · {s.label}</strong></p><p>시장·뉴스·공시·업종을 과거 관측 분포로 정규화한 보조지표입니다. 상승 확률이나 투자수익률이 아닙니다.</p>
+      {explained ? <><div className="table-wrap"><table><thead><tr><th>점수 구성</th><th>현재 기여도</th><th>가중치</th></tr></thead><tbody><tr><td>중립 기준</td><td>50.00</td><td>—</td></tr>{explained.parts.map(x=><tr key={x.key}><td>{x.label}</td><td>{signed(x.value)}pt</td><td>{(x.weight*100).toFixed(0)}%</td></tr>)}<tr><td>범위 제한 / 반올림</td><td>{signed(explained.clamp)} / {signed(explained.rounding)}</td><td>—</td></tr></tbody></table></div><details><summary>산정 방식 자세히 보기</summary><p>성분별 기여도 = 정규화 값 × 가중치 × 25 ÷ 1.5. 중립 50에 더한 후 0~100 범위로 제한하고 소수 첫째 자리까지 표시합니다.</p><p>모델 {s.model_version || '미기록'}. 보고서마다 보정 분포가 달라질 수 있어 기여도 변화를 원인으로 단정하지 않습니다.</p>{Object.entries(s.score_breakdown || {}).map(([k,v])=><p key={k}>{components[k] || k} 원시 점수: {v}</p>)}</details></> : <p className="muted">저장된 정규화 근거가 부족하거나 산식과 맞지 않아 기여도 분해를 보류합니다.</p>}
+      <h3>과거 방향성 검증</h3><p>평가 표본 {r?.evaluated ?? 0}회 · 방향 적중률 {r?.hit_rate || '미산출'} · 오경보율 {r?.false_alarm_rate || '미산출'}</p><p className="muted">{r?.status || '검증 표본 부족'} · 최소 표본 기준 20회. {r?.basis} {r?.guidance}</p>
+    </section>}
+    {values.length>0 && <section><div className="section-heading"><span>DATA QUALITY</span><h2>수집 범위와 기준시각</h2></div><p>가격 확보 {valid}/{values.length}개 · 원본 시각 기록 {values.filter(m=>m.source_timestamp).length}/{values.length}개 · 독립 출처 교차 검증: 미실시</p><p className="muted">뉴스 건수를 포함한 기존 충실도는 수집 범위 지표입니다. 최신성·정확도와 같지 않습니다. 휴장·마감 지표는 관측 경과시간이 길 수 있습니다.</p><details><summary>지표별 출처·관측시각 확인</summary>{Object.entries(markets).map(([key,m])=><p key={key}><strong>{marketNames[key] || key}</strong> · {m.source || '기존 자료 · 출처 미기록'}<br/>{m.source_timestamp ? time(m.source_timestamp) : m.as_of || '기준시각 미제공'} · {observationAge(m,row.generated_at)}<br/>{m.market_status} {m.price_basis === 'daily_bar_unadjusted' && '· 일봉 시각은 최신 체결시각이 아닙니다.'}</p>)}<p className="muted">스냅샷 {p.market_snapshot?.id || '기존 보고서 · 식별자 미기록'}<br/>보고서 ID {row.id}</p></details></section>}
+  </>;
+}

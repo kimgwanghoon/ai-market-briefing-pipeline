@@ -44,28 +44,38 @@ def build_watchlist(news, previous=None, quote_loader=fetch_quote, now=None):
                             'basis': '뉴스·이벤트 기준 · 업종 수익률 판단 아님', 'evidence': evidence[:3]})
     previous_by_ticker = {s['ticker']: s for s in (previous or {}).get('stocks', [])}
     stocks = []
+    screening = {'universe': len(UNIVERSE), 'evidence': 0, 'quote_requested': 0, 'qualified': 0,
+                 'rejected': {'evidence': 0, 'quote_or_liquidity': 0}}
     for company in UNIVERSE:
         evidence = [e for e in eligible if matches_name(company['name'], e.get('title', ''))]
         if not evidence or any(any(w in e['title'] for w in NEGATIVE) for e in evidence):
+            screening['rejected']['evidence'] += 1
             continue
         evidence = [e for e in evidence if any(w in e['title'] for w in POSITIVE)]
         if not evidence:
+            screening['rejected']['evidence'] += 1
             continue
+        screening['evidence'] += 1
+        screening['quote_requested'] += 1
         q = quote_loader(company['ticker'])
         try:
             age = (now - datetime.fromisoformat(q['as_of'])).total_seconds()
             price, volume = float(q['price']), float(q['volume'])
             if (q.get('currency') != 'KRW' or not math.isfinite(price * volume) or
                     price <= 0 or volume <= 0 or price * volume < 1_000_000_000 or not 0 <= age <= 4 * 86400):
+                screening['rejected']['quote_or_liquidity'] += 1
                 continue
         except (TypeError, KeyError, ValueError):
+            screening['rejected']['quote_or_liquidity'] += 1
             continue
+        screening['qualified'] += 1
         old = previous_by_ticker.get(company['ticker'])
         urls = {e.get('link') or e.get('url') for e in evidence}
         old_urls = {e.get('link') or e.get('url') for e in (old or {}).get('evidence', [])}
         stocks.append({**company, 'quote': q, 'turnover_estimate': round(price * volume),
                        'status': '신규 관찰' if not old else '관점 유지' if urls == old_urls else '근거 변경',
                        'reason': evidence[0]['title'], 'evidence': evidence[:3],
+                       'catalyst': '다음 보도의 후속 공시·실제 이행 확인: ' + evidence[0]['title'],
                        'invalidation': '관련 보도의 정정·계약 취소 또는 후속 공시에서 전제 변경 확인 시 재검토',
                        'basis': '뉴스 근거 및 거래대금 근사값 확인 · 목표주가 미산정'})
     stocks.sort(key=lambda s: (-len(s['evidence']), -s['turnover_estimate']))
@@ -75,6 +85,6 @@ def build_watchlist(news, previous=None, quote_loader=fetch_quote, now=None):
             selected.append(stock)
         if len(selected) == 3:
             break
-    return {'sectors': sorted(sectors, key=lambda s: -len(s['evidence']))[:3], 'stocks': selected,
+    return {'screening': screening, 'sectors': sorted(sectors, key=lambda s: -len(s['evidence']))[:3], 'stocks': selected,
             'method': '고정 국내 후보군에서 뉴스 근거·최근 가격·거래대금 근사 10억원 이상 확인. 매수 추천 순위 아님.',
             'empty_reason': '' if selected else '선정 기준을 충족하는 근거와 가격 데이터가 부족합니다.'}
