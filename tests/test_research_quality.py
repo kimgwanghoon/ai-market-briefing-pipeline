@@ -2,6 +2,7 @@ import copy
 import unittest
 from main import yahoo_quote_values
 from pipeline.analysis.research import snapshot, source_time, event_insight
+from pipeline.jobs.run import display_events
 from pipeline.analysis.watchlist import build_watchlist
 
 
@@ -55,6 +56,12 @@ class ResearchQualityTests(unittest.TestCase):
         result=event_insight({'title':'신규 서비스 발표'})
         self.assertEqual(result['impact'],'판단 보류')
         self.assertNotIn('score',result)
+
+    def test_published_events_are_capped_by_materiality(self):
+        events = [{'title': str(index), 'impact_score': score} for index, score in enumerate((0, -1, 4, 2, -5, 3))]
+        result = display_events(events)
+        self.assertEqual(len(result), 5)
+        self.assertEqual([item['impact_score'] for item in result], [-5, 4, 3, 2, -1])
 
 
 if __name__ == '__main__':

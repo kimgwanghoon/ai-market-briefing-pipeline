@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {indicator, conflicts, observationAge} from '../lib/research.ts';
+import {dateValue} from '../lib/data.ts';
 const normalized_components={market:1,news:0,dart:-1,sector:0};
 const weights={market:.35,news:.2,dart:.25,sector:.2};
 const score=Math.round((50+25/1.5*.1)*10)/10;
@@ -15,4 +16,6 @@ const b={payload:{market_signals:{ewy:{price:'181.31',as_of:'09-22 05:00 KST'}}}
 assert.deepEqual(conflicts(a,b),['EWY']);
 b.payload.market_signals.ewy.as_of='09-19 05:00 KST';
 assert.deepEqual(conflicts(a,b),[]);
+assert.equal(dateValue('2026-09-22 00:30:00'), '2026-09-22');
+assert.equal(dateValue('not a date'), '');
 console.log('Research: score reconstruction, incompatible history, age and EWY conflict checks passed');

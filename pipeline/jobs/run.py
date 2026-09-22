@@ -13,6 +13,22 @@ from pipeline.analysis.research import snapshot, enrich_events
 KST = ZoneInfo('Asia/Seoul')
 
 
+def display_events(items, limit=5):
+    """Keep a compact, explainable event set in each published DB report.
+
+    Collectors may inspect more items to form the market view, but the report
+    payload should retain only the most material 3–5 per source.  This avoids
+    making the reader sift through a raw feed while preserving the collection
+    count as provenance.
+    """
+    def impact(item):
+        try:
+            return abs(float(item.get('impact_score', 0)))
+        except (TypeError, ValueError):
+            return 0
+    return sorted(items, key=lambda item: (impact(item), item.get('published_at', item.get('time', ''))), reverse=True)[:limit]
+
+
 def target_time(kind, now):
     now = now.astimezone(KST)
     explicit = os.getenv('SCHEDULE_TARGET_KST', '').strip()
@@ -55,7 +71,10 @@ def daily(store):
     research = build_watchlist(raw_news, history[0].get('research') if history else None)
     return {'market_snapshot': observation, 'timestamp': datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S'), 'headline': headline,
             'edition_title': m.EDITION_TITLE, 'summary_items': points, 'indexes': indexes,
-            'news_items': news, 'events': {'news': raw_news, 'dart': []},
+            # The selected set is both the on-screen evidence and the DB event
+            # record.  Raw collection remains represented by the count.
+            'news_items': news, 'events': {'news': news, 'dart': [],
+                                             'news_count': len(raw_news), 'dart_count': 0},
             'cover_image': cover, 'research': research, 'collection_cutoff': cutoff.isoformat(),
             'risk_trends': m.build_risk_trends(history, indexes), 'run_source': 'supabase'}
 
@@ -79,10 +98,12 @@ def live(store):
     sectors = i.detect_sector_rotation(news, darts)
     sentiment = i.build_sentiment(indexes, news, darts, sectors, calibration)
     points, watchpoint = i.build_llm_points(indexes, sentiment, news, darts)
+    display_news, display_darts = display_events(news), display_events(darts)
     payload = {'market_snapshot': observation, 'timestamp': datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S'),
                'window_start': start.strftime('%Y-%m-%d %H:%M:%S'), 'window_end': end.strftime('%Y-%m-%d %H:%M:%S'),
                'collection_cutoff': end.strftime('%Y-%m-%d %H:%M:%S'), 'market_signals': indexes,
-               'events': {'news': news, 'dart': darts, 'news_count': len(news), 'dart_count': len(darts)},
+               'events': {'news': display_news, 'dart': display_darts,
+                          'news_count': len(news), 'dart_count': len(darts)},
                'sentiment': sentiment, 'key_points': points, 'watchpoint': watchpoint,
                'sector_rotation': sectors, 'calibration': calibration,
                'execution': {'scheduled_target_kst': os.getenv('SCHEDULE_TARGET_KST', '')}}

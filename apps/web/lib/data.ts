@@ -7,7 +7,7 @@ export type Payload = {
   headline?: string; summary_items?: string[]; key_points?: string[]; watchpoint?: string;
   window_start?: string; collection_cutoff?: string; edition_title?: string; cover_image?: string;
   indexes?: Record<string, Market>; market_signals?: Record<string, Market>;
-  news_items?: Event[]; events?: { news?: Event[]; dart?: Event[] };
+  news_items?: Event[]; events?: { news?: Event[]; dart?: Event[]; news_count?: number; dart_count?: number };
   sentiment?: { score: number; label: string; interpretation?: string; data_completeness?: number; normalized_components?: Record<string,number>; weights?: Record<string,number>; score_breakdown?: Record<string,number>; model_version?: string };
   comparison?: { delta?: number }; reliability?: { status?: string; guidance?: string; evaluated?: number; hit_rate?: string; false_alarm_rate?: string; basis?: string };
   market_snapshot?: {id: string; schema: string; cross_source_validation: string};
@@ -28,6 +28,15 @@ export function time(value?: string) {
   const dt = new Date(normalized);
   if (Number.isNaN(dt.getTime())) return value;
   return new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(dt) + ' KST';
+}
+export function dateValue(value?: string) {
+  if (!value) return '';
+  const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:/.test(value) ? value.replace(' ', 'T') + '+09:00' : value;
+  const dt = new Date(normalized);
+  if (Number.isNaN(dt.getTime())) return /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : '';
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(dt);
+  const get = (type: string) => parts.find(part => part.type === type)?.value || '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
 }
 export function safeUrl(value?: string) { return value && /^https?:\/\//i.test(value) ? value : undefined; }
 
