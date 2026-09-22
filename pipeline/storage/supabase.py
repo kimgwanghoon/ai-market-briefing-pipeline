@@ -92,10 +92,12 @@ class Store:
 
     def upload_cover(self, run, path):
         path = Path(path)
-        if path.suffix.lower() not in ('.png', '.jpg', '.webp') or not path.is_file():
+        content_types = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+                         '.webp': 'image/webp', '.svg': 'image/svg+xml'}
+        if path.suffix.lower() not in content_types or not path.is_file():
             return None
         name = f'{run}/{path.name}'
-        headers = {**self.headers, 'Content-Type': {'.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp'}[path.suffix.lower()]}
+        headers = {**self.headers, 'Content-Type': content_types[path.suffix.lower()]}
         response = self.session.post(f'{self.url}/storage/v1/object/research-covers/{quote(name)}',
                                      headers=headers, data=path.read_bytes(), timeout=(10, 60))
         if not response.ok:
