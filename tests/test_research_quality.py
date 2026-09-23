@@ -2,7 +2,7 @@ import copy
 import unittest
 from main import yahoo_quote_values
 from pipeline.analysis.research import snapshot, source_time, event_insight
-from pipeline.jobs.run import display_events
+from pipeline.jobs.run import carry_forward_events, display_events
 from pipeline.analysis.watchlist import build_watchlist
 
 
@@ -62,6 +62,11 @@ class ResearchQualityTests(unittest.TestCase):
         result = display_events(events)
         self.assertEqual(len(result), 5)
         self.assertEqual([item['impact_score'] for item in result], [-5, 4, 3, 2, -1])
+
+    def test_today_news_is_carried_forward_for_display_only(self):
+        history = [{'timestamp': '2026-09-23 09:00:00', 'events': {'news': [{'event_id': 'one'}, {'event_id': 'one'}, {'event_id': 'two'}]}}]
+        from datetime import datetime
+        self.assertEqual([item['event_id'] for item in carry_forward_events(history, 'news', datetime(2026, 9, 23, 10, 0))], ['one', 'two'])
 
 
 if __name__ == '__main__':

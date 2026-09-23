@@ -191,7 +191,7 @@ class SentimentContractTests(unittest.TestCase):
             ["news-2"],
         )
 
-    def test_news_rolling_hour_excludes_old_and_future_events(self):
+    def test_news_window_excludes_old_and_future_events_after_opening(self):
         events = [
             {"event_id": "old", "published_at": "2026-08-18 09:29"},
             {"event_id": "previous-hour", "published_at": "2026-08-18 09:59"},
@@ -203,6 +203,11 @@ class SentimentContractTests(unittest.TestCase):
             [item["event_id"] for item in filter_unseen_events(events, [], "news", now)],
             ["previous-hour", "current"],
         )
+
+    def test_opening_news_window_uses_four_hour_lookback(self):
+        now = KST.localize(datetime(2026, 8, 18, 9, 0))
+        events = [{"event_id": "opening", "published_at": "2026-08-18 05:10"}]
+        self.assertEqual([item["event_id"] for item in filter_unseen_events(events, [], "news", now)], ["opening"])
 
     def test_observation_uses_cutoff_not_legacy_future_hour_end(self):
         now = KST.localize(datetime(2026, 8, 18, 15, 30, 18))

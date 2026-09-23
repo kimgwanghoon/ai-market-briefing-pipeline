@@ -29,6 +29,23 @@ def display_events(items, limit=5):
     return sorted(items, key=lambda item: (impact(item), item.get('published_at', item.get('time', ''))), reverse=True)[:limit]
 
 
+def carry_forward_events(history, category, now, limit=5):
+    """Keep today's already-seen news visible without scoring it twice."""
+    carried, seen = [], set()
+    for report in history:
+        stamp = str(report.get('collection_cutoff') or report.get('timestamp') or '')[:10]
+        if stamp != now.strftime('%Y-%m-%d'):
+            continue
+        for item in report.get('events', {}).get(category, []):
+            identity = str(item.get('event_id') or item.get('url') or item.get('title') or '')
+            if identity and identity not in seen:
+                seen.add(identity)
+                carried.append(item)
+                if len(carried) >= limit:
+                    return carried
+    return carried
+
+
 def target_time(kind, now):
     now = now.astimezone(KST)
     explicit = os.getenv('SCHEDULE_TARGET_KST', '').strip()
@@ -98,12 +115,14 @@ def live(store):
     sectors = i.detect_sector_rotation(news, darts)
     sentiment = i.build_sentiment(indexes, news, darts, sectors, calibration)
     points, watchpoint = i.build_llm_points(indexes, sentiment, news, darts)
-    display_news, display_darts = display_events(news), display_events(darts)
+    display_news = display_events(news + carry_forward_events(history, 'news', cutoff))
+    display_darts = display_events(darts + carry_forward_events(history, 'dart', cutoff))
     payload = {'market_snapshot': observation, 'timestamp': datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S'),
                'window_start': start.strftime('%Y-%m-%d %H:%M:%S'), 'window_end': end.strftime('%Y-%m-%d %H:%M:%S'),
                'collection_cutoff': end.strftime('%Y-%m-%d %H:%M:%S'), 'market_signals': indexes,
                'events': {'news': display_news, 'dart': display_darts,
-                          'news_count': len(news), 'dart_count': len(darts)},
+                          'news_count': len(display_news), 'dart_count': len(display_darts),
+                          'new_news_count': len(news), 'new_dart_count': len(darts)},
                'sentiment': sentiment, 'key_points': points, 'watchpoint': watchpoint,
                'sector_rotation': sectors, 'calibration': calibration,
                'execution': {'scheduled_target_kst': os.getenv('SCHEDULE_TARGET_KST', '')}}

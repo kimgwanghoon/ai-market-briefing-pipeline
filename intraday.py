@@ -1,7 +1,9 @@
 import json
 import os
 import re
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -358,7 +360,9 @@ def observation_window(history: List[dict], now: datetime) -> tuple[datetime, da
             continue
         if cutoff.date() == now.date() and cutoff < now:
             previous.append(cutoff)
-    start = max(previous) if previous else now - timedelta(hours=1)
+    # The opening report needs a wider lookback: there is no same-day prior
+    # snapshot yet, and a one-hour window regularly produces a blank feed.
+    start = max(previous) if previous else now - timedelta(hours=4 if now.hour <= 9 else 1)
     # News timestamps have minute precision; overlap the boundary minute and dedupe IDs.
     return start.replace(second=0, microsecond=0), now
 
@@ -407,6 +411,34 @@ def filter_unseen_events(
     return unique
 
 
+def fetch_google_market_news(limit: int = 20) -> List[dict]:
+    """Fallback for when Naver's presentation HTML changes or blocks a run."""
+    url = "https://news.google.com/rss/search?q=%EC%BD%94%EC%8A%A4%ED%94%BC+OR+%EC%A6%9D%EC%8B%9C+when:1d&hl=ko&gl=KR&ceid=KR:ko"
+    try:
+        response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+        response.raise_for_status()
+        root = ET.fromstring(response.content)
+    except (requests.RequestException, ET.ParseError):
+        return []
+
+    events: List[dict] = []
+    for item in root.findall("./channel/item"):
+        title = (item.findtext("title") or "").strip()
+        link = (item.findtext("link") or "").strip()
+        published = (item.findtext("pubDate") or "").strip()
+        try:
+            published_at = parsedate_to_datetime(published).astimezone(KST).strftime("%Y-%m-%d %H:%M:%S")
+        except (TypeError, ValueError):
+            continue
+        if not title or not link:
+            continue
+        events.append({"event_id": link, "source": "Google 뉴스", "title": title,
+                       "published_at": published_at, "url": link})
+        if len(events) >= limit:
+            break
+    return events
+
+
 def fetch_naver_news(limit: int = 20) -> List[dict]:
     url = "https://finance.naver.com/news/mainnews.naver"
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -417,15 +449,18 @@ def fetch_naver_news(limit: int = 20) -> List[dict]:
     except requests.RequestException:
         return []
 
-    pattern = re.compile(
-        r'<dd class="articleSubject">\s*<a href="([^"]+)"[^>]*>(.*?)</a>.*?'
-        r'<dd class="articleSummary">(.*?)<span class="press">(.*?)</span>\s*'
-        r'<span class="wdate">(.*?)</span>',
-        re.S,
-    )
+    pattern = re.compile(r'<dd[^>]*class="articleSubject"[^>]*>.*?</dd>\s*<dd[^>]*class="articleSummary"[^>]*>.*?</dd>', re.S)
 
     events: List[dict] = []
-    for href, title_html, _, press_html, wdate_html in pattern.findall(text):
+    for block in pattern.findall(text):
+        anchor = re.search(r'<a href="([^"]+)"[^>]*>(.*?)</a>', block, re.S)
+        press_match = re.search(r'<span[^>]*class="press"[^>]*>(.*?)</span>', block, re.S)
+        wdate_match = re.search(r'<span[^>]*class="wdate"[^>]*>(.*?)</span>', block, re.S)
+        if not anchor or not wdate_match:
+            continue
+        href, title_html = anchor.groups()
+        press_html = press_match.group(1) if press_match else ""
+        wdate_html = wdate_match.group(1)
         title = re.sub(r"<.*?>", "", title_html).strip()
         press = re.sub(r"<.*?>", "", press_html)
         press = re.sub(r"\s+", " ", press).replace("|", "").strip()
@@ -446,7 +481,7 @@ def fetch_naver_news(limit: int = 20) -> List[dict]:
         if len(events) >= limit:
             break
 
-    return events
+    return events or fetch_google_market_news(limit)
 
 
 def fetch_dart_events(limit: int = 30) -> List[dict]:
