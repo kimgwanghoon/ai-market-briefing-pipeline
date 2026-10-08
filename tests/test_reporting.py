@@ -349,6 +349,38 @@ class SentimentContractTests(unittest.TestCase):
         self.assertLess(scored[0]["impact_score"], 0)
         self.assertGreater(scored[1]["impact_score"], 0)
 
+    def test_joint_domestic_decline_cannot_be_labelled_favourable(self):
+        indexes = {
+            "kospi": {"change": "▼ 74.22 (-1.09%)"},
+            "kosdaq": {"change": "▼ 5.93 (-0.66%)"},
+        }
+        for key in ("sp500", "dow", "nasdaq", "ewy", "vix", "usdkrw", "us10y"):
+            indexes[key] = {"change": "0.00 (0.00%)"}
+        sentiment = intraday.build_sentiment(
+            indexes,
+            [{"impact_score": 5}],
+            [{"impact_score": 8}],
+            {"scores": [{"final_score": 4, "mentions": 0, "price_confirmed": False}]},
+            {"stats": {}, "weights": {"market": .2, "news": .15, "dart": .25, "sector": .4}},
+        )
+        self.assertEqual(sentiment["label"], "경계")
+        self.assertEqual(sentiment["market_condition"]["state"], "joint_decline")
+        self.assertEqual(sentiment["weights"]["sector"], 0.0)
+
+    def test_news_article_excerpt_reads_collected_naver_article_body(self):
+        response = Mock()
+        response.text = "<html><body><div id='articleBodyContents'>본문 핵심 내용입니다. 공급 일정과 실적 전망이 포함됩니다.</div></body></html>"
+        response.raise_for_status.return_value = None
+        with patch("intraday.requests.get", return_value=response) as request:
+            excerpt = intraday.fetch_news_article_excerpt("https://finance.naver.com/news/news_read.naver?article_id=1")
+        self.assertIn("공급 일정", excerpt)
+        request.assert_called_once()
+
+    def test_news_article_excerpt_rejects_untrusted_hosts(self):
+        with patch("intraday.requests.get") as request:
+            self.assertEqual(intraday.fetch_news_article_excerpt("https://example.com/article"), "")
+        request.assert_not_called()
+
     def test_duplicate_execution_target_is_skipped(self):
         history = [{"execution": {"scheduled_target_kst": "2026-08-18 10:30:00"}}]
         self.assertTrue(has_execution_target(history, "2026-08-18 10:30:00"))

@@ -49,8 +49,29 @@ def snapshot(markets, history=()):
 
 
 def event_insight(item):
-    """Conditional language grounded only in the supplied headline."""
+    """Use a collected article body when available; otherwise remain explicit about the limit."""
     title = item.get('title', '')
+    excerpt = ' '.join(str(item.get('article_excerpt', '')).split())
+    if excerpt:
+        display_excerpt = excerpt[:420].rstrip()
+        if len(excerpt) > len(display_excerpt):
+            display_excerpt += '…'
+        return {
+            'impact': '원문 확인',
+            'fact': display_excerpt,
+            'interpretation': '기사 본문에서 확인된 내용을 바탕으로 정리했습니다. 시장 전체 영향은 지수·후속 뉴스와 함께 확인해야 합니다.',
+            'watchpoint': '기사에 제시된 수치·일정과 후속 시장 반응이 이어지는지 확인하세요.',
+            'basis': '원문 본문 확인 · 영향은 조건부 해석',
+        }
+    listing_summary = ' '.join(str(item.get('listing_summary', '')).split())
+    if listing_summary:
+        return {
+            'impact': '요약 확인',
+            'fact': listing_summary[:420].rstrip() + ('…' if len(listing_summary) > 420 else ''),
+            'interpretation': '뉴스 목록에 제공된 요약을 바탕으로 표시했습니다. 원문 본문을 확인하기 전에는 영향의 방향과 규모를 단정하지 않습니다.',
+            'watchpoint': '원문 기사와 후속 시장 반응을 함께 확인하세요.',
+            'basis': '뉴스 목록 요약 확인 · 원문 본문 검증 필요',
+        }
     rules = [
         (('유상증자',), '주의', '신주 발행에 따른 희석 가능성이 있습니다.', '발행 규모·가격, 조달 목적과 자금 사용처를 확인하세요.'),
         (('공급계약', '수주'), '관찰', '계약 이행 시 매출 기여 가능성이 있습니다.', '계약 금액·기간, 매출 대비 비중과 해지 조건을 확인하세요.'),

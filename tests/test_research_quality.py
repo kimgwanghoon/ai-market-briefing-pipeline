@@ -57,6 +57,12 @@ class ResearchQualityTests(unittest.TestCase):
         self.assertEqual(result['impact'],'판단 보류')
         self.assertNotIn('score',result)
 
+    def test_verified_article_uses_the_collected_body(self):
+        result = event_insight({'title':'신규 서비스 발표', 'article_excerpt':'회사는 신규 서비스를 출시하고 올해 하반기 공급을 시작한다고 밝혔다.'})
+        self.assertEqual(result['impact'],'원문 확인')
+        self.assertIn('올해 하반기 공급',result['fact'])
+        self.assertIn('원문 본문 확인',result['basis'])
+
     def test_published_events_are_capped_by_materiality(self):
         events = [{'title': str(index), 'impact_score': score} for index, score in enumerate((0, -1, 4, 2, -5, 3))]
         result = display_events(events)

@@ -111,6 +111,7 @@ def live(store):
     cutoff = datetime.now(i.KST)
     start, end = i.observation_window(history, cutoff)
     news = i.score_news_events(i.filter_unseen_events(news, history, 'news', cutoff))
+    news = i.enrich_news_article_excerpts(news)
     darts = i.score_dart_events(i.filter_unseen_events(darts, history, 'dart', cutoff))
     sectors = i.detect_sector_rotation(news, darts)
     sentiment = i.build_sentiment(indexes, news, darts, sectors, calibration)

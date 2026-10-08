@@ -6,9 +6,11 @@ from datetime import datetime, timedelta
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Dict, List, Tuple
+from urllib.parse import urlparse
 
 import pytz
 import requests
+from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from openai import OpenAI
 
@@ -426,14 +428,16 @@ def fetch_google_market_news(limit: int = 20) -> List[dict]:
         title = (item.findtext("title") or "").strip()
         link = (item.findtext("link") or "").strip()
         published = (item.findtext("pubDate") or "").strip()
+        description = BeautifulSoup(item.findtext("description") or "", "html.parser").get_text(" ", strip=True)
+        source = (item.findtext("source") or "Google 뉴스").strip()
         try:
             published_at = parsedate_to_datetime(published).astimezone(KST).strftime("%Y-%m-%d %H:%M:%S")
         except (TypeError, ValueError):
             continue
         if not title or not link:
             continue
-        events.append({"event_id": link, "source": "Google 뉴스", "title": title,
-                       "published_at": published_at, "url": link})
+        events.append({"event_id": link, "source": source, "title": title,
+                       "published_at": published_at, "url": link, "listing_summary": description[:600]})
         if len(events) >= limit:
             break
     return events
@@ -469,6 +473,10 @@ def fetch_naver_news(limit: int = 20) -> List[dict]:
             continue
 
         link = href if href.startswith("http") else f"https://finance.naver.com{href}"
+        listing_summary = BeautifulSoup(block, "html.parser").get_text(" ", strip=True)
+        for value in (title, press, wdate):
+            listing_summary = listing_summary.replace(value, " ", 1)
+        listing_summary = re.sub(r"\s+", " ", listing_summary).strip()
         events.append(
             {
                 "event_id": link,
@@ -476,12 +484,59 @@ def fetch_naver_news(limit: int = 20) -> List[dict]:
                 "title": title,
                 "published_at": wdate,
                 "url": link,
+                "listing_summary": listing_summary[:600],
             }
         )
         if len(events) >= limit:
             break
 
     return events or fetch_google_market_news(limit)
+
+
+def fetch_news_article_excerpt(url: str, limit: int = 1400) -> str:
+    """Resolve collected Naver/Google News links and return the article body."""
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or parsed.netloc not in {"finance.naver.com", "m.stock.naver.com", "news.google.com"}:
+        return ""
+    try:
+        response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
+        response.raise_for_status()
+    except requests.RequestException:
+        return ""
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    for node in soup(["script", "style", "noscript"]):
+        node.decompose()
+    body = next((soup.select_one(selector) for selector in (
+        "#newsct_article", "#articleBodyContents", "#newsEndContents", "#article-view-content-div",
+        "#articleTxt", "#articleBody", ".article_body", ".article-content", ".article_content",
+        ".article_txt", ".article-view", ".view-cont", "article"
+    ) if soup.select_one(selector)), None)
+    if body is None:
+        return ""
+    text = re.sub(r"\s+", " ", body.get_text(" ", strip=True)).strip()
+    return text[:limit]
+
+
+def enrich_news_article_excerpts(events: List[dict], limit: int = 5) -> List[dict]:
+    """Fetch the body for only the material news that can be shown to readers."""
+    ranked = sorted(events, key=lambda item: abs(float(item.get("impact_score", 0) or 0)), reverse=True)
+    selected_ids = {str(item.get("event_id") or item.get("url") or "") for item in ranked[:limit]}
+    enriched: List[dict] = []
+    for event in events:
+        item = dict(event)
+        identity = str(item.get("event_id") or item.get("url") or "")
+        if identity in selected_ids:
+            excerpt = fetch_news_article_excerpt(str(item.get("url") or ""))
+            if excerpt:
+                item["article_excerpt"] = excerpt
+                item["content_status"] = "article_verified"
+            else:
+                item["content_status"] = "headline_only"
+        else:
+            item["content_status"] = "headline_only"
+        enriched.append(item)
+    return enriched
 
 
 def fetch_dart_events(limit: int = 30) -> List[dict]:
@@ -669,6 +724,23 @@ def market_reaction_score(indexes: Dict[str, dict]) -> float:
             continue
         total += clamp(change_pct * weight, -3.0, 3.0)
     return round(clamp(total, -12, 12), 2)
+
+
+def domestic_market_condition(indexes: Dict[str, dict]) -> dict:
+    """Describe the Korean index direction independently from event sentiment."""
+    kospi = parse_change_percent(indexes.get("kospi", {}).get("change", ""))
+    kosdaq = parse_change_percent(indexes.get("kosdaq", {}).get("change", ""))
+    if kospi != kospi or kosdaq != kosdaq:
+        return {"state": "unavailable", "cap": None, "description": "국내 지수 방향을 충분히 확인하지 못했습니다."}
+
+    average_change = (kospi + kosdaq) / 2
+    if kospi < 0 and kosdaq < 0:
+        if average_change <= -0.7:
+            return {"state": "joint_decline", "cap": 39.9, "description": "KOSPI와 KOSDAQ이 함께 내려 국내 시장은 약세 압력이 우세합니다."}
+        return {"state": "joint_decline", "cap": 59.9, "description": "KOSPI와 KOSDAQ이 함께 내려 국내 시장은 약세 쪽으로 기울어 있습니다."}
+    if kospi > 0 and kosdaq > 0:
+        return {"state": "joint_rise", "cap": None, "description": "KOSPI와 KOSDAQ이 함께 올라 국내 시장은 상승 흐름입니다."}
+    return {"state": "mixed", "cap": 59.9, "description": "KOSPI와 KOSDAQ의 방향이 엇갈려 국내 시장은 혼조입니다."}
 
 
 def build_data_quality(indexes: Dict[str, dict], news: List[dict], darts: List[dict], sector_rotation: dict) -> dict:
@@ -876,12 +948,27 @@ def build_sentiment(indexes: Dict[str, dict], news: List[dict], darts: List[dict
     news_score = aggregate_event_score(news)
     dart_score = aggregate_event_score(darts, limit=10)
     market_score = market_reaction_score(indexes)
-    sector_score = average([float(item.get("final_score", 0)) for item in sector_rotation.get("scores", [])[:3]])
+    confirmed_sector_scores = [
+        float(item.get("final_score", 0))
+        for item in sector_rotation.get("scores", [])[:3]
+        if item.get("mentions", 0) > 0 and item.get("price_confirmed")
+    ]
+    sector_score = average(confirmed_sector_scores)
     if sector_score != sector_score:
         sector_score = 0.0
 
     stats = calibration.get("stats", {})
-    weights = calibration.get("weights", {"market": 0.35, "news": 0.2, "dart": 0.25, "sector": 0.2})
+    calibrated_weights = calibration.get("weights", {"market": 0.35, "news": 0.2, "dart": 0.25, "sector": 0.2})
+    # Actual index movement must remain the primary live signal.  Sector scores
+    # are excluded until both a news mention and a market-price confirmation exist.
+    requested_weights = {
+        "market": max(0.4, float(calibrated_weights.get("market", 0.35))),
+        "news": max(0.0, float(calibrated_weights.get("news", 0.2))),
+        "dart": max(0.0, float(calibrated_weights.get("dart", 0.25))),
+        "sector": min(0.2, max(0.0, float(calibrated_weights.get("sector", 0.2)))) if confirmed_sector_scores else 0.0,
+    }
+    weight_total = sum(requested_weights.values()) or 1.0
+    weights = {key: round(value / weight_total, 4) for key, value in requested_weights.items()}
     normalized = {
         "market": normalize_component(market_score, stats.get("market", {})),
         "news": normalize_component(news_score, stats.get("news", {})),
@@ -896,6 +983,11 @@ def build_sentiment(indexes: Dict[str, dict], news: List[dict], darts: List[dict
         + normalized["sector"] * float(weights.get("sector", 0.2))
     )
     total = clamp(total, -100, 100)
+    market_condition = domestic_market_condition(indexes)
+    unguarded_total = total
+    guardrail_cap = market_condition["cap"]
+    if guardrail_cap is not None:
+        total = min(total, (guardrail_cap * 1.5) - 75)
     raw_label = raw_score_label(total)
     display_score = normalize_sentiment_score(total)
     display_meta = describe_display_score(display_score)
@@ -909,6 +1001,7 @@ def build_sentiment(indexes: Dict[str, dict], news: List[dict], darts: List[dict
 
     return {
         "raw_score": round(total, 2),
+        "hybrid_raw_score": round(unguarded_total, 2),
         "score": display_score,
         "raw_label": raw_label,
         "label": display_meta["label"],
@@ -923,6 +1016,8 @@ def build_sentiment(indexes: Dict[str, dict], news: List[dict], darts: List[dict
         "sector_score": round(sector_score, 2),
         "normalized_components": normalized,
         "weights": weights,
+        "calibrated_weights": calibrated_weights,
+        "market_condition": market_condition,
         "model_version": calibration.get("model_version", "v2.0-calibrated"),
         "calibration_metric": calibration.get("metric", 0.0),
         "calibration_samples": calibration.get("samples", 0),
@@ -1353,9 +1448,11 @@ def build_top_live_events(events: dict, max_count: int = 5) -> List[dict]:
 
 
 def build_rule_points(indexes: Dict[str, dict], sentiment: dict, news: List[dict], darts: List[dict]) -> Tuple[List[str], str]:
+    market_condition = sentiment.get("market_condition", {})
+    market_description = market_condition.get("description", "국내 지수의 방향을 확인하세요.")
     point1 = (
-        f"지금 시장 분위기는 **{sentiment['label']}**입니다. KOSPI {indexes['kospi']['change']}, "
-        f"KOSDAQ {indexes['kosdaq']['change']} 움직임을 보면 국내 주식은 같은 방향으로 움직이지 않고 있습니다."
+        f"국내 시장은 **{sentiment['label']}**로 봅니다. KOSPI {indexes['kospi']['change']}, "
+        f"KOSDAQ {indexes['kosdaq']['change']}이며, {market_description}"
     )
     point2 = (
         f"미국 시장은 DOW {indexes['dow']['change']}, NASDAQ {indexes['nasdaq']['change']}였고, "
@@ -1366,7 +1463,11 @@ def build_rule_points(indexes: Dict[str, dict], sentiment: dict, news: List[dict
     top_dart = sorted(darts, key=lambda x: abs(x.get("impact_score", 0)), reverse=True)[:1]
 
     if top_news:
-        point3 = f"지금 가장 먼저 확인할 뉴스는 **{top_news[0]['title']}**입니다. 제목만으로 영향이 확정된 것은 아니므로 원문 수치와 후속 반응을 확인하세요."
+        excerpt = top_news[0].get("article_excerpt", "")
+        if excerpt:
+            point3 = f"원문을 확인한 주요 뉴스는 **{top_news[0]['title']}**입니다. 기사 내용은 {excerpt[:260]}"
+        else:
+            point3 = f"**{top_news[0]['title']}**는 제목으로 포착됐지만 원문 본문을 확인하지 못해, 상세 영향 해석은 보류합니다."
     elif top_dart:
         point3 = f"지금 가장 먼저 확인할 공시는 **{top_dart[0].get('corp_name', '')} {top_dart[0]['title']}**입니다. 공시 내용과 금액·일정을 함께 확인하세요."
     else:
@@ -1402,7 +1503,7 @@ def build_llm_points(indexes: Dict[str, dict], sentiment: dict, news: List[dict]
         "watchpoint는 완화 조건과 악화 조건을 하나씩 제시하고, 각각 확인 지표와 의미를 설명하세요. 근거 없는 숫자 임계값은 금지합니다.\n"
         "points[0]은 지수 방향과 지수 간 차이, points[1]은 제공된 주요 뉴스와 공시의 영향 범위, points[2]는 거시 위험 신호와 지수의 일치·불일치를 다루세요.\n"
         "market_status·as_of·published_at을 확인하고 최근 종가와 장중 값, 과거 기사와 신규 사건을 구분하세요. 시각이 없으면 최신성을 단정하지 마세요.\n"
-        "뉴스 제목에서 확인되는 사실만 사용하고 기업별 사건을 시장 전체 등락의 원인으로 확대하지 마세요. 해석은 조건부로 쓰고 반대 신호도 밝히세요.\n"
+        "article_excerpt가 있는 뉴스는 그 본문에서 확인되는 사실을 요약해 설명하고, 없는 뉴스는 제목만으로 시장 영향을 단정하지 마세요. 기업별 사건을 시장 전체 등락의 원인으로 확대하지 말고, 해석은 조건부로 쓰며 반대 신호도 밝히세요.\n"
         "뉴스와 공시가 없으면 사건을 만들지 말고 이벤트 판단의 한계를 짧게 명시하세요. 같은 지표를 세 포인트에 반복하지 마세요.\n"
         "하이브리드 점수는 내부 요약 지표이지 상승 확률이나 매수 신호가 아닙니다. 데이터 충실도는 예측 정확도가 아닙니다.\n"
         "지수 등락만으로 외국인 수급·섹터 주도·상승 종목 비율을 단정하지 마세요. 미10년물 상대 변화율을 bp·%p 변화로 오독하지 마세요.\n"
@@ -1592,6 +1693,7 @@ def main() -> None:
     collection_cutoff = datetime.now(KST)
     window = observation_window(history, collection_cutoff)
     news_events = score_news_events(filter_unseen_events(raw_news, history, "news", collection_cutoff))
+    news_events = enrich_news_article_excerpts(news_events)
     dart_events = score_dart_events(filter_unseen_events(raw_darts, history, "dart", collection_cutoff))
     sector_rotation = detect_sector_rotation(news_events, dart_events)
     sentiment = build_sentiment(indexes, news_events, dart_events, sector_rotation, calibration)
