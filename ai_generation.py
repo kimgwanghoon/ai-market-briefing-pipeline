@@ -153,7 +153,18 @@ def validate_grounded_claims(claims: list[dict], evidence: dict[str, Any], alias
     return True
 
 
-def render_grounded_claim(claim: dict, evidence: dict[str, Any], labels: dict[str, str]) -> str:
+def render_grounded_claim(
+    claim: dict,
+    evidence: dict[str, Any],
+    labels: dict[str, str],
+    *,
+    use_model_text: bool = False,
+) -> str:
+    if use_model_text:
+        # The caller enables this only after validate_grounded_claims has checked
+        # every cited metric, number and event title against server-side evidence.
+        return re.sub(r"\s+", " ", str(claim.get("text", "")).strip())
+
     observations = []
     events = []
     for evidence_id in claim["evidence_ids"]:

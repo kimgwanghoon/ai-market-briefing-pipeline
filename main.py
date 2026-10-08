@@ -965,14 +965,15 @@ def generate_ai_briefing(
 - 리스크/거시: VIX {vix['price']} ({vix['change']}), 달러원 {usdkrw['price']} ({usdkrw['change']}), 미10년물 {us10y['price']} ({us10y['change']}), WTI {wti['price']} ({wti['change']})
 
 작성 규칙:
+0) 금융에 익숙하지 않은 일반 투자자가 바로 이해할 수 있는 쉬운 한국어를 사용하세요. 전문용어는 처음 한 번만 짧게 풀어 쓰고, "리스크 축", "시그널", "온도차" 같은 내부 표현은 사용하지 마세요.
 1) korea_points 3개, us_points 2개, watchpoint 1개를 작성하세요.
 2) 관측값과 해석을 분리하고, 제공된 수치에서 직접 확인되지 않는 원인·뉴스·수급 주체를 만들지 마세요.
-3) 각 포인트는 55~120자로 서로 다른 역할을 맡으세요. 없는 수급·섹터 데이터를 억지로 해석하지 마세요.
+3) 각 포인트는 55~120자로 "무슨 일이 있었는지 → 그래서 무엇을 보면 되는지" 순서로 쓰세요. 없는 수급·섹터 데이터를 억지로 해석하지 마세요.
 4) 각 포인트의 핵심 키워드 1개 이상을 **굵게** 표시하세요.
 5) 한국/미국 포인트에 각각 최소 1개의 제공된 숫자를 포함하세요.
 6) N/A 값은 숫자를 추정하지 말고 "데이터 확인 필요"로 표현하세요.
 7) 단정적 예측, 매수·매도 지시, 목표가 제시는 금지합니다.
-8) watchpoint 본문만 작성하세요(제목 접두사는 화면에서 추가합니다). 완화 조건과 악화 조건을 하나씩, 각 조건의 확인 지표와 해석을 포함하세요. 근거 없는 숫자 임계값을 만들지 마세요.
+8) watchpoint 본문만 작성하세요(제목 접두사는 화면에서 추가합니다). "좋아지면 볼 것 / 나빠지면 볼 것"을 한 문장씩 쉽게 설명하세요. 근거 없는 숫자 임계값을 만들지 마세요.
 9) headline은 공백 포함 12~24자의 한국어 한 줄로, 시장의 방향 차이·긴장감·온도차 중 실제 데이터로 확인되는 특징을 압축하세요.
 10) headline, 각 point, watchpoint에 claim_type 및 실제 근거의 evidence_ids를 포함하세요. 지표명과 수치는 반드시 같은 evidence ID를 인용하세요.
 11) 모든 text에는 인용한 근거 중 최소 한 개의 정확한 지표명(KOSPI, KOSDAQ, S&P 500, DOW, NASDAQ, EWY, VIX, USD/KRW, 미10년물, WTI)을 반드시 포함하세요.
@@ -1066,9 +1067,9 @@ def generate_ai_briefing(
         headline = re.sub(r"[*#`]+", "", briefing["headline"]["text"]).strip()
         if not 8 <= len(headline) <= 40:
             headline = fallback_headline
-        korea_points = [render_grounded_claim(item, evidence, evidence_labels) for item in briefing["korea_points"]]
-        us_points = [render_grounded_claim(item, evidence, evidence_labels) for item in briefing["us_points"]]
-        watchpoint_body = render_grounded_claim(briefing["watchpoint"], evidence, evidence_labels)
+        korea_points = [render_grounded_claim(item, evidence, evidence_labels, use_model_text=True) for item in briefing["korea_points"]]
+        us_points = [render_grounded_claim(item, evidence, evidence_labels, use_model_text=True) for item in briefing["us_points"]]
+        watchpoint_body = render_grounded_claim(briefing["watchpoint"], evidence, evidence_labels, use_model_text=True)
         watchpoint = f"오늘의 **핵심 관전 포인트**: {watchpoint_body}" if watchpoint_body else watchpoint_line
         summary_items = ["[한국 시장]", *korea_points, "[미국 시장]", *us_points, watchpoint]
         image_file = generate_market_cover(headline)

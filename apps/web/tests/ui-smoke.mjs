@@ -53,11 +53,11 @@ try{
    await page.getByText('원문 근거 확인').click();
    assert.ok(await page.locator('details[open]').count());
    await page.goto('http://127.0.0.1:3219/live');
+   await page.getByRole('heading',{name:'한눈에 보는 장중 브리핑'}).waitFor();
+   await page.getByRole('heading',{name:'왜 이렇게 보나요?'}).waitFor();
+   await page.getByText('분석 근거·전회 변화·데이터 기준 자세히 보기').click();
    await page.getByRole('heading',{name:'전회 대비 변화'}).waitFor();
-   await page.getByRole('heading',{name:'시장 온도와 산정 근거'}).waitFor();
-   await page.getByText('산정 방식 자세히 보기').click();
-   await page.getByText('지표별 출처·관측시각 확인').click();
-   assert.ok(await page.locator('details[open]').count()>=2);
+   assert.ok(await page.locator('details[open]').count()>=1);
    await page.goto('http://127.0.0.1:3219/daily');
    if(process.env.SCREENSHOT_DIR){await mkdir(process.env.SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:`${process.env.SCREENSHOT_DIR}/daily-${width}.png`,fullPage:true});}
  }
