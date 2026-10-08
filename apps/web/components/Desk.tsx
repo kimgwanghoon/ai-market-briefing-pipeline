@@ -47,6 +47,31 @@ function DailySections({ payload }: { payload: Payload }) {
 
 type TimelinePoint = NonNullable<Payload['weekly_timeline']>[number];
 
+function asNumber(value?: string | number) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (!value) return null;
+  const parsed = Number(String(value).replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function timelineFromSamples(samples: NonNullable<Payload['source_samples']>): TimelinePoint[] {
+  const days = new Map<string, { day: string; sentiment: number; kospi: number | null; kosdaq: number | null }>();
+  for (const sample of samples) {
+    const sourceTime = sample.timestamp || sample.generated_at;
+    if (!sourceTime) continue;
+    const date = new Date(sourceTime);
+    if (Number.isNaN(date.getTime())) continue;
+    const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit' }).format(date);
+    const sentiment = sample.sentiment?.score;
+    if (!Number.isFinite(sentiment)) continue;
+    days.set(day, { day, sentiment: sentiment as number, kospi: asNumber(sample.market_signals?.kospi?.price), kosdaq: asNumber(sample.market_signals?.kosdaq?.price) });
+  }
+  const points = [...days.values()];
+  const firstKospi = points.find(point => point.kospi != null)?.kospi;
+  const firstKosdaq = points.find(point => point.kosdaq != null)?.kosdaq;
+  return points.map(point => ({ day: point.day, sentiment: point.sentiment, kospi_return: point.kospi != null && firstKospi ? (point.kospi / firstKospi - 1) * 100 : null, kosdaq_return: point.kosdaq != null && firstKosdaq ? (point.kosdaq / firstKosdaq - 1) * 100 : null }));
+}
+
 function linePath(points: TimelinePoint[], value: (point: TimelinePoint) => number | null | undefined, min: number, max: number) {
   const width = 520, height = 180, pad = 18;
   return points.map((point, index) => {
@@ -68,9 +93,9 @@ function WeeklyChart({ timeline }: { timeline: TimelinePoint[] }) {
 }
 
 function WeeklySections({ payload }: { payload: Payload }) {
-  const timeline = payload.weekly_timeline || [];
+  const timeline = payload.weekly_timeline?.length ? payload.weekly_timeline : timelineFromSamples(payload.source_samples || []);
   const takeaway = payload.weekly_takeaway || payload.summary?.weekly_takeaway || '이번 주 자료를 바탕으로 시장 변화를 정리하고 있습니다.';
-  const highlights = payload.weekly_highlights || [...(payload.opportunity_events || []), ...(payload.risk_events || [])].slice(0, 5);
+  const highlights = payload.weekly_highlights || [...(payload.opportunity_events || []), ...(payload.risk_events || [])].sort((a, b) => Math.abs(b.impact_score || 0) - Math.abs(a.impact_score || 0)).slice(0, 5);
   return <><section className="weekly-conclusion"><span className="eyebrow">WEEK IN REVIEW</span><h2>이번 주 결론</h2><p>{takeaway}</p></section><section><div className="section-heading"><span>WEEKLY MOVEMENT</span><h2>그래프로 보는 한 주</h2></div><WeeklyChart timeline={timeline}/></section><section><div className="section-heading"><span>KEY ISSUES</span><h2>이번 주 주요 이슈</h2></div><p className="muted">시장에 영향을 줄 수 있었던 뉴스·공시를 영향도와 시점 기준으로 정리했습니다.</p><Events items={highlights}/></section><section><div className="section-heading"><span>MARKET RECAP</span><h2>주간 수치 정리</h2></div><div className="table-wrap"><table><thead><tr><th>지표</th><th>첫 관측</th><th>마지막 관측</th><th>변화</th></tr></thead><tbody>{payload.market_performance?.map(item => <tr key={item.label}><td>{item.label}</td><td>{item.start}</td><td>{item.end}</td><td>{item.change_text}</td></tr>)}</tbody></table></div></section><section><div className="section-heading"><span>NEXT WEEK SCENARIOS</span><h2>다음 주, 이렇게 보면 됩니다</h2></div><div className="scenario"><h3>기본 관점</h3><p>{payload.next_week_outlook?.bias || '자료 축적 중'}</p><h3>좋아질 조건</h3>{payload.next_week_outlook?.upside_conditions?.map((item, index) => <p key={index}>{item}</p>)}<h3>나빠질 조건</h3>{payload.next_week_outlook?.downside_conditions?.map((item, index) => <p key={index}>{item}</p>)}<p className="muted">참고 범위 {payload.next_week_outlook?.expected_range} · 표본 신뢰도 {payload.next_week_outlook?.confidence}</p></div></section></>;
 }
 

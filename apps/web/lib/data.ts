@@ -19,6 +19,7 @@ export type Payload = {
   weekly_timeline?: { day: string; sentiment: number; kospi_return?: number | null; kosdaq_return?: number | null }[];
   weekly_highlights?: Event[];
   weekly_takeaway?: string;
+  source_samples?: { timestamp?: string; generated_at?: string; sentiment?: { score?: number }; market_signals?: { kospi?: { price?: string | number }; kosdaq?: { price?: string | number } } }[];
   next_week_outlook?: { bias: string; expected_range: string; confidence: string; rationale: string[]; upside_conditions: string[]; downside_conditions: string[] };
 };
 export type Briefing = { id: string; kind: Kind; title: string; generated_at: string; observation_end?: string; payload: Payload };
