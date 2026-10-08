@@ -121,6 +121,22 @@ class WeeklySummaryTests(unittest.TestCase):
         self.assertIn("<strong>VIX</strong>", html)
         self.assertLess(html.index("주요 이벤트"), html.index("다음 주 조건부 전망"))
 
+    def test_weekly_summary_includes_chart_timeline_and_plain_conclusion(self):
+        first = snapshot(55, raw_score=8)
+        first["timestamp"] = "2026-08-17 09:10:00"
+        first["market_signals"] = {
+            "kospi": {"price": "2,500"}, "kosdaq": {"price": "800"},
+        }
+        last = snapshot(45, raw_score=-8)
+        last["timestamp"] = "2026-08-18 15:30:00"
+        last["market_signals"] = {
+            "kospi": {"price": "2,450"}, "kosdaq": {"price": "790"},
+        }
+        summary = build_week_summary([first, last])
+        self.assertEqual(len(summary["weekly_timeline"]), 2)
+        self.assertEqual(summary["weekly_timeline"][1]["kospi_return"], -2.0)
+        self.assertIn("국내 지수가 함께 내려", summary["weekly_takeaway"])
+
 
 class SentimentContractTests(unittest.TestCase):
     def test_raw_labels_match_display_score_boundaries(self):

@@ -13,9 +13,12 @@ export type Payload = {
   market_snapshot?: {id: string; schema: string; cross_source_validation: string};
   risk_events?: Event[]; opportunity_events?: Event[];
   research?: { screening?: {universe:number; evidence:number; quote_requested:number; qualified:number}; method: string; empty_reason: string; sectors: { name: string; stance: string; basis: string; evidence: Event[] }[]; stocks: Stock[] };
-  summary?: { count: number; trading_days: number; top_watchpoint?: string; score_avg?: number };
+  summary?: { count: number; trading_days: number; top_watchpoint?: string; score_avg?: number; weekly_takeaway?: string };
   daily_points?: { day: string; score_avg: number; count: number }[];
   market_performance?: { label: string; start: string; end: string; change_text: string }[];
+  weekly_timeline?: { day: string; sentiment: number; kospi_return?: number | null; kosdaq_return?: number | null }[];
+  weekly_highlights?: Event[];
+  weekly_takeaway?: string;
   next_week_outlook?: { bias: string; expected_range: string; confidence: string; rationale: string[]; upside_conditions: string[]; downside_conditions: string[] };
 };
 export type Briefing = { id: string; kind: Kind; title: string; generated_at: string; observation_end?: string; payload: Payload };

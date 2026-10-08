@@ -139,6 +139,29 @@ def build_market_performance(snapshots: List[dict]) -> List[dict]:
     return performance
 
 
+def build_weekly_timeline(snapshots: List[dict]) -> List[dict]:
+    """Daily chart points: market returns are indexed to the week's first observation."""
+    grouped: Dict[str, List[dict]] = {}
+    for item in sorted(snapshots, key=parse_snapshot_dt):
+        grouped.setdefault(parse_snapshot_dt(item).strftime("%m-%d"), []).append(item)
+
+    baseline: Dict[str, float | None] = {"kospi": None, "kosdaq": None}
+    timeline: List[dict] = []
+    for day, items in grouped.items():
+        point = {"day": day, "sentiment": round(sum(get_display_score(item) for item in items) / len(items), 1)}
+        for key in baseline:
+            prices = [parse_price(item.get("market_signals", {}).get(key, {}).get("price")) for item in items]
+            prices = [price for price in prices if price is not None]
+            if prices and baseline[key] is None:
+                baseline[key] = prices[0]
+            if prices and baseline[key]:
+                point[f"{key}_return"] = round(((prices[-1] - baseline[key]) / baseline[key]) * 100, 2)
+            else:
+                point[f"{key}_return"] = None
+        timeline.append(point)
+    return timeline
+
+
 def build_ranked_events(snapshots: List[dict]) -> dict:
     deduped: Dict[str, dict] = {}
     for item in snapshots:
@@ -161,11 +184,36 @@ def build_ranked_events(snapshots: List[dict]) -> dict:
                     "impact_score": impact,
                     "impact_text": f"{impact:+g}" if impact else "0",
                     "event_type": event_type,
+                    "research_insight": event.get("research_insight"),
                 }
 
     risks = sorted((event for event in deduped.values() if event["impact_score"] < 0), key=lambda event: abs(event["impact_score"]), reverse=True)[:5]
     opportunities = sorted((event for event in deduped.values() if event["impact_score"] > 0), key=lambda event: event["impact_score"], reverse=True)[:5]
     return {"risks": risks, "opportunities": opportunities}
+
+
+def build_weekly_highlights(ranked_events: dict) -> List[dict]:
+    """Show a mixed, ranked issue list instead of separating the weekly story by sign."""
+    merged = [*ranked_events.get("opportunities", []), *ranked_events.get("risks", [])]
+    return sorted(merged, key=lambda event: (abs(float(event.get("impact_score", 0))), event.get("observed_at", "")), reverse=True)[:5]
+
+
+def build_week_takeaway(summary: dict, performance: List[dict]) -> str:
+    lookup = {item["key"]: item for item in performance}
+    kospi = lookup.get("kospi", {}).get("change_pct")
+    kosdaq = lookup.get("kosdaq", {}).get("change_pct")
+    if kospi is not None and kosdaq is not None:
+        if kospi < 0 and kosdaq < 0:
+            market_text = "국내 지수가 함께 내려 약세가 우세했습니다"
+        elif kospi > 0 and kosdaq > 0:
+            market_text = "국내 지수가 함께 올라 강세가 우세했습니다"
+        else:
+            market_text = "KOSPI와 KOSDAQ의 방향이 엇갈렸습니다"
+    else:
+        market_text = "국내 지수의 주간 방향을 충분히 비교하지 못했습니다"
+    score_change = float(summary.get("score_change", 0))
+    score_text = "시장 온도도 높아졌습니다" if score_change > 0 else "시장 온도는 낮아졌습니다" if score_change < 0 else "시장 온도는 큰 변화가 없었습니다"
+    return f"이번 주는 {market_text}. {score_text}"
 
 
 def build_next_week_outlook(summary: dict) -> dict:
@@ -249,6 +297,9 @@ def build_week_summary(snapshots: List[dict]) -> dict:
             "period_end": "-",
             "daily_points": [],
             "market_performance": [],
+            "weekly_timeline": [],
+            "weekly_highlights": [],
+            "weekly_takeaway": "집계 가능한 장중 스냅샷이 없습니다.",
             "risk_events": [],
             "opportunity_events": [],
             "next_week_outlook": {
@@ -307,7 +358,10 @@ def build_week_summary(snapshots: List[dict]) -> dict:
         "market_performance": build_market_performance(ordered),
         "risk_events": ranked_events["risks"],
         "opportunity_events": ranked_events["opportunities"],
+        "weekly_timeline": build_weekly_timeline(ordered),
+        "weekly_highlights": build_weekly_highlights(ranked_events),
     }
+    summary["weekly_takeaway"] = build_week_takeaway(summary, summary["market_performance"])
     summary["next_week_outlook"] = build_next_week_outlook(summary)
     return summary
 
@@ -324,6 +378,9 @@ def save_weekly_report(summary: dict, snapshots: List[dict]) -> dict:
         "summary": summary,
         "daily_points": summary.get("daily_points", []),
         "market_performance": summary.get("market_performance", []),
+        "weekly_timeline": summary.get("weekly_timeline", []),
+        "weekly_highlights": summary.get("weekly_highlights", []),
+        "weekly_takeaway": summary.get("weekly_takeaway", ""),
         "risk_events": summary.get("risk_events", []),
         "opportunity_events": summary.get("opportunity_events", []),
         "next_week_outlook": summary.get("next_week_outlook", {}),

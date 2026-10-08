@@ -145,7 +145,8 @@ def weekly(store):
     return {'generated_at': datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S'),
             'title': f"주간 전략 · {summary.get('period_start', '-')} ~ {summary.get('period_end', '-')}",
             'summary': summary, 'source_samples': snapshots,
-            **{k: summary.get(k, []) for k in ('daily_points','market_performance','risk_events','opportunity_events')},
+            **{k: summary.get(k, []) for k in ('daily_points','market_performance','weekly_timeline','weekly_highlights','risk_events','opportunity_events')},
+            'weekly_takeaway': summary.get('weekly_takeaway', ''),
             'next_week_outlook': summary['next_week_outlook']}
 
 
