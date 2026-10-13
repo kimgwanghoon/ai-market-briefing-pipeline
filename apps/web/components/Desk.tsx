@@ -28,16 +28,35 @@ export function Events({ items }: { items: Event[] }) {
 
 function EventGroup({ label, items, collected }: { label: string; items: Event[]; collected?: number }) {
   const first = items.slice(0, 2), rest = items.slice(2);
-  return <div className="event-group"><div className="event-group-title"><h3>{label}</h3><span>{collected ?? items.length}건 확인 · 주요 {items.length}건</span></div><Events items={first}/>{rest.length > 0 && <details className="event-more"><summary>{label} {rest.length}건 더보기</summary><Events items={rest}/></details>}</div>;
+  return <div className="event-group"><div className="event-group-title"><h3>{label}</h3><span>수집 {collected ?? items.length}건 · 대표 {first.length}건 표시</span></div><Events items={first}/>{rest.length > 0 && <details className="event-more"><summary>{label} {rest.length}건 더보기</summary><Events items={rest}/></details>}</div>;
 }
 
 function Text({ value }: { value: string }) { return <>{value.split(/(\*\*.*?\*\*)/g).map((part, index) => part.startsWith('**') ? <strong key={index}>{part.slice(2, -2)}</strong> : part)}</>; }
 
+function legacyDailyOverview(row: Briefing) {
+  if (row.kind !== 'daily') return undefined;
+  const markets = row.payload.indexes || {};
+  const morning = /아침|장전/.test(row.payload.edition_title || '');
+  const us = ['sp500', 'dow', 'nasdaq'].map(key => markets[key]?.change || '');
+  const down = us.filter(change => /[▼-]\s*\d/.test(change)).length;
+  if (morning) return {
+    label: '개장 전 점검',
+    interpretation: down >= 2 ? '미국 주요 지수의 약세 마감이 국내 개장 초반에도 이어지는지 확인할 구간입니다.' : '미국 지수 방향을 참고하되, 국내 개장 직후의 실제 움직임을 확인할 구간입니다.',
+    watchpoint: '개장 뒤 KOSPI·KOSDAQ이 전일 종가에서 어느 방향으로 움직이는지와 USD/KRW 흐름을 함께 보세요.',
+    korea_session_label: '전일 종가 · 개장 전',
+    data_note: '이 보고서의 국내 지수는 장전 기준 전일 종가일 수 있습니다.',
+  };
+  return undefined;
+}
+
 function ReaderSummary({ row }: { row: Briefing }) {
   const payload = row.payload;
-  const outlook = payload.sentiment?.label || payload.next_week_outlook?.bias || '근거를 확인하며 관망';
-  const next = payload.watchpoint || payload.summary?.top_watchpoint || '주요 지표와 후속 뉴스가 현재 흐름을 이어가는지 확인하세요.';
-  return <section className="reader-summary" aria-label="한눈에 보는 브리핑"><div className="reader-summary-heading"><span className="eyebrow">START HERE</span><h2>한눈에 보는 {labels[row.kind]}</h2><p>숫자와 전문 용어보다, 지금 시장이 어떤 상황인지부터 읽어보세요.</p></div><div className="quick-grid"><article><span>지금 분위기</span><strong>{outlook}</strong><p>{payload.sentiment?.interpretation || '시장 신호와 주요 이벤트를 함께 반영한 관점입니다.'}</p></article><article><span>지금 확인할 것</span><strong>{plain(next)}</strong></article></div></section>;
+  const daily = payload.daily_overview || legacyDailyOverview(row);
+  const outlook = daily?.label || payload.sentiment?.label || payload.next_week_outlook?.bias || '근거를 확인하며 관망';
+  const interpretation = daily?.interpretation || payload.sentiment?.interpretation || '시장 신호와 주요 이벤트를 함께 반영한 관점입니다.';
+  const next = daily?.watchpoint || payload.watchpoint || payload.summary?.top_watchpoint || '주요 지표와 후속 뉴스가 현재 흐름을 이어가는지 확인하세요.';
+  const basis = daily?.data_note || (payload.collection_cutoff ? `수집 마감 ${time(payload.collection_cutoff)}` : '지표별 기준시각을 함께 확인하세요.');
+  return <section className="reader-summary" aria-label="한눈에 보는 브리핑"><div className="reader-summary-heading"><span className="eyebrow">START HERE</span><h2>한눈에 보는 {labels[row.kind]}</h2><p>숫자와 전문 용어보다, 지금 시장이 어떤 상황인지부터 읽어보세요.</p></div><div className="quick-grid"><article><span>지금 분위기</span><strong>{outlook}</strong><p>{interpretation}</p></article><article><span>지금 확인할 것</span><strong>{plain(next)}</strong></article><article><span>데이터 기준</span><strong>{daily?.korea_session_label || '관측시각 확인'}</strong><p>{basis}</p></article></div></section>;
 }
 
 function DailySections({ payload }: { payload: Payload }) {

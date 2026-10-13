@@ -387,6 +387,88 @@ def build_fallback_section_items(
     return korea_items, us_items
 
 
+def build_daily_overview(indexes: dict, is_morning: bool) -> dict:
+    """Build the reader-facing daily lead from time-compatible market facts.
+
+    A morning edition must never present a carried Korean close as an intraday
+    move.  This compact object is deliberately rules-based so the first screen
+    stays useful even when the AI copy falls back.
+    """
+    korea_label = "전일 종가 · 개장 전" if is_morning else "국내 장 마감 기준"
+    kospi, kosdaq = indexes["kospi"], indexes["kosdaq"]
+    us = [indexes[key] for key in ("sp500", "dow", "nasdaq")]
+    us_down = sum(parse_change_percent(item.get("change", "")) < 0 for item in us)
+    us_up = sum(parse_change_percent(item.get("change", "")) > 0 for item in us)
+
+    if is_morning:
+        label = "개장 전 점검"
+        if us_down >= 2:
+            interpretation = "미국 주요 지수가 약세로 마감해, 국내 개장 초반의 매도 압력을 먼저 확인할 구간입니다."
+        elif us_up >= 2:
+            interpretation = "미국 주요 지수가 강세로 마감해, 국내 개장 초반의 반응을 확인할 구간입니다."
+        else:
+            interpretation = "미국 지수 방향이 엇갈려, 국내 개장 직후의 실제 방향을 확인해야 하는 구간입니다."
+        watchpoint = "개장 뒤 KOSPI·KOSDAQ이 전일 종가에서 어느 방향으로 움직이는지와 USD/KRW 흐름을 함께 보세요."
+    else:
+        domestic = [parse_change_percent(kospi.get("change", "")), parse_change_percent(kosdaq.get("change", ""))]
+        if all(value < 0 for value in domestic):
+            label, interpretation = "국내 약세 마감", "KOSPI와 KOSDAQ이 함께 내려, 오늘 국내 시장은 약세 압력이 우세했습니다."
+        elif all(value > 0 for value in domestic):
+            label, interpretation = "국내 강세 마감", "KOSPI와 KOSDAQ이 함께 올라, 오늘 국내 시장은 매수 우위로 마감했습니다."
+        else:
+            label, interpretation = "국내 혼조 마감", "KOSPI와 KOSDAQ의 방향이 엇갈려, 지수 한쪽만으로 시장 전체를 단정하기 어렵습니다."
+        watchpoint = "오늘 밤 미국 지수와 VIX, USD/KRW가 국내 마감 방향을 확인해 주는지 살펴보세요."
+
+    return {
+        "label": label,
+        "interpretation": interpretation,
+        "watchpoint": watchpoint,
+        "korea_session_label": korea_label,
+        "data_note": "국내 지수는 장전에는 전일 종가이며, 미국 지표는 각 시장의 최근 마감 또는 거래 시각 기준입니다.",
+    }
+
+
+def fetch_news_article_excerpt(url: str, limit: int = 1400) -> str:
+    """Fetch article text only from the news domains collected by this job."""
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    allowed_hosts = {"n.news.naver.com", "news.naver.com", "finance.naver.com", "m.stock.naver.com"}
+    if parsed.scheme != "https" or parsed.netloc not in allowed_hosts:
+        return ""
+    try:
+        response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
+        response.raise_for_status()
+    except requests.RequestException:
+        return ""
+    soup = BeautifulSoup(response.text, "html.parser")
+    for node in soup(["script", "style", "noscript"]):
+        node.decompose()
+    body = next((soup.select_one(selector) for selector in (
+        "#dic_area", "#newsct_article", "#articleBodyContents", "#newsEndContents",
+        ".article_body", ".article-content", "article"
+    ) if soup.select_one(selector)), None)
+    if body is None:
+        return ""
+    return re.sub(r"\s+", " ", body.get_text(" ", strip=True)).strip()[:limit]
+
+
+def enrich_selected_news(articles: List[dict], limit: int = 5) -> List[dict]:
+    """Attach article excerpts without losing a transparent listing-summary fallback."""
+    enriched = []
+    for index, article in enumerate(articles):
+        item = dict(article)
+        item.setdefault("listing_summary", item.get("description", ""))
+        if index < limit:
+            excerpt = fetch_news_article_excerpt(str(item.get("link") or item.get("url") or ""))
+            if excerpt:
+                item["article_excerpt"] = excerpt
+                item["content_status"] = "article_verified"
+            else:
+                item["content_status"] = "listing_summary" if item.get("listing_summary") else "headline_only"
+        enriched.append(item)
+    return enriched
+
+
 def generate_cover_svg(path: Path, title: str) -> None:
     safe_title = (
         title.replace("&", "&amp;")

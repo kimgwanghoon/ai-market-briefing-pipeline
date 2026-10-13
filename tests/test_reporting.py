@@ -583,6 +583,39 @@ class MarketHeadlineTests(unittest.TestCase):
         )
 
 
+class DailyOverviewTests(unittest.TestCase):
+    def setUp(self):
+        self.indexes = {
+            "kospi": {"change": "▼ 10.00 (-0.40%)"},
+            "kosdaq": {"change": "▼ 5.00 (-0.50%)"},
+            "sp500": {"change": "▼ 20.00 (-0.30%)"},
+            "dow": {"change": "▼ 100.00 (-0.20%)"},
+            "nasdaq": {"change": "▲ 30.00 (+0.40%)"},
+            "vix": {"change": "▲ 0.20 (+1.00%)"},
+            "usdkrw": {"change": "▲ 2.00 (+0.10%)"},
+        }
+
+    def test_morning_overview_marks_korean_values_as_previous_close(self):
+        overview = main.build_daily_overview(self.indexes, True)
+        self.assertEqual(overview["label"], "개장 전 점검")
+        self.assertEqual(overview["korea_session_label"], "전일 종가 · 개장 전")
+        self.assertIn("개장", overview["watchpoint"])
+
+    def test_close_overview_uses_joint_domestic_direction(self):
+        overview = main.build_daily_overview(self.indexes, False)
+        self.assertEqual(overview["label"], "국내 약세 마감")
+        self.assertIn("함께 내려", overview["interpretation"])
+
+    def test_daily_article_excerpt_reads_naver_body(self):
+        response = Mock()
+        response.text = "<html><body><div id='dic_area'>기사 본문 수치와 실적 내용입니다.</div></body></html>"
+        response.raise_for_status.return_value = None
+        with patch("main.requests.get", return_value=response):
+            article = main.enrich_selected_news([{"link": "https://n.news.naver.com/mnews/article/001/1", "description": "목록 요약"}])[0]
+        self.assertEqual(article["content_status"], "article_verified")
+        self.assertIn("본문 수치", article["article_excerpt"])
+
+
 class NewsCurationTests(unittest.TestCase):
     def test_preserves_source_and_adds_editorial_context(self):
         payload = {

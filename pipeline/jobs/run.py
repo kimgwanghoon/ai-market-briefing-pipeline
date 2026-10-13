@@ -76,6 +76,12 @@ def daily(store):
                     {'sp500': '^GSPC', 'dow': '^DJI', 'nasdaq': '^IXIC', 'ewy': 'EWY',
                      'vix': '^VIX', 'usdkrw': 'KRW=X', 'us10y': '^TNX', 'wti': 'CL=F'}.items()})
     m.require_market_coverage(indexes, minimum=6, required=('kospi', 'kosdaq'))
+    daily_overview = m.build_daily_overview(indexes, m.IS_MORNING)
+    if m.IS_MORNING:
+        # Naver returns the last completed Korean session before the opening
+        # auction.  Keep that value but never label it as today's live move.
+        for key in ('kospi', 'kosdaq'):
+            indexes[key] = {**indexes[key], 'market_status': daily_overview['korea_session_label']}
     history = store.history('daily', limit=7)
     observation = snapshot(indexes, history + store.history('live', limit=16))
     raw_news = m.crawl_naver_news(now)
@@ -84,10 +90,11 @@ def daily(store):
         item.pop('dt', None)
     headline, points, cover = m.generate_ai_briefing(*(indexes[k] for k in
                                ('kospi','kosdaq','sp500','dow','nasdaq','ewy','vix','usdkrw','us10y','wti')))
-    news = m.select_top_news(raw_news, max_count=5)
+    news = m.enrich_selected_news(m.select_top_news(raw_news, max_count=5))
     research = build_watchlist(raw_news, history[0].get('research') if history else None)
     return {'market_snapshot': observation, 'timestamp': datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S'), 'headline': headline,
             'edition_title': m.EDITION_TITLE, 'summary_items': points, 'indexes': indexes,
+            'daily_overview': daily_overview, 'watchpoint': daily_overview['watchpoint'],
             # The selected set is both the on-screen evidence and the DB event
             # record.  Raw collection remains represented by the count.
             'news_items': news, 'events': {'news': news, 'dart': [],

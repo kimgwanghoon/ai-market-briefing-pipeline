@@ -496,7 +496,7 @@ def fetch_naver_news(limit: int = 20) -> List[dict]:
 def fetch_news_article_excerpt(url: str, limit: int = 1400) -> str:
     """Resolve collected Naver/Google News links and return the article body."""
     parsed = urlparse(url)
-    if parsed.scheme != "https" or parsed.netloc not in {"finance.naver.com", "m.stock.naver.com", "news.google.com"}:
+    if parsed.scheme != "https" or parsed.netloc not in {"finance.naver.com", "m.stock.naver.com", "n.news.naver.com", "news.naver.com", "news.google.com"}:
         return ""
     try:
         response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
@@ -508,7 +508,7 @@ def fetch_news_article_excerpt(url: str, limit: int = 1400) -> str:
     for node in soup(["script", "style", "noscript"]):
         node.decompose()
     body = next((soup.select_one(selector) for selector in (
-        "#newsct_article", "#articleBodyContents", "#newsEndContents", "#article-view-content-div",
+        "#dic_area", "#newsct_article", "#articleBodyContents", "#newsEndContents", "#article-view-content-div",
         "#articleTxt", "#articleBody", ".article_body", ".article-content", ".article_content",
         ".article_txt", ".article-view", ".view-cont", "article"
     ) if soup.select_one(selector)), None)

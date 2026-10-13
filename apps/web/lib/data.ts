@@ -5,6 +5,7 @@ export type Market = { price: string; change: string; as_of?: string; market_sta
 type Stock = { catalyst?: string; name: string; ticker: string; sector: string; status: string; reason: string; risk: string; invalidation: string; basis: string; quote: { price: number; as_of: string }; evidence: Event[] };
 export type Payload = {
   headline?: string; summary_items?: string[]; key_points?: string[]; watchpoint?: string;
+  daily_overview?: { label: string; interpretation: string; watchpoint: string; korea_session_label: string; data_note: string };
   window_start?: string; collection_cutoff?: string; edition_title?: string; cover_image?: string;
   indexes?: Record<string, Market>; market_signals?: Record<string, Market>;
   news_items?: Event[]; events?: { news?: Event[]; dart?: Event[]; news_count?: number; dart_count?: number };
