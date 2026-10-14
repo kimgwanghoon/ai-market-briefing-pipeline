@@ -532,9 +532,63 @@ def enrich_news_article_excerpts(events: List[dict], limit: int = 5) -> List[dic
                 item["article_excerpt"] = excerpt
                 item["content_status"] = "article_verified"
             else:
-                item["content_status"] = "headline_only"
+                item["content_status"] = "listing_summary" if item.get("listing_summary") else "headline_only"
         else:
             item["content_status"] = "headline_only"
+        enriched.append(item)
+    return enriched
+
+
+def fetch_dart_document_excerpt(rcept_no: str, limit: int = 1600) -> str:
+    """Read the public DART viewer document when the filing exposes one.
+
+    The list API contains only a title.  This deliberately returns an empty
+    string rather than guessing when DART's viewer markup changes or a filing
+    is not publicly readable.
+    """
+    if not rcept_no or not re.fullmatch(r"\d{14}", str(rcept_no)):
+        return ""
+    headers = {"User-Agent": "Mozilla/5.0"}
+    try:
+        viewer = requests.get(
+            "https://dart.fss.or.kr/dsaf001/main.do",
+            params={"rcpNo": rcept_no}, headers=headers, timeout=10,
+        )
+        viewer.raise_for_status()
+        dcm_match = re.search(r"dcmNo[=:'\"]+([0-9]+)", viewer.text)
+        if not dcm_match:
+            return ""
+        document = requests.get(
+            "https://dart.fss.or.kr/dsaf001/main.do",
+            params={"rcpNo": rcept_no, "dcmNo": dcm_match.group(1)}, headers=headers, timeout=10,
+        )
+        document.raise_for_status()
+    except requests.RequestException:
+        return ""
+    soup = BeautifulSoup(document.text, "html.parser")
+    for node in soup(["script", "style", "noscript"]):
+        node.decompose()
+    text = re.sub(r"\s+", " ", soup.get_text(" ", strip=True)).strip()
+    # Viewer navigation chrome is common; a very short result is not evidence.
+    return text[:limit] if len(text) >= 80 else ""
+
+
+def enrich_dart_document_excerpts(events: List[dict], limit: int = 5) -> List[dict]:
+    """Attach verified filing text to the material DART events shown to users."""
+    ranked = sorted(events, key=lambda item: abs(float(item.get("impact_score", 0) or 0)), reverse=True)
+    selected = {str(item.get("event_id") or "") for item in ranked[:limit]}
+    enriched = []
+    for event in events:
+        item = dict(event)
+        if str(item.get("event_id") or "") in selected:
+            excerpt = fetch_dart_document_excerpt(str(item.get("event_id") or ""))
+            if excerpt:
+                item["article_excerpt"] = excerpt
+                item["content_status"] = "filing_verified"
+            else:
+                item["content_status"] = "filing_title_only"
+        else:
+            item["content_status"] = "filing_title_only"
         enriched.append(item)
     return enriched
 

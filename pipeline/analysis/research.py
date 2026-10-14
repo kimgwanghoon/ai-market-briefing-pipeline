@@ -7,6 +7,16 @@ from zoneinfo import ZoneInfo
 KST = ZoneInfo('Asia/Seoul')
 
 
+def classify_event(item):
+    """Classify evidence without turning a company headline into a market call."""
+    text = f"{item.get('corp_name', '')} {item.get('title', '')}".lower()
+    if any(word in text for word in ('kospi', 'kosdaq', '미 증시', '연준', 'fomc', '환율', '국채', '유가', '관세')):
+        return '시장'
+    if any(word in text for word in ('반도체', '바이오', '자동차', '전력', '방산', '은행', '조선', '2차전지', '인터넷')):
+        return '업종'
+    return '기업'
+
+
 def source_time(value):
     if value is None or value == '':
         return None
@@ -52,6 +62,7 @@ def event_insight(item):
     """Use a collected article body when available; otherwise remain explicit about the limit."""
     title = item.get('title', '')
     excerpt = ' '.join(str(item.get('article_excerpt', '')).split())
+    event_scope = classify_event(item)
     if excerpt:
         display_excerpt = excerpt[:420].rstrip()
         if len(excerpt) > len(display_excerpt):
@@ -61,7 +72,7 @@ def event_insight(item):
             'fact': display_excerpt,
             'interpretation': '기사 본문에서 확인된 내용을 바탕으로 정리했습니다. 시장 전체 영향은 지수·후속 뉴스와 함께 확인해야 합니다.',
             'watchpoint': '기사에 제시된 수치·일정과 후속 시장 반응이 이어지는지 확인하세요.',
-            'basis': '원문 본문 확인 · 영향은 조건부 해석',
+            'basis': f"{'공시 원문' if item.get('content_status') == 'filing_verified' else '원문 본문'} 확인 · {event_scope} 영향은 조건부 해석",
         }
     listing_summary = ' '.join(str(item.get('listing_summary', '')).split())
     if listing_summary:
@@ -81,14 +92,25 @@ def event_insight(item):
         if any(word in title for word in words):
             return {'impact': impact, 'fact': title, 'interpretation': interpretation,
                     'watchpoint': watchpoint, 'basis': '제목 기반 조건부 해석 · 원문 검증 필요'}
+    source = '공시 제목' if item.get('content_status') == 'filing_title_only' else '제목'
     return {'impact': '판단 보류', 'fact': title,
             'interpretation': '제목만으로 시장 영향의 방향과 규모를 확정할 수 없습니다.',
             'watchpoint': '원문 수치와 후속 공시가 현재 판단을 뒷받침하는지 확인하세요.',
-            'basis': '원문 추가 확인 필요'}
+            'basis': f'{source} 기반 · 원문 추가 확인 필요'}
 
 
 def enrich_events(payload):
     for items in [payload.get('news_items', []), *[payload.get('events', {}).get(k, []) for k in ('news', 'dart')]]:
         for item in items:
+            item['scope'] = classify_event(item)
             item['research_insight'] = event_insight(item)
+    groups = {'article_verified': 0, 'filing_verified': 0, 'listing_summary': 0, 'title_only': 0}
+    for items in [payload.get('news_items', []), *[payload.get('events', {}).get(k, []) for k in ('news', 'dart')]]:
+        for item in items:
+            status = item.get('content_status', '')
+            if status == 'article_verified': groups['article_verified'] += 1
+            elif status == 'filing_verified': groups['filing_verified'] += 1
+            elif status == 'listing_summary': groups['listing_summary'] += 1
+            else: groups['title_only'] += 1
+    payload['evidence_quality'] = groups
     return payload

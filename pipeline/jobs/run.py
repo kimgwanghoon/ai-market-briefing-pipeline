@@ -46,6 +46,32 @@ def carry_forward_events(history, category, now, limit=5):
     return carried
 
 
+def short_market_trend(history, current, limit=8):
+    """Compact observation history for the reader, not a price forecast."""
+    points = []
+    for report in list(reversed(history[:limit - 1])):
+        markets = report.get('market_signals') or report.get('indexes') or {}
+        points.append({'at': report.get('collection_cutoff') or report.get('timestamp') or report.get('generated_at'),
+                       'kospi': markets.get('kospi', {}).get('price'),
+                       'kosdaq': markets.get('kosdaq', {}).get('price'),
+                       'temperature': report.get('sentiment', {}).get('score')})
+    points.append({'at': datetime.now(KST).isoformat(), 'kospi': current.get('kospi', {}).get('price'),
+                   'kosdaq': current.get('kosdaq', {}).get('price')})
+    return [point for point in points if point.get('at')]
+
+
+def market_participation(indexes):
+    """Transparent cross-market participation proxy; not KRX advance/decline data."""
+    import intraday as i
+    changes = [i.parse_change_percent(item.get('change', '')) for item in indexes.values()]
+    valid = [change for change in changes if change == change]
+    up, down = sum(change > 0 for change in valid), sum(change < 0 for change in valid)
+    state = '상승 신호 우세' if up > down else '하락 신호 우세' if down > up else '혼조'
+    return {'up': up, 'down': down, 'flat': len(valid) - up - down, 'state': state,
+            'basis': f'국내·해외·위험지표 {len(valid)}개 방향을 비교한 보조 지표',
+            'limitation': '상승·하락 종목 수와 투자자별 순매수 데이터는 별도 KRX 원천이 연결되기 전까지 표시하지 않습니다.'}
+
+
 def target_time(kind, now):
     now = now.astimezone(KST)
     explicit = os.getenv('SCHEDULE_TARGET_KST', '').strip()
@@ -91,7 +117,7 @@ def daily(store):
     headline, points, cover = m.generate_ai_briefing(*(indexes[k] for k in
                                ('kospi','kosdaq','sp500','dow','nasdaq','ewy','vix','usdkrw','us10y','wti')))
     news = m.enrich_selected_news(m.select_top_news(raw_news, max_count=5))
-    research = build_watchlist(raw_news, history[0].get('research') if history else None)
+    research = build_watchlist(news, history[0].get('research') if history else None)
     return {'market_snapshot': observation, 'timestamp': datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S'), 'headline': headline,
             'edition_title': m.EDITION_TITLE, 'summary_items': points, 'indexes': indexes,
             'daily_overview': daily_overview, 'watchpoint': daily_overview['watchpoint'],
@@ -100,7 +126,8 @@ def daily(store):
             'news_items': news, 'events': {'news': news, 'dart': [],
                                              'news_count': len(raw_news), 'dart_count': 0},
             'cover_image': cover, 'research': research, 'collection_cutoff': cutoff.isoformat(),
-            'risk_trends': m.build_risk_trends(history, indexes), 'run_source': 'supabase'}
+            'risk_trends': m.build_risk_trends(history, indexes), 'market_trend': short_market_trend(history, indexes),
+            'run_source': 'supabase'}
 
 
 def live(store):
@@ -120,6 +147,7 @@ def live(store):
     news = i.score_news_events(i.filter_unseen_events(news, history, 'news', cutoff))
     news = i.enrich_news_article_excerpts(news)
     darts = i.score_dart_events(i.filter_unseen_events(darts, history, 'dart', cutoff))
+    darts = i.enrich_dart_document_excerpts(darts)
     sectors = i.detect_sector_rotation(news, darts)
     sentiment = i.build_sentiment(indexes, news, darts, sectors, calibration)
     points, watchpoint = i.build_llm_points(indexes, sentiment, news, darts)
@@ -132,7 +160,8 @@ def live(store):
                           'news_count': len(display_news), 'dart_count': len(display_darts),
                           'new_news_count': len(news), 'new_dart_count': len(darts)},
                'sentiment': sentiment, 'key_points': points, 'watchpoint': watchpoint,
-               'sector_rotation': sectors, 'calibration': calibration,
+               'sector_rotation': sectors, 'market_participation': market_participation(indexes),
+               'market_trend': short_market_trend(history, indexes), 'calibration': calibration,
                'execution': {'scheduled_target_kst': os.getenv('SCHEDULE_TARGET_KST', '')}}
     payload['day_over_day'] = i.build_day_over_day_comments(payload, history)
     payload['comparison'] = i.build_score_comparison(payload, history)

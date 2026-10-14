@@ -1,6 +1,6 @@
 export type Kind = 'live' | 'daily' | 'weekly';
 export const labels: Record<Kind, string> = { live: '장중 브리핑', daily: '데일리 리서치', weekly: '주간 전략' };
-export type Event = { title: string; url?: string; link?: string; source?: string; press?: string; published_at?: string; time?: string; why_it_matters?: string; corp_name?: string; impact_score?: number; research_insight?: {impact: string; fact: string; interpretation: string; watchpoint: string; basis: string} };
+export type Event = { title: string; url?: string; link?: string; source?: string; press?: string; published_at?: string; time?: string; why_it_matters?: string; corp_name?: string; impact_score?: number; scope?: string; content_status?: string; research_insight?: {impact: string; fact: string; interpretation: string; watchpoint: string; basis: string} };
 export type Market = { price: string; change: string; as_of?: string; market_status?: string; source?: string; source_timestamp?: string; collected_at?: string; price_basis?: string };
 type Stock = { catalyst?: string; name: string; ticker: string; sector: string; status: string; reason: string; risk: string; invalidation: string; basis: string; quote: { price: number; as_of: string }; evidence: Event[] };
 export type Payload = {
@@ -10,6 +10,9 @@ export type Payload = {
   indexes?: Record<string, Market>; market_signals?: Record<string, Market>;
   news_items?: Event[]; events?: { news?: Event[]; dart?: Event[]; news_count?: number; dart_count?: number };
   sentiment?: { score: number; label: string; interpretation?: string; data_completeness?: number; normalized_components?: Record<string,number>; weights?: Record<string,number>; score_breakdown?: Record<string,number>; model_version?: string };
+  market_participation?: { up: number; down: number; flat: number; state: string; basis: string; limitation: string };
+  market_trend?: { at: string; kospi?: string | number; kosdaq?: string | number; temperature?: number }[];
+  evidence_quality?: { article_verified?: number; filing_verified?: number; listing_summary?: number; title_only?: number };
   comparison?: { delta?: number }; reliability?: { status?: string; guidance?: string; evaluated?: number; hit_rate?: string; false_alarm_rate?: string; basis?: string };
   market_snapshot?: {id: string; schema: string; cross_source_validation: string};
   risk_events?: Event[]; opportunity_events?: Event[];

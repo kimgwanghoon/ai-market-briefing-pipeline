@@ -51,6 +51,9 @@ def build_watchlist(news, previous=None, quote_loader=fetch_quote, now=None):
         if not evidence or any(any(w in e['title'] for w in NEGATIVE) for e in evidence):
             screening['rejected']['evidence'] += 1
             continue
+        # A visible candidate needs a concrete company mention plus a positive
+        # catalyst.  Confirmed article text gets preference but never replaces
+        # the underlying link as evidence.
         evidence = [e for e in evidence if any(w in e['title'] for w in POSITIVE)]
         if not evidence:
             screening['rejected']['evidence'] += 1
@@ -72,13 +75,14 @@ def build_watchlist(news, previous=None, quote_loader=fetch_quote, now=None):
         old = previous_by_ticker.get(company['ticker'])
         urls = {e.get('link') or e.get('url') for e in evidence}
         old_urls = {e.get('link') or e.get('url') for e in (old or {}).get('evidence', [])}
-        stocks.append({**company, 'quote': q, 'turnover_estimate': round(price * volume),
+        confirmed = sum(e.get('content_status') == 'article_verified' for e in evidence)
+        stocks.append({**company, 'quote': q, 'turnover_estimate': round(price * volume), 'evidence_quality': confirmed,
                        'status': '신규 관찰' if not old else '관점 유지' if urls == old_urls else '근거 변경',
                        'reason': evidence[0]['title'], 'evidence': evidence[:3],
                        'catalyst': '다음 보도의 후속 공시·실제 이행 확인: ' + evidence[0]['title'],
                        'invalidation': '관련 보도의 정정·계약 취소 또는 후속 공시에서 전제 변경 확인 시 재검토',
-                       'basis': '뉴스 근거 및 거래대금 근사값 확인 · 목표주가 미산정'})
-    stocks.sort(key=lambda s: (-len(s['evidence']), -s['turnover_estimate']))
+                       'basis': f"뉴스 근거 {len(evidence)}건·원문 확인 {confirmed}건 및 거래대금 근사값 확인 · 목표주가 미산정"})
+    stocks.sort(key=lambda s: (-s['evidence_quality'], -len(s['evidence']), -s['turnover_estimate']))
     selected = []
     for stock in stocks:
         if sum(s['sector'] == stock['sector'] for s in selected) < 2:
@@ -86,5 +90,5 @@ def build_watchlist(news, previous=None, quote_loader=fetch_quote, now=None):
         if len(selected) == 3:
             break
     return {'screening': screening, 'sectors': sorted(sectors, key=lambda s: -len(s['evidence']))[:3], 'stocks': selected,
-            'method': '고정 국내 후보군에서 뉴스 근거·최근 가격·거래대금 근사 10억원 이상 확인. 매수 추천 순위 아님.',
+            'method': '국내 주요 업종 28개 후보군에서 회사명 일치·긍정 뉴스 근거·최근 가격·거래대금 근사 10억원 이상을 함께 확인합니다. 매수 추천·목표주가 순위가 아닙니다.',
             'empty_reason': '' if selected else '선정 기준을 충족하는 근거와 가격 데이터가 부족합니다.'}
