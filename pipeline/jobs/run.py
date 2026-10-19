@@ -114,9 +114,12 @@ def daily(store):
     cutoff = datetime.now(KST)
     for item in raw_news:
         item.pop('dt', None)
-    headline, points, cover = m.generate_ai_briefing(*(indexes[k] for k in
-                               ('kospi','kosdaq','sp500','dow','nasdaq','ewy','vix','usdkrw','us10y','wti')))
+    # Select and read the actual articles before asking the editor to write.
+    # This keeps the daily conclusion connected to the same evidence readers see.
     news = m.enrich_selected_news(m.select_top_news(raw_news, max_count=5))
+    headline, points, cover = m.generate_ai_briefing(*(indexes[k] for k in
+                               ('kospi','kosdaq','sp500','dow','nasdaq','ewy','vix','usdkrw','us10y','wti')),
+                               news_items=news)
     research = build_watchlist(news, history[0].get('research') if history else None)
     return {'market_snapshot': observation, 'timestamp': datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S'), 'headline': headline,
             'edition_title': m.EDITION_TITLE, 'summary_items': points, 'indexes': indexes,
@@ -217,12 +220,12 @@ def run(kind):
         payload = {'daily': daily, 'live': live, 'weekly': weekly}[kind](store)
         enrich_events(payload)
         payload['id'] = run_id
-        if kind == 'daily':
+        if kind == 'daily' and payload.get('cover_image'):
             from main import OUTPUT_DIR
             try:
                 cover_url = store.upload_cover(run_id, OUTPUT_DIR / payload.get('cover_image', ''))
             except Exception:
-                logging.warning('Cover unavailable; publishing text report')
+                logging.warning('Cover unavailable; publishing report without a cover')
             payload['cover_image'] = cover_url or ''
         store.publish(run_id, token, kind, payload)
     except Exception as exc:

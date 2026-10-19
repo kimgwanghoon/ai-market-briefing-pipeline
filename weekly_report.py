@@ -267,7 +267,7 @@ def build_next_week_outlook(summary: dict) -> dict:
         "bias": bias,
         "expected_low": expected_low,
         "expected_high": expected_high,
-        "expected_range": f"{expected_low:.1f}~{expected_high:.1f}점",
+        "expected_range": f"시장 온도 {expected_low:.1f}~{expected_high:.1f}점",
         "confidence": confidence,
         "rationale": rationale,
         "upside_conditions": upside_conditions,

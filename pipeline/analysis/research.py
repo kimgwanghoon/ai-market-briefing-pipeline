@@ -1,6 +1,7 @@
 """Observation provenance and immutable report evidence. No network or AI calls."""
 import hashlib
 import json
+import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -15,6 +16,19 @@ def classify_event(item):
     if any(word in text for word in ('반도체', '바이오', '자동차', '전력', '방산', '은행', '조선', '2차전지', '인터넷')):
         return '업종'
     return '기업'
+
+
+def compact_fact(value, limit=300):
+    """Keep article evidence readable; avoid dumping a raw scraped paragraph."""
+    cleaned = ' '.join(str(value or '').split())
+    if not cleaned:
+        return ''
+    sentences = re.split(r'(?<=[.!?다])\s+', cleaned)
+    useful = [sentence for sentence in sentences if len(sentence) >= 24 and not any(
+        marker in sentence.lower() for marker in ('무단전재', 'copyright', '사진=', '기자=')
+    )]
+    result = ' '.join(useful[:2]) or cleaned
+    return result[:limit].rstrip() + ('…' if len(result) > limit else '')
 
 
 def source_time(value):
@@ -61,24 +75,21 @@ def snapshot(markets, history=()):
 def event_insight(item):
     """Use a collected article body when available; otherwise remain explicit about the limit."""
     title = item.get('title', '')
-    excerpt = ' '.join(str(item.get('article_excerpt', '')).split())
+    excerpt = compact_fact(item.get('article_excerpt', ''), limit=340)
     event_scope = classify_event(item)
     if excerpt:
-        display_excerpt = excerpt[:420].rstrip()
-        if len(excerpt) > len(display_excerpt):
-            display_excerpt += '…'
         return {
             'impact': '원문 확인',
-            'fact': display_excerpt,
+            'fact': excerpt,
             'interpretation': '기사 본문에서 확인된 내용을 바탕으로 정리했습니다. 시장 전체 영향은 지수·후속 뉴스와 함께 확인해야 합니다.',
             'watchpoint': '기사에 제시된 수치·일정과 후속 시장 반응이 이어지는지 확인하세요.',
             'basis': f"{'공시 원문' if item.get('content_status') == 'filing_verified' else '원문 본문'} 확인 · {event_scope} 영향은 조건부 해석",
         }
-    listing_summary = ' '.join(str(item.get('listing_summary', '')).split())
+    listing_summary = compact_fact(item.get('listing_summary', ''), limit=300)
     if listing_summary:
         return {
             'impact': '요약 확인',
-            'fact': listing_summary[:420].rstrip() + ('…' if len(listing_summary) > 420 else ''),
+            'fact': listing_summary,
             'interpretation': '뉴스 목록에 제공된 요약을 바탕으로 표시했습니다. 원문 본문을 확인하기 전에는 영향의 방향과 규모를 단정하지 않습니다.',
             'watchpoint': '원문 기사와 후속 시장 반응을 함께 확인하세요.',
             'basis': '뉴스 목록 요약 확인 · 원문 본문 검증 필요',

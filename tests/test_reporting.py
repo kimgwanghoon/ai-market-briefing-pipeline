@@ -755,9 +755,8 @@ class CoverGenerationTests(unittest.TestCase):
                 )
 
             self.assertEqual(headline, "변동성 경계 속 지수 방향 점검")
-            self.assertTrue(cover_image.startswith("cover_"))
-            self.assertEqual((Path(tmp_dir) / cover_image).read_bytes(), image_bytes)
-            client.images.generate.assert_called_once()
+            self.assertEqual(cover_image, "")
+            client.images.generate.assert_not_called()
 
 
 if __name__ == "__main__":
