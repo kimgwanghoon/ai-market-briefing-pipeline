@@ -54,7 +54,10 @@ def env_flag(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
-GENERATE_AI_IMAGE = env_flag("GENERATE_AI_IMAGE", default=True)
+# The reader-facing visual is now built from verified market data in the web
+# app.  Generative covers are opt-in so scheduled runs do not spend credits on
+# illustrations that are not used as market evidence.
+GENERATE_AI_IMAGE = env_flag("GENERATE_AI_IMAGE", default=False)
 IMAGE_MODEL = os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1-mini").strip() or "gpt-image-1-mini"
 
 

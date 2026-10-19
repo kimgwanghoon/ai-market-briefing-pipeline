@@ -64,10 +64,24 @@ function ComicReadingGuide({ payload }: { payload: Payload }) {
   return <div className="comic-guide"><span className="eyebrow">HOW TO READ THE COMIC</span><strong>{mood}</strong><p>국내 흐름 KOSPI {kospi} · KOSDAQ {kosdaq} / 변동성(VIX) {vix}</p><small>그림은 이 수치가 만든 분위기를 비유한 편집 이미지입니다. 매매 신호나 사실 전달 수단이 아닙니다.</small></div>;
 }
 
-function EditorialFallback({ payload }: { payload: Payload }) {
-  const tense = (payload.sentiment?.score || 50) < 45;
-  return <section><div className="section-heading"><span>EDITORIAL COMIC</span><h2>그림으로 보는 시장</h2></div><div className={`comic-fallback ${tense ? 'tense' : 'calm'}`} role="img" aria-label="이번 시장 분위기를 상징적으로 표현한 대체 일러스트"><div className="comic-sky"/><div className="comic-city"><i/><i/><i/><i/></div><div className="comic-person">{tense ? '!' : '·'}</div><strong>{tense ? '변동성 확인 구간' : '흐름 확인 구간'}</strong></div><ComicReadingGuide payload={payload}/></section>;
+function direction(change?: string) {
+  if (/[▲+]/.test(change || '')) return 'up';
+  if (/[▼−-]/.test(change || '')) return 'down';
+  return 'flat';
 }
+
+function MarketScene({ payload }: { payload: Payload }) {
+  const markets = payload.indexes || payload.market_signals || {};
+  const domestic = [{ name: 'KOSPI', value: markets.kospi?.change }, { name: 'KOSDAQ', value: markets.kosdaq?.change }];
+  const overseas = [{ name: 'S&P 500', value: markets.sp500?.change }, { name: 'NASDAQ', value: markets.nasdaq?.change }];
+  const risk = [{ name: 'VIX', value: markets.vix?.change }, { name: 'USD/KRW', value: markets.usdkrw?.change }];
+  const mood = payload.daily_overview?.label || payload.sentiment?.label || '관측 중';
+  const moodText = payload.daily_overview?.interpretation || payload.sentiment?.interpretation || '시장 지표를 수집해 방향을 비교하고 있습니다.';
+  const columns = [{ label: '국내', items: domestic }, { label: '해외', items: overseas }, { label: '위험 변수', items: risk }];
+  return <section><div className="section-heading"><span>MARKET AT A GLANCE</span><h2>시장 한 컷</h2></div><div className="market-scene"><div className="scene-head"><div><span className="eyebrow">TODAY&apos;S MARKET MAP</span><strong>{mood}</strong><p>{moodText}</p></div><div className="scene-score">{payload.sentiment?.score ?? '—'}<small>시장 온도</small></div></div><div className="scene-panels">{columns.map(column => <article key={column.label}><span>{column.label}</span>{column.items.map(item => <div className="scene-item" key={item.name}><b>{item.name}</b><em className={direction(item.value)}>{direction(item.value) === 'up' ? '▲' : direction(item.value) === 'down' ? '▼' : '—'} {item.value || '미제공'}</em></div>)}</article>)}</div><p className="scene-note">빨강 ▲는 상승, 파랑 ▼는 하락입니다. VIX·환율은 상승 자체가 위험 신호일 수 있으므로 별도 열로 분리했습니다.</p></div></section>;
+}
+
+function EditorialFallback({ payload }: { payload: Payload }) { return <MarketScene payload={payload}/>; }
 
 function EventGroup({ label, items, collected }: { label: string; items: Event[]; collected?: number }) {
   const first = items.slice(0, 2), rest = items.slice(2);
@@ -163,6 +177,9 @@ function WeeklySections({ payload }: { payload: Payload }) {
 
 export function Report({ row, previous, peer, comparisonError, historical = false }: { row: Briefing; previous?: Briefing; peer?: Briefing; comparisonError?: boolean; historical?: boolean }) {
   const payload = row.payload, markets = payload.market_signals || payload.indexes || {};
+  // Generated art was too ambiguous to carry market meaning. Keep the stored
+  // URL for history, but intentionally render the data-backed market scene.
+  const safeUrl = (_?: string) => undefined;
   const names: Record<string, string> = { kospi: 'KOSPI', kosdaq: 'KOSDAQ', sp500: 'S&P 500', nasdaq: 'NASDAQ', dow: 'DOW', ewy: 'EWY', usdkrw: 'USD / KRW', vix: 'VIX', us10y: '미국 10년물', wti: 'WTI' };
   const points = payload.key_points || payload.summary_items || payload.next_week_outlook?.rationale || [];
   const age = Date.now() - new Date(row.generated_at).getTime();
