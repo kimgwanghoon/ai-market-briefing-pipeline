@@ -80,9 +80,12 @@ jobs:
       - name: Align scheduled generation to target time
         if: inputs.align_to_target == true || inputs.align_to_half_hour == true
         shell: bash
+        env:
+          REQUESTED_TARGET: ${{ inputs.target_kst }}
+          TARGET_MINUTE: ${{ inputs.target_minute }}
         run: |
-          requested_target='${{ inputs.target_kst }}'
-          target_minute='${{ inputs.target_minute }}'
+          requested_target="$REQUESTED_TARGET"
+          target_minute="$TARGET_MINUTE"
           if [ -z "$target_minute" ]; then target_minute="30"; fi
           if [[ ! "$target_minute" =~ ^(00|30)$ ]]; then
             echo "target_minute must be 00 or 30"
@@ -98,11 +101,16 @@ jobs:
             target_epoch=$(TZ=Asia/Seoul date -d "$requested_target" +%s)
           else
             target_epoch=$(TZ=Asia/Seoul date -d "$(TZ=Asia/Seoul date +'%Y-%m-%d %H'):${target_minute}:00" +%s)
-            if [ "$target_epoch" -le "$now_epoch" ]; then
+            if [ "$((now_epoch - target_epoch))" -gt 900 ]; then
               target_epoch=$((target_epoch + 3600))
             fi
           fi
           wait_seconds=$((target_epoch - now_epoch))
+
+          if [ "$wait_seconds" -gt 1500 ]; then
+            echo 'Target is more than 25 minutes away; check dispatch schedule or target_kst.'
+            exit 1
+          fi
 
           if [ "$wait_seconds" -gt 0 ] && [ "$wait_seconds" -le 1500 ]; then
             echo "Preparation complete. Waiting ${wait_seconds}s for the target time."
@@ -127,7 +135,6 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SITE_URL: ${{ vars.SITE_URL || 'https://ai-market-research-desk.vercel.app' }}
           OPENAI_TEXT_MODEL: gpt-4o-mini-2024-07-18
-          GENERATE_AI_IMAGE: false
         run: python intraday.py
 
       - name: Prepare intraday publish directory
@@ -143,3 +150,9 @@ jobs:
           branch: gh-pages
           keep_files: true
           allow_empty_commit: true
+
+      - name: Notify operational failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python -m pipeline.jobs.health --failure

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Research } from './Research';
+import { DailySession, EvidenceNotice } from './Session';
 import { Briefing, Event, labels, Payload, Result, safeUrl, time } from '@/lib/data';
 
 export function Empty({ state }: { state: Result['state'] }) {
@@ -35,7 +36,7 @@ function MarketPulse({ payload }: { payload: Payload }) {
 
 function MarketTrend({ points }: { points?: Payload['market_trend'] }) {
   if (!points || points.length < 2) return null;
-  const values = points.map(point => Number(String(point.kospi || '').replace(/,/g, ''))).filter(Number.isFinite);
+  const values = points.map(point => Number(String(point.kospi ?? 'NaN').replace(/,/g, ''))).filter(Number.isFinite);
   if (values.length < 2) return null;
   const lo = Math.min(...values), hi = Math.max(...values), span = Math.max(0.1, hi - lo);
   const path = points.map((point, index) => {
@@ -54,34 +55,6 @@ function trendTime(value: string) {
   if (Number.isNaN(dt.getTime())) return '시각 미제공';
   return new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(dt).replace(/\.\s*/g, '/').replace(/\/$/, '');
 }
-
-function ComicReadingGuide({ payload }: { payload: Payload }) {
-  const markets = payload.indexes || payload.market_signals || {};
-  const kospi = markets.kospi?.change || '변화율 미제공';
-  const kosdaq = markets.kosdaq?.change || '변화율 미제공';
-  const vix = markets.vix?.change || '변화율 미제공';
-  const mood = payload.daily_overview?.label || payload.sentiment?.label || '관측 중';
-  return <div className="comic-guide"><span className="eyebrow">HOW TO READ THE COMIC</span><strong>{mood}</strong><p>국내 흐름 KOSPI {kospi} · KOSDAQ {kosdaq} / 변동성(VIX) {vix}</p><small>그림은 이 수치가 만든 분위기를 비유한 편집 이미지입니다. 매매 신호나 사실 전달 수단이 아닙니다.</small></div>;
-}
-
-function direction(change?: string) {
-  if (/[▲+]/.test(change || '')) return 'up';
-  if (/[▼−-]/.test(change || '')) return 'down';
-  return 'flat';
-}
-
-function MarketScene({ payload }: { payload: Payload }) {
-  const markets = payload.indexes || payload.market_signals || {};
-  const domestic = [{ name: 'KOSPI', value: markets.kospi?.change }, { name: 'KOSDAQ', value: markets.kosdaq?.change }];
-  const overseas = [{ name: 'S&P 500', value: markets.sp500?.change }, { name: 'NASDAQ', value: markets.nasdaq?.change }];
-  const risk = [{ name: 'VIX', value: markets.vix?.change }, { name: 'USD/KRW', value: markets.usdkrw?.change }];
-  const mood = payload.daily_overview?.label || payload.sentiment?.label || '관측 중';
-  const moodText = payload.daily_overview?.interpretation || payload.sentiment?.interpretation || '시장 지표를 수집해 방향을 비교하고 있습니다.';
-  const columns = [{ label: '국내', items: domestic }, { label: '해외', items: overseas }, { label: '위험 변수', items: risk }];
-  return <section><div className="section-heading"><span>MARKET AT A GLANCE</span><h2>시장 한 컷</h2></div><div className="market-scene"><div className="scene-head"><div><span className="eyebrow">TODAY&apos;S MARKET MAP</span><strong>{mood}</strong><p>{moodText}</p></div><div className="scene-score">{payload.sentiment?.score ?? '—'}<small>시장 온도</small></div></div><div className="scene-panels">{columns.map(column => <article key={column.label}><span>{column.label}</span>{column.items.map(item => <div className="scene-item" key={item.name}><b>{item.name}</b><em className={direction(item.value)}>{direction(item.value) === 'up' ? '▲' : direction(item.value) === 'down' ? '▼' : '—'} {item.value || '미제공'}</em></div>)}</article>)}</div><p className="scene-note">빨강 ▲는 상승, 파랑 ▼는 하락입니다. VIX·환율은 상승 자체가 위험 신호일 수 있으므로 별도 열로 분리했습니다.</p></div></section>;
-}
-
-function EditorialFallback({ payload }: { payload: Payload }) { return <MarketScene payload={payload}/>; }
 
 function EventGroup({ label, items, collected }: { label: string; items: Event[]; collected?: number }) {
   const first = items.slice(0, 2), rest = items.slice(2);
@@ -177,15 +150,12 @@ function WeeklySections({ payload }: { payload: Payload }) {
 
 export function Report({ row, previous, peer, comparisonError, historical = false }: { row: Briefing; previous?: Briefing; peer?: Briefing; comparisonError?: boolean; historical?: boolean }) {
   const payload = row.payload, markets = payload.market_signals || payload.indexes || {};
-  // Generated art was too ambiguous to carry market meaning. Keep the stored
-  // URL for history, but intentionally render the data-backed market scene.
-  const safeUrl = (_?: string) => undefined;
   const names: Record<string, string> = { kospi: 'KOSPI', kosdaq: 'KOSDAQ', sp500: 'S&P 500', nasdaq: 'NASDAQ', dow: 'DOW', ewy: 'EWY', usdkrw: 'USD / KRW', vix: 'VIX', us10y: '미국 10년물', wti: 'WTI' };
   const points = payload.key_points || payload.summary_items || payload.next_week_outlook?.rationale || [];
   const age = Date.now() - new Date(row.generated_at).getTime();
-  const old = !historical && age > (row.kind === 'live' ? 2 : row.kind === 'daily' ? 30 : 192) * 3600000;
+  const old = !historical && age > (row.kind === 'live' ? 2 : row.kind === 'daily' ? 14 : 192) * 3600000;
   const dailyView = payload.daily_overview || legacyDailyOverview(row);
   const viewpoint = dailyView?.label || payload.sentiment?.label || payload.next_week_outlook?.bias || '관측 자료 정리';
   const viewpointText = dailyView?.interpretation || payload.sentiment?.interpretation || payload.next_week_outlook?.rationale?.[0] || '지표와 사건의 확인 수준을 함께 살펴봅니다.';
-  return <><section className="hero"><div><span className="eyebrow">{labels[row.kind]} · {payload.edition_title || 'MARKET PERSPECTIVE'}</span><h1>{row.title}</h1><p className="meta">발행 {time(row.generated_at)}{historical && ' · 과거 보고서'}</p>{row.observation_end && <p className="meta">관측 종료 {time(row.observation_end)}</p>}{old && <p className="notice">최근 생성 이후 시간이 경과했습니다. 휴장·실행 일정과 지표별 기준시각을 확인하세요.</p>}</div><aside className="hero-aside"><span className="eyebrow">오늘의 관점</span><strong>{viewpoint}</strong><p>{viewpointText}</p>{payload.sentiment && <small>시장 온도 {payload.sentiment.score} / 100 · 보조 지표</small>}</aside></section><ReaderSummary row={row}/>{Object.keys(markets).length > 0 && <section className="market-strip" aria-label="주요 시장 지표">{Object.entries(markets).map(([key, market]) => <div key={key}><span>{names[key] || key}</span><strong>{market.price}</strong><em className={/[▲+]/.test(market.change) ? 'up' : /[▼−-]/.test(market.change) ? 'down' : ''}>{market.change}</em><small>{market.market_status} · {market.as_of || '기준시각 미제공'}</small></div>)}</section>}{row.kind !== 'weekly' && <MarketPulse payload={payload}/>}<div className="reading-layout"><div className="main-column"><section><div className="section-heading"><span>MARKET STORY</span><h2>왜 이렇게 판단했나요?</h2></div><div className="analysis">{points.length ? points.map((point, index) => /^\[.*\]$/.test(point) ? <h3 key={index}>{point.slice(1, -1)}</h3> : <p key={index}><Text value={point}/></p>) : <p>분석에 필요한 데이터가 축적 중입니다.</p>}</div></section>{row.kind !== 'weekly' && <MarketTrend points={payload.market_trend}/>} {row.kind === 'daily' && <DailySections payload={payload}/>} {row.kind === 'weekly' ? <WeeklySections payload={payload}/> : <section><div className="section-heading"><span>MARKET DRIVERS</span><h2>뉴스와 공시, 따로 확인하세요</h2></div><p className="muted">원천별로 최대 5건의 핵심 근거를 보관하고, 먼저 중요한 2건씩 보여드립니다.</p><div className="event-groups"><EventGroup label="뉴스" items={payload.news_items || payload.events?.news || []} collected={payload.events?.news_count}/><EventGroup label="공시 (DART)" items={payload.events?.dart || []} collected={payload.events?.dart_count}/></div></section>}{safeUrl(payload.cover_image) ? <section><div className="section-heading"><span>EDITORIAL COMIC</span><h2>그림으로 보는 시장</h2></div>{/* eslint-disable-next-line @next/next/no-img-element */}<img className="comic" src={safeUrl(payload.cover_image)} alt="이번 브리핑의 시장 분위기를 표현한 AI 만화" loading="lazy"/><ComicReadingGuide payload={payload}/></section> : row.kind === 'daily' ? <EditorialFallback payload={payload}/> : null}<details className="analyst-details"><summary>분석 근거·전회 변화·데이터 기준 자세히 보기</summary><Research row={row} previous={previous} peer={peer} comparisonError={comparisonError}/></details></div><aside className="sidebar"><section><span className="eyebrow">CHECK NEXT</span><h2>다음 확인 사항</h2><p><Text value={payload.watchpoint || payload.summary?.top_watchpoint || '후속 뉴스와 시장 지표의 변화가 현재 판단을 뒷받침하는지 확인하세요.'}/></p></section><section><span className="eyebrow">HOW TO READ</span><h3>이 리포트 읽는 법</h3><p>먼저 한눈에 보는 요약을 읽고, 필요한 경우 뉴스·공시와 상세 지표를 확인하세요.</p>{payload.collection_cutoff && <p>수집 마감<br/>{time(payload.collection_cutoff)}</p>}<details><summary>데이터 안내</summary><p>발행시각과 시장 지표의 기준시각은 다를 수 있습니다. AI 분석 및 규칙 기반 계산 결과는 투자 판단을 대신하지 않습니다.</p><p>{payload.reliability?.guidance}</p></details></section><Link href="/archive">이전 보고서 찾아보기 →</Link></aside></div></>;
+  return <><section className="hero"><div><span className="eyebrow">{labels[row.kind]} · {payload.edition_title || 'MARKET PERSPECTIVE'}</span><h1>{row.title}</h1><p className="meta">발행 {time(row.generated_at)}{historical && ' · 과거 보고서'}</p>{row.observation_end && <p className="meta">관측 종료 {time(row.observation_end)}</p>}{old && <p className="notice">최신성 주의: 최근 발행 후 시간이 경과했습니다. 최신 시황으로 해석하지 마세요. 휴장·예약 미실행 여부는 확인되지 않았습니다.</p>}</div><aside className="hero-aside"><span className="eyebrow">오늘의 관점</span><strong>{viewpoint}</strong><p>{viewpointText}</p>{payload.sentiment && <small>시장 온도 {payload.sentiment.score} / 100 · 보조 지표</small>}</aside></section><ReaderSummary row={row}/><EvidenceNotice payload={payload}/>{row.kind === 'daily' && <DailySession payload={payload}/>}{Object.keys(markets).length > 0 && <section className="market-strip" aria-label="주요 시장 지표">{Object.entries(markets).map(([key, market]) => <div key={key}><span>{names[key] || key}</span><strong>{market.price}</strong><em className={/[▲+]/.test(market.change) ? 'up' : /[▼−-]/.test(market.change) ? 'down' : ''}>{market.change}</em><small>{market.market_status} · {market.as_of || '기준시각 미제공'}</small></div>)}</section>}{row.kind !== 'weekly' && <MarketPulse payload={payload}/>}<div className="reading-layout"><div className="main-column"><section><div className="section-heading"><span>MARKET STORY</span><h2>왜 이렇게 판단했나요?</h2></div><div className="analysis">{points.length ? points.map((point, index) => /^\[.*\]$/.test(point) ? <h3 key={index}>{point.slice(1, -1)}</h3> : <p key={index}><Text value={point}/></p>) : <p>분석에 필요한 데이터가 축적 중입니다.</p>}</div></section>{row.kind !== 'weekly' && <MarketTrend points={payload.market_trend}/>} {row.kind === 'daily' && <DailySections payload={payload}/>} {row.kind === 'weekly' ? <WeeklySections payload={payload}/> : <section><div className="section-heading"><span>MARKET DRIVERS</span><h2>뉴스와 공시, 따로 확인하세요</h2></div><p className="muted">원천별로 최대 5건의 핵심 근거를 보관하고, 먼저 중요한 2건씩 보여드립니다.</p><div className="event-groups"><EventGroup label="뉴스" items={payload.news_items || payload.events?.news || []} collected={payload.events?.news_count}/><EventGroup label="공시 (DART)" items={payload.events?.dart || []} collected={payload.events?.dart_count}/></div></section>}<details className="analyst-details"><summary>분석 근거·전회 변화·데이터 기준 자세히 보기</summary><Research row={row} previous={previous} peer={peer} comparisonError={comparisonError}/></details></div><aside className="sidebar"><section><span className="eyebrow">CHECK NEXT</span><h2>다음 확인 사항</h2><p><Text value={payload.watchpoint || payload.summary?.top_watchpoint || '후속 뉴스와 시장 지표의 변화가 현재 판단을 뒷받침하는지 확인하세요.'}/></p></section><section><span className="eyebrow">HOW TO READ</span><h3>이 리포트 읽는 법</h3><p>먼저 한눈에 보는 요약을 읽고, 필요한 경우 뉴스·공시와 상세 지표를 확인하세요.</p>{payload.collection_cutoff && <p>수집 마감<br/>{time(payload.collection_cutoff)}</p>}<details><summary>데이터 안내</summary><p>발행시각과 시장 지표의 기준시각은 다를 수 있습니다. AI 분석 및 규칙 기반 계산 결과는 투자 판단을 대신하지 않습니다.</p><p>{payload.reliability?.guidance}</p></details></section><Link href="/archive">이전 보고서 찾아보기 →</Link></aside></div></>;
 }

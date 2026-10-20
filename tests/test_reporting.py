@@ -450,7 +450,8 @@ class HtmlSafetyTests(unittest.TestCase):
                 )
             html = (Path(tmp_dir) / "index.html").read_text(encoding="utf-8")
 
-        self.assertIn("만화로 읽는 시장 분위기", html)
+        self.assertNotIn("만화로 읽는 시장 분위기", html)
+        self.assertNotIn("cover_test.png", html)
         self.assertIn("코스피·나스닥 엇갈린 온도차", html)
         self.assertIn("왜 중요한가", html)
         self.assertIn("news.jpg", html)
@@ -655,62 +656,6 @@ class NewsCurationTests(unittest.TestCase):
 
 
 class CoverGenerationTests(unittest.TestCase):
-    def test_cover_prompt_changes_composition_with_current_market_mood(self):
-        def metric(change: str, price: str = "100.00") -> dict:
-            return {"price": price, "change": change}
-
-        bullish = main.build_market_cover_prompt(
-            "코스피·나스닥 동반 강세",
-            metric("▲ 1.00 (+1.20%)"),
-            metric("▲ 1.00 (+0.90%)"),
-            metric("▲ 1.00 (+0.70%)"),
-            metric("▲ 1.00 (+1.10%)"),
-            metric("▼ 1.00 (-4.00%)", "16.00"),
-            metric("▼ 1.00 (-0.30%)"),
-            metric("▼ 1.00 (-0.20%)"),
-            True,
-        )
-        defensive = main.build_market_cover_prompt(
-            "한미 증시 동반 약세",
-            metric("▼ 1.00 (-1.20%)"),
-            metric("▼ 1.00 (-1.50%)"),
-            metric("▼ 1.00 (-0.80%)"),
-            metric("▼ 1.00 (-1.10%)"),
-            metric("▲ 1.00 (+12.00%)", "28.00"),
-            metric("▲ 1.00 (+0.80%)"),
-            metric("▲ 1.00 (+0.70%)"),
-            False,
-        )
-
-        self.assertIn("broad risk-on participation", bullish)
-        self.assertIn("elevated volatility", defensive)
-        self.assertIn("KOSPI +1.20%", bullish)
-        self.assertIn("one full-bleed comic panel", bullish)
-        self.assertIn("three-panel silent comic", defensive)
-        self.assertIn("wordless editorial comic", bullish)
-        self.assertIn("No speech balloons", defensive)
-        self.assertNotEqual(bullish, defensive)
-
-    def test_cover_prompt_uses_split_panels_for_cross_market_divergence(self):
-        def metric(change: str, price: str = "100.00") -> dict:
-            return {"price": price, "change": change}
-
-        divergent = main.build_market_cover_prompt(
-            "코스피·나스닥 엇갈린 온도차",
-            metric("▲ 1.00 (+1.50%)"),
-            metric("▲ 1.00 (+1.10%)"),
-            metric("▼ 1.00 (-0.40%)"),
-            metric("▼ 1.00 (-0.60%)"),
-            metric("▲ 1.00 (+2.00%)", "18.00"),
-            metric("▲ 1.00 (+0.20%)"),
-            metric("▲ 1.00 (+0.10%)"),
-            True,
-        )
-
-        self.assertIn("Korean equities outperforming", divergent)
-        self.assertIn("two-panel split comic", divergent)
-        self.assertIn("relative-strength contrast", divergent)
-
     def test_generates_cover_when_briefing_validation_falls_back(self):
         image_bytes = b"generated cover"
         client = SimpleNamespace(
@@ -733,7 +678,6 @@ class CoverGenerationTests(unittest.TestCase):
             with (
                 patch.object(main, "OUTPUT_DIR", Path(tmp_dir)),
                 patch.object(main, "OPENAI_API_KEY", "test-key"),
-                patch.object(main, "GENERATE_AI_IMAGE", True),
                 patch.object(main, "OpenAI", return_value=client),
                 patch.object(
                     main,

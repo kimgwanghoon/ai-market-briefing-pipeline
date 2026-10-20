@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Dict, List, Tuple
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote_plus
 
 import pytz
 import requests
@@ -413,9 +413,9 @@ def filter_unseen_events(
     return unique
 
 
-def fetch_google_market_news(limit: int = 20) -> List[dict]:
+def fetch_google_market_news(limit: int = 20, query: str = '코스피 OR 증시 when:1d') -> List[dict]:
     """Fallback for when Naver's presentation HTML changes or blocks a run."""
-    url = "https://news.google.com/rss/search?q=%EC%BD%94%EC%8A%A4%ED%94%BC+OR+%EC%A6%9D%EC%8B%9C+when:1d&hl=ko&gl=KR&ceid=KR:ko"
+    url = f"https://news.google.com/rss/search?q={quote_plus(query)}&hl=ko&gl=KR&ceid=KR:ko"
     try:
         response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
         response.raise_for_status()

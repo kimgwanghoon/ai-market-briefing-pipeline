@@ -2,11 +2,11 @@
 import hashlib
 import os
 from datetime import datetime
-from pathlib import Path
-from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from pipeline.prompts.versions import VERSIONS
 
@@ -59,6 +59,10 @@ class Store:
         if not self.url.startswith('https://') or not key:
             raise ValueError('Valid SUPABASE_URL and batch key required')
         self.session = session or requests.Session()
+        if session is None:
+            self.session.mount('https://', HTTPAdapter(max_retries=Retry(
+                total=2, backoff_factor=0.5, status_forcelist=(429, 502, 503, 504),
+                allowed_methods=frozenset({'GET'}))))
         self.headers = {'apikey': key, 'Content-Type': 'application/json'}
         # New sb_secret keys are API keys, not JWTs.
         if not key.startswith('sb_secret_'):
@@ -89,24 +93,3 @@ class Store:
     def update_run(self, run, token, **values):
         return self.request('PATCH', '/rest/v1/pipeline_runs',
                             params={'id': f'eq.{run}', 'token': f'eq.{token}'}, json=values)
-
-    def upload_cover(self, run, path):
-        path = Path(path)
-        content_types = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-                         '.webp': 'image/webp', '.svg': 'image/svg+xml'}
-        if path.suffix.lower() not in content_types or not path.is_file():
-            return None
-        name = f'{run}/{path.name}'
-        headers = {**self.headers, 'Content-Type': content_types[path.suffix.lower()]}
-        response = self.session.post(f'{self.url}/storage/v1/object/research-covers/{quote(name)}',
-                                     headers=headers, data=path.read_bytes(), timeout=(10, 60))
-        if not response.ok:
-            raise RuntimeError(f'Cover upload failed ({response.status_code})')
-        return f'{self.url}/storage/v1/object/public/research-covers/{quote(name)}'
-
-    def delete_cover(self, url):
-        prefix = f'{self.url}/storage/v1/object/public/research-covers/'
-        if url and url.startswith(prefix):
-            from urllib.parse import unquote
-            self.request('DELETE', '/storage/v1/object/research-covers',
-                         json={'prefixes': [unquote(url[len(prefix):])]})

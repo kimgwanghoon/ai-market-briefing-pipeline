@@ -4,6 +4,10 @@ export type Event = { title: string; url?: string; link?: string; source?: strin
 export type Market = { price: string; change: string; as_of?: string; market_status?: string; source?: string; source_timestamp?: string; collected_at?: string; price_basis?: string };
 type Stock = { catalyst?: string; name: string; ticker: string; sector: string; status: string; reason: string; risk: string; invalidation: string; basis: string; quote: { price: number; as_of: string }; evidence: Event[] };
 export type Payload = {
+  generation?: {mode: string; reason: string};
+  cross_source_checks?: Record<string, {status: string; reason: string; deviation_pct?: number; secondary_at?: string}>;
+  daily_session?: {session: string; title: string; facts: string[]; upside: string; downside: string; limits: string; review: string[]; morning_report_id?: string};
+  evidence_assessment?: {status: string; guidance: string; total: number; verified: number};
   headline?: string; summary_items?: string[]; key_points?: string[]; watchpoint?: string;
   daily_overview?: { label: string; interpretation: string; watchpoint: string; korea_session_label: string; data_note: string };
   window_start?: string; collection_cutoff?: string; edition_title?: string; cover_image?: string;
@@ -75,7 +79,7 @@ export async function getBriefings(query: Query = {}, size = 12): Promise<Result
     params.set('offset', String(Math.floor(page) * size));
     const headers: Record<string, string> = { apikey: key };
     if (!key.startsWith('sb_publishable_')) headers.Authorization = `Bearer ${key}`;
-    const response = await fetch(`${url.replace(/\/$/, '')}/rest/v1/briefings?${params}`, {
+    const response = await fetch(`${url.replace(/\/$/, '')}/rest/v1/published_briefings?${params}`, {
       headers, cache: 'no-store', signal: AbortSignal.timeout(10000),
     });
     if (!response.ok) throw new Error('Read failed');

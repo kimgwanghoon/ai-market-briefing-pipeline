@@ -1,0 +1,35 @@
+name: Publication Health
+on:
+  schedule:
+    - cron: '45 23 * * 0-4'
+    - cron: '45 0-6,9 * * 1-5'
+    - cron: '15 7 * * 1-5'
+    - cron: '0 1 * * 6'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: publication-health
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests==2.32.5
+      - name: Check expected publication
+        env:
+          EXPECTED_CRON: ${{ github.event.schedule }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python -m pipeline.jobs.health
+      - name: Report watchdog failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python -m pipeline.jobs.health --failure

@@ -2,7 +2,6 @@ import logging
 import os
 import re
 import json
-import base64
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -53,12 +52,6 @@ def env_flag(name: str, default: bool = False) -> bool:
         return default
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
-
-# The reader-facing visual is now built from verified market data in the web
-# app.  Generative covers are opt-in so scheduled runs do not spend credits on
-# illustrations that are not used as market evidence.
-GENERATE_AI_IMAGE = env_flag("GENERATE_AI_IMAGE", default=False)
-IMAGE_MODEL = os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-1-mini").strip() or "gpt-image-1-mini"
 
 
 def resolve_pages_url() -> str:
@@ -472,48 +465,6 @@ def enrich_selected_news(articles: List[dict], limit: int = 5) -> List[dict]:
     return enriched
 
 
-def generate_cover_svg(path: Path, title: str) -> None:
-    safe_title = (
-        title.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
-    svg = f"""<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1200\" height=\"630\" viewBox=\"0 0 1200 630\">
-<defs>
-  <linearGradient id=\"bg\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\">
-    <stop offset=\"0%\" stop-color=\"#f8fafc\"/>
-    <stop offset=\"100%\" stop-color=\"#e2e8f0\"/>
-  </linearGradient>
-</defs>
-<rect width=\"1200\" height=\"630\" fill=\"url(#bg)\"/>
-<circle cx=\"170\" cy=\"110\" r=\"120\" fill=\"#dbeafe\"/>
-<circle cx=\"1120\" cy=\"560\" r=\"160\" fill=\"#fee2e2\"/>
-<text x=\"80\" y=\"260\" font-family=\"Pretendard, sans-serif\" font-size=\"46\" font-weight=\"700\" fill=\"#0f172a\">Daily Market Briefing</text>
-<text x=\"80\" y=\"330\" font-family=\"Pretendard, sans-serif\" font-size=\"30\" font-weight=\"600\" fill=\"#1e293b\">{safe_title}</text>
-<text x=\"80\" y=\"390\" font-family=\"Pretendard, sans-serif\" font-size=\"24\" fill=\"#334155\">Generated fallback cover</text>
-</svg>
-"""
-    path.write_text(svg, encoding="utf-8")
-
-
-def _clean_old_covers() -> None:
-    for f in OUTPUT_DIR.glob("cover_*.png"):
-        f.unlink(missing_ok=True)
-    for f in OUTPUT_DIR.glob("cover.png"):
-        f.unlink(missing_ok=True)
-
-
-def get_existing_cover_file() -> str:
-    pngs = sorted(OUTPUT_DIR.glob("cover_*.png"), key=lambda p: p.stat().st_mtime, reverse=True)
-    if pngs:
-        return pngs[0].name
-    if (OUTPUT_DIR / "cover.png").exists():
-        return "cover.png"
-    if (OUTPUT_DIR / "cover.svg").exists():
-        return "cover.svg"
-    return ""
-
-
 def detect_run_source() -> str:
     event_name = os.getenv("GITHUB_EVENT_NAME", "").strip().lower()
     if event_name in {"push", "schedule", "workflow_dispatch"}:
@@ -556,148 +507,6 @@ def build_market_headline(kospi: dict, nasdaq: dict, vix: dict) -> str:
     if vix_value == vix_value and vix_value > 25:
         return "변동성 경계 속 지수 방향 점검"
     return "지수 혼조 속 금리·환율 점검"
-
-
-def build_market_cover_prompt(
-    headline: str,
-    kospi: dict,
-    kosdaq: dict,
-    sp500: dict,
-    nasdaq: dict,
-    vix: dict,
-    usdkrw: dict,
-    us10y: dict,
-    is_morning: bool,
-) -> str:
-    changes = {
-        "KOSPI": parse_change_percent(kospi.get("change", "")),
-        "KOSDAQ": parse_change_percent(kosdaq.get("change", "")),
-        "S&P 500": parse_change_percent(sp500.get("change", "")),
-        "NASDAQ": parse_change_percent(nasdaq.get("change", "")),
-        "VIX change": parse_change_percent(vix.get("change", "")),
-        "USD/KRW": parse_change_percent(usdkrw.get("change", "")),
-        "US 10Y": parse_change_percent(us10y.get("change", "")),
-    }
-    vix_level = parse_price_value(vix.get("price", ""))
-
-    def mean_for(*keys: str) -> float:
-        values = [changes[key] for key in keys if changes[key] == changes[key]]
-        return sum(values) / len(values) if values else float("nan")
-
-    domestic = mean_for("KOSPI", "KOSDAQ")
-    global_market = mean_for("S&P 500", "NASDAQ")
-    vix_change = changes["VIX change"]
-    fx_change = changes["USD/KRW"]
-    yield_change = changes["US 10Y"]
-
-    if (vix_level == vix_level and vix_level >= 25) or (vix_change == vix_change and vix_change >= 8):
-        scenario = "elevated volatility and defensive positioning"
-        panel_plan = (
-            "Use a three-panel silent comic with the same small cast of fictional adult market participants: "
-            "first they notice a sudden change in the air, then a violent gust scatters loose papers and shakes "
-            "the market district, and finally they regroup cautiously behind a sturdy shelter while watching for "
-            "the next move. Keep the ending alert rather than catastrophic"
-        )
-        palette = "charcoal navy, cold steel blue, restrained crimson, sparse white light"
-        mood = "alert and defensive without panic or disaster imagery"
-    elif domestic == domestic and global_market == global_market and domestic > 0.4 and global_market > 0.25:
-        scenario = "broad risk-on participation across Korean and US equities"
-        panel_plan = (
-            "Use one full-bleed comic panel: a diverse group of fictional adult market participants moves together "
-            "up a broad sunlit staircase through an opening market district, with confident expressions, energetic "
-            "motion and plenty of open space ahead. Show broad participation, not reckless euphoria"
-        )
-        palette = "deep navy, luminous teal, restrained emerald, warm gold highlights"
-        mood = "confident and energetic with controlled optimism"
-    elif domestic == domestic and global_market == global_market and domestic < -0.4 and global_market < -0.25:
-        scenario = "broad risk-off pressure across Korean and US equities"
-        panel_plan = (
-            "Use one dramatic full-bleed comic panel: the same kind of fictional market participants lean into a "
-            "cold headwind on a descending city walkway, protecting their belongings and helping one another keep "
-            "balance. Show broad pressure and caution without depicting a crash or disaster"
-        )
-        palette = "deep navy, muted crimson, cool grey, narrow silver highlights"
-        mood = "serious, cautious and tightly controlled"
-    elif domestic == domestic and global_market == global_market and domestic - global_market > 0.8:
-        scenario = "Korean equities outperforming a weaker US backdrop"
-        panel_plan = (
-            "Use a two-panel split comic with matching visual scale: the Seoul-inspired panel shows participants "
-            "moving forward in warm light, while the overseas-market panel shows a similar group slowing down in "
-            "cooler weather. Make the relative-strength contrast obvious through action and expression"
-        )
-        palette = "warm teal and gold contrasted with cool navy and desaturated blue"
-        mood = "constructive locally but globally unresolved"
-    elif domestic == domestic and global_market == global_market and global_market - domestic > 0.8:
-        scenario = "US equities outperforming a weaker Korean backdrop"
-        panel_plan = (
-            "Use a two-panel split comic with matching visual scale: the overseas-market panel shows participants "
-            "advancing confidently in brighter light, while the Seoul-inspired panel shows a similar group pausing "
-            "under a subdued sky. Make the relative-strength contrast obvious through action and expression"
-        )
-        palette = "bright cyan and gold in the distance, slate blue and muted red in the foreground"
-        mood = "globally constructive with local caution"
-    elif ((fx_change == fx_change and fx_change > 0.5) or (yield_change == yield_change and yield_change > 0.5)):
-        scenario = "equities facing tighter rate or currency conditions"
-        panel_plan = (
-            "Use a three-panel silent comic: participants first walk normally, then rising water and heavier luggage "
-            "make each step harder, and finally they pause to rebalance their load while an open path remains visible. "
-            "Use these physical metaphors to show rate and currency pressure without literal currency symbols"
-        )
-        palette = "midnight blue, graphite, muted amber and restrained copper"
-        mood = "analytical, constrained and watchful"
-    else:
-        scenario = "mixed sideways markets with no dominant directional consensus"
-        panel_plan = (
-            "Use a four-panel silent comic grid with the same recurring fictional participants: one cautiously steps "
-            "forward, one steps back, one waits and observes, and the final panel shows the group comparing opposing "
-            "paths at a crossroads. The sequence must communicate indecision rather than a hidden bullish or bearish bias"
-        )
-        palette = "deep navy, slate blue, muted teal and subtle amber"
-        mood = "calm, analytical and undecided"
-
-    valid_drivers = {key: value for key, value in changes.items() if value == value}
-    dominant_driver = max(valid_drivers, key=lambda key: abs(valid_drivers[key])) if valid_drivers else "mixed signals"
-
-    def format_signal(key: str) -> str:
-        value = changes[key]
-        return f"{value:+.2f}%" if value == value else "unavailable"
-
-    vix_level_text = f"{vix_level:g}" if vix_level == vix_level else "unavailable"
-    signal_context = (
-        f"KOSPI {format_signal('KOSPI')}, KOSDAQ {format_signal('KOSDAQ')}, "
-        f"S&P 500 {format_signal('S&P 500')}, NASDAQ {format_signal('NASDAQ')}, "
-        f"VIX level {vix_level_text}"
-    )
-    signal_context += (
-        f", VIX change {format_signal('VIX change')}, USD/KRW {format_signal('USD/KRW')}, "
-        f"US 10Y {format_signal('US 10Y')}"
-    )
-    session_light = (
-        "crisp early-morning light with a subtle dawn glow"
-        if is_morning
-        else "refined evening light with subtle city illumination"
-    )
-
-    return (
-        "Create a premium square wordless editorial comic for a Korean daily market briefing. "
-        "Use a polished modern webtoon and newspaper editorial-comic hybrid: expressive fictional adult characters, "
-        "clean ink lines, cinematic framing, refined cel shading and professional magazine-grade color. "
-        "The current measured market mood must be understandable at a glance from character expressions, body language, "
-        "weather, movement and environmental metaphors, not from generic finance decoration. "
-        f"Headline for semantic direction only, never render it as text: {headline}. "
-        f"Current signals for art direction only, never render these values: {signal_context}. "
-        f"Scenario: {scenario}. Dominant changing signal: {dominant_driver}. "
-        f"Panel direction: {panel_plan}. Mood: {mood}. Lighting: {session_light}. Palette: {palette}. "
-        "Treat the image as a visual explainer, not decoration: show one unmistakable action per panel in a clear left-to-right "
-        "sequence of cause, market reaction, and what investors should do next (observe, wait, or proceed carefully). Use a "
-        "single large foreground subject and obvious directional movement in each panel; the image must still make sense when "
-        "seen at phone size. Avoid vague weather-only metaphors and avoid a generic skyline unless it directly supports the action. "
-        "Make the final panel a calm decision moment, never a celebration or disaster. Keep recurring characters visually consistent, "
-        "with faces and essential action away from outer edges for responsive cropping. Do not imitate any named artist, studio, comic "
-        "or copyrighted character. Do not depict bulls, bears, mascots, coins, money, rockets, candlestick charts, trading screens, "
-        "fake interfaces or cliché Wall Street imagery. No speech balloons. Absolutely no text, letters, numbers, ticker symbols, logos, "
-        "flags, labels, captions, panel numbers, borders around the whole image, signatures or watermarks."
-    )
 
 
 def require_market_coverage(indexes: dict, minimum: int, required: tuple[str, ...] = ()) -> int:
@@ -865,7 +674,7 @@ def select_top_news(articles: List[dict], max_count: int = 5, client=None) -> Li
         for i, article in enumerate(articles)
     ]
 
-    news_client = client or OpenAI(api_key=OPENAI_API_KEY)
+    news_client = client or OpenAI(api_key=OPENAI_API_KEY, timeout=30, max_retries=1)
     try:
         resp = news_client.chat.completions.create(
             model="gpt-4o-mini",
@@ -876,6 +685,7 @@ def select_top_news(articles: List[dict], max_count: int = 5, client=None) -> Li
                     "content": (
                         "한국 투자자를 위한 증권·경제 뉴스 편집자입니다. 후보에 있는 사실만 사용하세요. "
                         "금리·정책·실적·섹터 회전·수급·지정학·지수 영향도가 큰 뉴스를 우선하고, "
+                        "미국 기술주·AI·반도체·광통신의 실적·가이던스·수요 변화는 중요할 때 우선하되 부족하면 억지로 채우지 마세요. "
                         "중복 이슈와 광고성·생활경제성 기사는 제외하세요. why_it_matters는 제목과 "
                         "description에서 확인되는 범위 안에서만 작성하고 새로운 숫자나 원인을 만들지 마세요."
                     ),
@@ -981,7 +791,6 @@ def save_snapshot(
         "indexes": indexes,
         "news_items": news_items or [],
         "cover_image": cover_image,
-        "generate_ai_image": GENERATE_AI_IMAGE,
         "run_source": detect_run_source(),
     }
     stamp = timestamp.strftime("%Y-%m-%d-%H%M%S")
@@ -1007,7 +816,11 @@ def generate_ai_briefing(
     us10y: dict,
     wti: dict,
     news_items: List[dict] | None = None,
+    session_context: dict | None = None,
+    generation_meta: dict | None = None,
 ) -> Tuple[str, List[str], str]:
+    if generation_meta is not None:
+        generation_meta.update(mode='rules', reason='AI 생성 전')
     fallback_headline = build_market_headline(kospi, nasdaq, vix)
 
     watchpoint_line = build_watchpoint_line(vix, usdkrw, us10y)
@@ -1023,9 +836,12 @@ def generate_ai_briefing(
             f"주요 뉴스 **{lead.get('title', '')}**는 {level} 상태입니다. "
             f"{str(detail)[:180] if detail else '제목만으로 시장 전체 영향은 판단하지 않습니다.'}"
         )
-    fallback_items = ["[한국 시장]", *fallback_korea_items, "[미국 시장]", *fallback_us_items]
+    fallback_items = (["[미국장 결과]", *fallback_us_items, "[국내장 대응 조건]", *fallback_korea_items]
+                      if IS_MORNING else ["[국내장 결과]", *fallback_korea_items, "[미국장 관전 조건]", *fallback_us_items])
 
     if not OPENAI_API_KEY:
+        if generation_meta is not None:
+            generation_meta.update(mode='rules', reason='AI 키 미설정 · 관측값 기반 대체 요약')
         return fallback_headline, fallback_items, ""
 
     client = OpenAI(api_key=OPENAI_API_KEY, timeout=30, max_retries=1)
@@ -1063,6 +879,12 @@ def generate_ai_briefing(
     ) or "- 확인된 주요 뉴스 없음"
     text_prompt = f"""
 목표: {prompt_context}를 개인투자자 대상 데일리 브리핑으로 작성하세요.
+편집 세션: {"아침: 미국장 결과 → 국내장 조건부 시나리오" if IS_MORNING else "저녁: 국내장 결과 → 아침 관점 재점검 → 미국장 조건부 시나리오"}
+세션 참고(사실·수치는 반드시 아래 근거와 대조): {json.dumps({k:v for k,v in (session_context or {}).items() if k not in ('review','morning_report_id')}, ensure_ascii=False)}
+- 아침에는 미국 정규장 결과와 국내 최근 종가를 분리하고, 국내 개장 방향을 확정하지 마세요.
+- 저녁에는 국내 실제 마감 반응을 먼저 설명하고 미국 전일 종가를 오늘 밤 결과처럼 쓰지 마세요.
+- 기술주·AI·반도체·광통신은 수집된 관련 기사가 있을 때만 다루세요. 미수집 개별주 등락·시간외·선물·경제일정·실적 전망을 창작하지 마세요.
+- 같은 사건은 반복하지 않고, 상방·하방 조건과 판단이 달라지는 조건을 제시하세요.
 
 사용 가능한 팩트 데이터(이 범위 밖 정보는 추정/창작 금지):
 - 한국 시장: 코스피 {kospi['price']} ({kospi['change']}), 코스닥 {kosdaq['price']} ({kosdaq['change']})
@@ -1082,7 +904,7 @@ def generate_ai_briefing(
 8) watchpoint 본문만 작성하세요(제목 접두사는 화면에서 추가합니다). "좋아지면 볼 것 / 나빠지면 볼 것"을 한 문장씩 쉽게 설명하세요. 근거 없는 숫자 임계값을 만들지 마세요.
 9) headline은 공백 포함 12~24자의 한국어 한 줄로, 시장의 방향 차이·긴장감·온도차 중 실제 데이터로 확인되는 특징을 압축하세요.
 10) headline, 각 point, watchpoint에 claim_type 및 실제 근거의 evidence_ids를 포함하세요. 지표명과 수치는 반드시 같은 evidence ID를 인용하세요.
-11) 모든 text에는 인용한 근거 중 최소 한 개의 정확한 지표명(KOSPI, KOSDAQ, S&P 500, DOW, NASDAQ, EWY, VIX, USD/KRW, 미10년물, WTI)을 반드시 포함하세요.
+11) 지표 해석에는 인용한 근거의 정확한 지표명을, 뉴스 해석에는 인용한 뉴스의 정확한 제목을 포함하세요. 뉴스만 다루는 문장에 무관한 지표를 억지로 넣지 마세요.
 12) headline에는 정확한 지표명을 포함하고, 과장·특수기호·이모지·매수·매도 표현을 사용하지 마세요.
 
 시황 판단 순서와 역할:
@@ -1103,48 +925,6 @@ def generate_ai_briefing(
 {news_context}
 근거 데이터(JSON): {json.dumps(evidence, ensure_ascii=False)}
 """.strip()
-
-    def generate_market_cover(cover_headline: str) -> str:
-        image_prompt = build_market_cover_prompt(
-            cover_headline,
-            kospi,
-            kosdaq,
-            sp500,
-            nasdaq,
-            vix,
-            usdkrw,
-            us10y,
-            IS_MORNING,
-        )
-
-        if not GENERATE_AI_IMAGE:
-            existing_cover = get_existing_cover_file()
-            if existing_cover:
-                return existing_cover
-            generate_cover_svg(OUTPUT_DIR / "cover.svg", cover_headline)
-            return "cover.svg"
-
-        try:
-            image_response = client.images.generate(
-                model=IMAGE_MODEL,
-                prompt=image_prompt,
-                size="1024x1024",
-                quality="low",
-                n=1,
-            )
-            img_data = base64.b64decode(image_response.data[0].b64_json)
-            _clean_old_covers()
-            now_kst = datetime.now(KST)
-            cover_name = f"cover_{now_kst.strftime('%Y%m%d_%H%M')}.png"
-            (OUTPUT_DIR / cover_name).write_bytes(img_data)
-            return cover_name
-        except Exception as exc:
-            print(f"AI cover fallback: {type(exc).__name__}: {exc}")
-            existing_cover = get_existing_cover_file()
-            if existing_cover:
-                return existing_cover
-            generate_cover_svg(OUTPUT_DIR / "cover.svg", cover_headline)
-            return "cover.svg"
 
     try:
         briefing = create_structured_completion(
@@ -1179,10 +959,15 @@ def generate_ai_briefing(
         us_points = [render_grounded_claim(item, evidence, evidence_labels, use_model_text=True) for item in briefing["us_points"]]
         watchpoint_body = render_grounded_claim(briefing["watchpoint"], evidence, evidence_labels, use_model_text=True)
         watchpoint = f"오늘의 **핵심 관전 포인트**: {watchpoint_body}" if watchpoint_body else watchpoint_line
-        summary_items = ["[한국 시장]", *korea_points, "[미국 시장]", *us_points, watchpoint]
+        summary_items = (["[미국장 결과]", *us_points, "[국내장 대응 조건]", *korea_points, watchpoint]
+                         if IS_MORNING else ["[국내장 결과]", *korea_points, "[미국장 관전 조건]", *us_points, watchpoint])
+        if generation_meta is not None:
+            generation_meta.update(mode='ai', reason='근거 검증 통과')
         return headline, summary_items, ""
     except Exception as exc:
         print(f"AI briefing fallback: {type(exc).__name__}: {exc}")
+        if generation_meta is not None:
+            generation_meta.update(mode='rules', reason='AI 생성 또는 근거 검증 실패 · 관측값 기반 대체 요약')
         return fallback_headline, fallback_items, ""
 
 
@@ -1208,9 +993,9 @@ def render_html(
     us_items: List[str] = []
     current_section = ""
     for item in summary_items:
-        if item == "[한국 시장]":
+        if item in ("[한국 시장]", "[국내장 대응 조건]", "[국내장 결과]"):
             current_section = "korea"
-        elif item == "[미국 시장]":
+        elif item in ("[미국 시장]", "[미국장 결과]", "[미국장 관전 조건]"):
             current_section = "us"
         elif current_section == "korea":
             korea_items.append(item)

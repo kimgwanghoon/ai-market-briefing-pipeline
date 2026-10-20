@@ -92,9 +92,9 @@ def _split_summary(summary_items: List[str]) -> tuple[List[str], List[str]]:
     sections = {"korea": [], "us": []}
     current = "korea"
     for item in summary_items:
-        if item == "[한국 시장]":
+        if item in ("[한국 시장]", "[국내장 대응 조건]", "[국내장 결과]"):
             current = "korea"
-        elif item == "[미국 시장]":
+        elif item in ("[미국 시장]", "[미국장 결과]", "[미국장 관전 조건]"):
             current = "us"
         else:
             sections[current].append(item)

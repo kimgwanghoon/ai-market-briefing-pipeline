@@ -7,7 +7,6 @@
   <meta name="description" content="{{ comic_headline }}" />
   <meta property="og:title" content="{{ edition_title }}" />
   <meta property="og:description" content="{{ comic_headline }}" />
-  <meta property="og:image" content="{{ cover_image }}" />
   <style>
     :root {
       --bg-a: #f8fafc;
@@ -546,15 +545,6 @@
       </div>
     </section>
 
-    <section class="cover-section">
-      <div class="cover-frame">
-        <img class="cover" src="{{ cover_image }}" onerror="this.onerror=null;this.src='cover.svg';" alt="{{ comic_headline }} 브리핑 커버" />
-        <div class="cover-overlay">
-          <span class="cover-kicker">만화로 읽는 시장 분위기</span>
-          <p class="cover-headline">{{ comic_headline }}</p>
-        </div>
-      </div>
-    </section>
 
     {% if news_items %}
     <section class="news-section">

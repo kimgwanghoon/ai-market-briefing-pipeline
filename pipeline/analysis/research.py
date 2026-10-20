@@ -111,17 +111,31 @@ def event_insight(item):
 
 
 def enrich_events(payload):
-    for items in [payload.get('news_items', []), *[payload.get('events', {}).get(k, []) for k in ('news', 'dart')]]:
+    sources = [payload.get('news_items', []), *[payload.get('events', {}).get(k, []) for k in ('news', 'dart')]]
+    for items in sources:
         for item in items:
             item['scope'] = classify_event(item)
             item['research_insight'] = event_insight(item)
     groups = {'article_verified': 0, 'filing_verified': 0, 'listing_summary': 0, 'title_only': 0}
-    for items in [payload.get('news_items', []), *[payload.get('events', {}).get(k, []) for k in ('news', 'dart')]]:
+    seen = set()
+    for items in sources:
         for item in items:
+            identity = item.get('event_id') or item.get('url') or item.get('link') or item.get('title')
+            if identity in seen:
+                continue
+            seen.add(identity)
             status = item.get('content_status', '')
             if status == 'article_verified': groups['article_verified'] += 1
             elif status == 'filing_verified': groups['filing_verified'] += 1
             elif status == 'listing_summary': groups['listing_summary'] += 1
             else: groups['title_only'] += 1
     payload['evidence_quality'] = groups
+    total = sum(groups.values())
+    verified = groups['article_verified'] + groups['filing_verified']
+    payload['evidence_assessment'] = {
+        'total': total, 'verified': verified,
+        'status': '근거 부족' if not total or verified == 0 else '부분 확인' if verified < total else '본문 확보',
+        'guidance': ('본문 근거가 없어 뉴스 기반 원인·전망 판단을 보류합니다.' if not verified else
+                     f'{total}건 중 {verified}건의 본문을 확보했습니다. 본문 확보는 사실의 독립 검증이나 예측 정확도를 뜻하지 않습니다.'),
+    }
     return payload

@@ -18,6 +18,7 @@ env:
 jobs:
   weekly-report:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -69,3 +70,9 @@ jobs:
           branch: gh-pages
           keep_files: true
           allow_empty_commit: true
+
+      - name: Notify operational failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python -m pipeline.jobs.health --failure

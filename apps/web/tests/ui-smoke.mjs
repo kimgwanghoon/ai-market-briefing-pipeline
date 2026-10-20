@@ -15,6 +15,9 @@ const rows=['daily','live','weekly'].map((kind,i)=>({id:id.replace(/^1/,String(i
  next_week_outlook:{bias:'데이터 축적 중',confidence:'자료 부족',rationale:['관측 자료를 축적 중입니다.'],upside_conditions:[],downside_conditions:[]}}}));
 rows[1].payload.sentiment={score:51.7,label:'중립',normalized_components:{market:1,news:0,dart:-1,sector:0},weights:{market:.35,news:.2,dart:.25,sector:.2}};
 rows[1].payload.reliability={evaluated:13,hit_rate:'53.8%',false_alarm_rate:'23.1%',status:'검증 표본 부족'};
+rows[0].payload.daily_session={session:'morning',title:'미국장 결과와 국내장 준비',facts:['NASDAQ -0.50% · 테스트 관측값'],upside:'국내 개장 후 방향 확인',downside:'하락과 환율 상승 동반 여부 확인',review:[],limits:'조건부 시나리오이며 상승 확률이 아닙니다.'};
+rows[0].payload.evidence_assessment={status:'근거 부족',total:1,verified:0,guidance:'원문 근거가 없어 판단 보류'};
+rows[0].payload.cover_image='https://example.com/retired-cover.png';
 rows.push({...rows[1],id:'44444444-4444-4444-8444-444444444444',generated_at:new Date(Date.now()-3600000).toISOString(),payload:{...rows[1].payload,sentiment:{...rows[1].payload.sentiment,score:50}}});
 let mode='ready'; const seen=[];
 const server=createServer((req,res)=>{const url=new URL(req.url,'http://localhost');seen.push(url.searchParams);
@@ -50,6 +53,9 @@ try{
      assert.ok(!(await page.content()).includes('sb_publishable_fixture_key'),'Server key must not be in document');
    }
    await page.goto('http://127.0.0.1:3219/daily');
+   await page.getByRole('heading',{name:'미국장 결과와 국내장 준비'}).waitFor();
+   assert.equal(await page.locator('img[src*="retired-cover"]').count(),0);
+   assert.ok((await page.textContent('body')).includes('근거 부족'));
    await page.getByText('원문 근거 확인').click();
    assert.ok(await page.locator('details[open]').count());
    await page.goto('http://127.0.0.1:3219/live');

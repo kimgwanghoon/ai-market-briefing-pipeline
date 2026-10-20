@@ -16,6 +16,7 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -67,8 +68,6 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SITE_URL: ${{ vars.SITE_URL || 'https://ai-market-research-desk.vercel.app' }}
           OPENAI_TEXT_MODEL: gpt-4o-mini-2024-07-18
-          OPENAI_IMAGE_MODEL: gpt-image-1-mini
-          GENERATE_AI_IMAGE: true
         run: python main.py
 
       - name: Deploy to GitHub Pages
@@ -80,3 +79,9 @@ jobs:
           branch: gh-pages
           keep_files: true
           allow_empty_commit: true
+
+      - name: Notify operational failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python -m pipeline.jobs.health --failure

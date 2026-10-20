@@ -9,6 +9,8 @@ from zoneinfo import ZoneInfo
 from pipeline.storage.supabase import Store, iso
 from pipeline.analysis.watchlist import build_watchlist
 from pipeline.analysis.research import snapshot, enrich_events
+from pipeline.analysis.session import edition_context
+from pipeline.analysis.crosscheck import crosscheck
 
 KST = ZoneInfo('Asia/Seoul')
 
@@ -63,12 +65,13 @@ def short_market_trend(history, current, limit=8):
 def market_participation(indexes):
     """Transparent cross-market participation proxy; not KRX advance/decline data."""
     import intraday as i
-    changes = [i.parse_change_percent(item.get('change', '')) for item in indexes.values()]
+    changes = [i.parse_change_percent(indexes[key].get('change', '')) for key in
+               ('kospi', 'kosdaq', 'sp500', 'dow', 'nasdaq') if key in indexes]
     valid = [change for change in changes if change == change]
     up, down = sum(change > 0 for change in valid), sum(change < 0 for change in valid)
     state = '상승 신호 우세' if up > down else '하락 신호 우세' if down > up else '혼조'
     return {'up': up, 'down': down, 'flat': len(valid) - up - down, 'state': state,
-            'basis': f'국내·해외·위험지표 {len(valid)}개 방향을 비교한 보조 지표',
+            'basis': f'국내·해외 주가지수 {len(valid)}개 방향 비교 · VIX·환율·금리 제외',
             'limitation': '상승·하락 종목 수와 투자자별 순매수 데이터는 별도 KRX 원천이 연결되기 전까지 표시하지 않습니다.'}
 
 
@@ -103,6 +106,7 @@ def daily(store):
                      'vix': '^VIX', 'usdkrw': 'KRW=X', 'us10y': '^TNX', 'wti': 'CL=F'}.items()})
     m.require_market_coverage(indexes, minimum=6, required=('kospi', 'kosdaq'))
     daily_overview = m.build_daily_overview(indexes, m.IS_MORNING)
+    cross_source = crosscheck(indexes, m.get_index_data)
     if m.IS_MORNING:
         # Naver returns the last completed Korean session before the opening
         # auction.  Keep that value but never label it as today's live move.
@@ -111,18 +115,38 @@ def daily(store):
     history = store.history('daily', limit=7)
     observation = snapshot(indexes, history + store.history('live', limit=16))
     raw_news = m.crawl_naver_news(now)
+    # Broaden daily evidence beyond the domestic stock section. Google RSS is
+    # a discovery source, not an assertion that the article body was verified.
+    from intraday import fetch_google_market_news
+    lookback = '3d' if now.weekday() == 0 and m.IS_MORNING else '1d'
+    us_news = fetch_google_market_news(10, f'미국 증시 OR AI 반도체 OR 광통신 when:{lookback}')
+    seen = {item.get('link') or item.get('url') for item in raw_news}
+    for item in us_news:
+        try:
+            published = datetime.fromisoformat(item.get('published_at', '')).replace(tzinfo=KST)
+        except (TypeError, ValueError):
+            continue
+        if not now - timedelta(days=3 if lookback == '3d' else 1) <= published <= now:
+            continue
+        if item.get('url') in seen:
+            continue
+        seen.add(item.get('url'))
+        raw_news.append({**item, 'link': item.get('url'), 'press': item.get('source'),
+                         'time': item.get('published_at'), 'description': item.get('listing_summary', '')})
     cutoff = datetime.now(KST)
     for item in raw_news:
         item.pop('dt', None)
     # Select and read the actual articles before asking the editor to write.
     # This keeps the daily conclusion connected to the same evidence readers see.
     news = m.enrich_selected_news(m.select_top_news(raw_news, max_count=5))
+    session = edition_context(indexes, history, now)
+    generation = {}
     headline, points, cover = m.generate_ai_briefing(*(indexes[k] for k in
                                ('kospi','kosdaq','sp500','dow','nasdaq','ewy','vix','usdkrw','us10y','wti')),
-                               news_items=news)
+                               news_items=news, session_context=session, generation_meta=generation)
     research = build_watchlist(news, history[0].get('research') if history else None)
-    return {'market_snapshot': observation, 'timestamp': datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S'), 'headline': headline,
-            'edition_title': m.EDITION_TITLE, 'summary_items': points, 'indexes': indexes,
+    return {'cross_source_checks': cross_source, 'market_snapshot': observation, 'timestamp': datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S'), 'headline': headline,
+            'edition_title': session['title'], 'daily_session': session, 'generation': generation, 'summary_items': points, 'indexes': indexes,
             'daily_overview': daily_overview, 'watchpoint': daily_overview['watchpoint'],
             # The selected set is both the on-screen evidence and the DB event
             # record.  Raw collection remains represented by the count.
@@ -215,18 +239,11 @@ def run(kind):
     if not claim:
         print('Target already claimed or completed; skipped')
         return
-    run_id, cover_url = claim['id'], None
+    run_id = claim['id']
     try:
         payload = {'daily': daily, 'live': live, 'weekly': weekly}[kind](store)
         enrich_events(payload)
         payload['id'] = run_id
-        if kind == 'daily' and payload.get('cover_image'):
-            from main import OUTPUT_DIR
-            try:
-                cover_url = store.upload_cover(run_id, OUTPUT_DIR / payload.get('cover_image', ''))
-            except Exception:
-                logging.warning('Cover unavailable; publishing report without a cover')
-            payload['cover_image'] = cover_url or ''
         store.publish(run_id, token, kind, payload)
     except Exception as exc:
         # A response timeout may occur after DB commit: confirm before treating it as failure.
@@ -234,11 +251,6 @@ def run(kind):
         if rows and rows[0]['status'] == 'complete':
             print('Publication confirmed after interrupted response')
         else:
-            if cover_url:
-                try:
-                    store.delete_cover(cover_url)
-                except Exception:
-                    logging.warning('Orphan cover cleanup required for run %s', run_id)
             store.update_run(run_id, token, status='failed', error_code=type(exc).__name__, finished_at=datetime.now(KST).isoformat())
             raise
     store.update_run(run_id, token, notification_status='sending')

@@ -32,5 +32,27 @@ await db.exec("update briefings set published=false");
 await db.exec('set role anon');
 for(const table of ['briefings','events','market_snapshots','briefing_events'])
  assert.equal((await db.query(`select * from ${table}`)).rows.length,0,table+' RLS');
+await db.exec('reset role');
+await db.exec(await readFile(new URL('../../../supabase/migrations/20261020012626_briefing_public_projection.sql',import.meta.url),'utf8'));
+assert.equal((await db.query('select * from published_briefings')).rows.length,0,'Unpublished originals not copied');
+await db.exec(`update briefings set published=true,payload='{"headline":"public","article_excerpt":"private body","events":{"news":[{"title":"public title","article_excerpt":"raw body","research_insight":{"fact":"short reader fact"}}]}}'::jsonb`);
+await db.exec(await readFile(new URL('../../../supabase/migrations/20261020012851_restrict_briefing_sources.sql',import.meta.url),'utf8'));
+for (const role of ['anon','authenticated']) {
+ await db.exec('set role '+role);
+ const published=(await db.query('select * from published_briefings')).rows;
+ assert.equal(published.length,1);
+ assert.ok(!JSON.stringify(published).includes('private body'));
+ assert.ok(!JSON.stringify(published).includes('raw body'));
+ assert.equal(published[0].payload.events.news[0].research_insight.fact,'short reader fact');
+ for(const table of ['briefings','events','market_snapshots','briefing_events','pipeline_runs'])
+  await assert.rejects(db.query(`select * from ${table}`),table+' direct read denied');
+ await assert.rejects(db.query('delete from published_briefings'));
+ await assert.rejects(db.query("select research_private.reader_json('{}')"));
+ await db.exec('reset role');
+}
+await db.exec('set role service_role');
+await db.exec('update briefings set published=false');
+assert.equal((await db.query('select * from published_briefings')).rows.length,0,'Unpublish removes public copy atomically');
+await db.exec('reset role');
 await db.close();
 console.log('DB contract: claim, atomic publication, timestamps, public read and write denial passed');
