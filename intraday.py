@@ -13,6 +13,7 @@ import requests
 from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from openai import OpenAI
+from pipeline.news_media import article_image, image_url
 
 from ai_generation import (
     INTRADAY_BRIEFING_SCHEMA,
@@ -493,7 +494,7 @@ def fetch_naver_news(limit: int = 20) -> List[dict]:
     return events or fetch_google_market_news(limit)
 
 
-def fetch_news_article_excerpt(url: str, limit: int = 1400) -> str:
+def fetch_news_article_excerpt(url: str, limit: int = 1400, media: dict | None = None) -> str:
     """Resolve collected Naver/Google News links and return the article body."""
     parsed = urlparse(url)
     if parsed.scheme != "https" or parsed.netloc not in {"finance.naver.com", "m.stock.naver.com", "n.news.naver.com", "news.naver.com", "news.google.com"}:
@@ -505,6 +506,8 @@ def fetch_news_article_excerpt(url: str, limit: int = 1400) -> str:
         return ""
 
     soup = BeautifulSoup(response.text, "html.parser")
+    if media is not None:
+        media['image_url'] = article_image(soup, url) or image_url(media.get('image_url'), url)
     for node in soup(["script", "style", "noscript"]):
         node.decompose()
     body = next((soup.select_one(selector) for selector in (
@@ -527,7 +530,7 @@ def enrich_news_article_excerpts(events: List[dict], limit: int = 5) -> List[dic
         item = dict(event)
         identity = str(item.get("event_id") or item.get("url") or "")
         if identity in selected_ids:
-            excerpt = fetch_news_article_excerpt(str(item.get("url") or ""))
+            excerpt = fetch_news_article_excerpt(str(item.get("url") or ""), media=item)
             if excerpt:
                 item["article_excerpt"] = excerpt
                 item["content_status"] = "article_verified"

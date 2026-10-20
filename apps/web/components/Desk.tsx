@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Research } from './Research';
+import { NewsThumbnail } from './NewsThumbnail';
 import { DailySession, EvidenceNotice } from './Session';
 import { Briefing, Event, labels, Payload, Result, safeUrl, time } from '@/lib/data';
 
@@ -23,7 +24,7 @@ export function Events({ items }: { items: Event[] }) {
   if (!items.length) return <p className="muted">새로 확인된 이벤트가 없습니다.</p>;
   return <div className="events">{items.map((event, index) => {
     const url = safeUrl(event.url || event.link);
-    return <article key={`${event.title}-${index}`}><span className="rank">{String(index + 1).padStart(2, '0')}</span><div><h3>{url ? <a href={url} target="_blank" rel="noopener noreferrer">{event.corp_name} {event.title} ↗</a> : event.title}</h3><div className="event-tags">{event.scope && <span className="tag">{event.scope}</span>}{event.research_insight && <span className="tag">{event.research_insight.impact}</span>}</div>{event.research_insight ? <><p><b>무슨 일인가요</b> {event.research_insight.fact}</p><p><b>시장에 미칠 수 있는 영향</b> {event.research_insight.interpretation}</p><p><b>다음 확인</b> {event.research_insight.watchpoint}</p><small>{event.research_insight.basis}</small></> : event.why_it_matters ? <p>{event.why_it_matters}</p> : <p className="muted">원문 확인 전 영향 판단 보류</p>}<small>{event.source || event.press || '원문 참고'} · {event.published_at || event.time || '발행시각 미제공'}</small></div></article>;
+    return <article key={`${event.title}-${index}`}><span className="rank">{String(index + 1).padStart(2, '0')}</span><div className="event-content"><div className="event-heading"><h3>{url ? <a href={url} target="_blank" rel="noopener noreferrer">{event.corp_name} {event.title} ↗</a> : event.title}</h3><NewsThumbnail src={event.image_url} href={url} title={event.title}/></div><div className="event-tags">{event.scope && <span className="tag">{event.scope}</span>}{event.research_insight && <span className="tag">{event.research_insight.impact}</span>}</div>{event.research_insight ? <><p><b>무슨 일인가요</b> {event.research_insight.fact}</p><p><b>시장에 미칠 수 있는 영향</b> {event.research_insight.interpretation}</p><p><b>다음 확인</b> {event.research_insight.watchpoint}</p><small>{event.research_insight.basis}</small></> : event.why_it_matters ? <p>{event.why_it_matters}</p> : <p className="muted">원문 확인 전 영향 판단 보류</p>}<small>{event.source || event.press || '원문 참고'} · {event.published_at || event.time || '발행시각 미제공'}</small></div></article>;
   })}</div>;
 }
 

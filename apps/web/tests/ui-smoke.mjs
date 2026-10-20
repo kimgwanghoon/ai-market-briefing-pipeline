@@ -5,7 +5,7 @@ import {mkdir} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {chromium} from '@playwright/test';
 const id='11111111-1111-4111-8111-111111111111';
-const event={title:'검증용 반도체 수주 확대',link:'https://example.com/news',press:'검증용 출처',time:'09:00',why_it_matters:'실제 투자자료가 아닌 UI 테스트 데이터입니다.'};
+const event={title:'검증용 반도체 수주 확대',link:'https://example.com/news',image_url:'https://example.com/fixture-news.png',press:'검증용 출처',time:'09:00',why_it_matters:'실제 투자자료가 아닌 UI 테스트 데이터입니다.'};
 const markets={kospi:{price:'2,500.00',change:'▲ 10.00 (+0.40%)',as_of:'09-18 09:00 KST',market_status:'장중'},nasdaq:{price:'18,000.00',change:'▼ 90.00 (-0.50%)',as_of:'09-18 05:00 KST',market_status:'최근 종가'}};
 const rows=['daily','live','weekly'].map((kind,i)=>({id:id.replace(/^1/,String(i+1)),kind,title:'검증용 시황 · 시장 흐름과 확인할 조건',generated_at:new Date().toISOString(),
  observation_end:'2026-09-18T09:00:00+09:00',payload:{headline:'검증용 시황',summary_items:['[한국 시장]','**검증용 분석**입니다. 실제 투자자료가 아닙니다.','[미국 시장]','외부 시장의 변화를 점검합니다.'],
@@ -45,6 +45,7 @@ try{
  browser=await chromium.launch(launch);
  console.log('Browser ready');
  const page=await browser.newPage(); const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.route('https://example.com/fixture-news.png', route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j3ioAAAAASUVORK5CYII=','base64')}));
  for(const width of [1440,390]){
    await page.setViewportSize({width,height:1000});
    for(const route of ['/','/live','/daily','/weekly','/archive']){
@@ -56,6 +57,12 @@ try{
    await page.getByRole('heading',{name:'미국장 결과와 국내장 준비'}).waitFor();
    assert.equal(await page.locator('img[src*="retired-cover"]').count(),0);
    assert.ok((await page.textContent('body')).includes('근거 부족'));
+   await page.locator('.news-thumbnail').first().scrollIntoViewIfNeeded();
+   await page.waitForFunction(()=>Array.from(document.querySelectorAll('.news-thumbnail img')).some(img=>img.complete && img.naturalWidth>0));
+   assert.equal(await page.locator('a.news-thumbnail').first().getAttribute('href'),'https://example.com/news');
+   const thumbnails=await page.locator('.news-thumbnail').count();
+   await page.locator('.news-thumbnail img').first().dispatchEvent('error');
+   await page.waitForFunction(count=>document.querySelectorAll('.news-thumbnail').length===count-1,thumbnails);
    await page.getByText('원문 근거 확인').click();
    assert.ok(await page.locator('details[open]').count());
    await page.goto('http://127.0.0.1:3219/live');

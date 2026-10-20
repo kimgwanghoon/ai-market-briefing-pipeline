@@ -23,6 +23,7 @@ from ai_generation import (
     validate_grounded_claims,
 )
 from discord_notifications import build_daily_embed, post_discord_webhook
+from pipeline.news_media import article_image, image_url
 
 try:
     from dotenv import load_dotenv
@@ -424,7 +425,7 @@ def build_daily_overview(indexes: dict, is_morning: bool) -> dict:
     }
 
 
-def fetch_news_article_excerpt(url: str, limit: int = 1400) -> str:
+def fetch_news_article_excerpt(url: str, limit: int = 1400, media: dict | None = None) -> str:
     """Fetch article text only from the news domains collected by this job."""
     from urllib.parse import urlparse
     parsed = urlparse(url)
@@ -437,6 +438,8 @@ def fetch_news_article_excerpt(url: str, limit: int = 1400) -> str:
     except requests.RequestException:
         return ""
     soup = BeautifulSoup(response.text, "html.parser")
+    if media is not None:
+        media['image_url'] = article_image(soup, url) or image_url(media.get('image_url'), url)
     for node in soup(["script", "style", "noscript"]):
         node.decompose()
     body = next((soup.select_one(selector) for selector in (
@@ -455,7 +458,7 @@ def enrich_selected_news(articles: List[dict], limit: int = 5) -> List[dict]:
         item = dict(article)
         item.setdefault("listing_summary", item.get("description", ""))
         if index < limit:
-            excerpt = fetch_news_article_excerpt(str(item.get("link") or item.get("url") or ""))
+            excerpt = fetch_news_article_excerpt(str(item.get("link") or item.get("url") or ""), media=item)
             if excerpt:
                 item["article_excerpt"] = excerpt
                 item["content_status"] = "article_verified"

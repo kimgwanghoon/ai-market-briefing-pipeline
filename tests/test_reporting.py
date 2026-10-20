@@ -609,12 +609,13 @@ class DailyOverviewTests(unittest.TestCase):
 
     def test_daily_article_excerpt_reads_naver_body(self):
         response = Mock()
-        response.text = "<html><body><div id='dic_area'>기사 본문 수치와 실적 내용입니다.</div></body></html>"
+        response.text = "<html><head><meta property='og:image' content='https://imgnews.pstatic.net/test.jpg'></head><body><div id='dic_area'>기사 본문 수치와 실적 내용입니다.</div></body></html>"
         response.raise_for_status.return_value = None
         with patch("main.requests.get", return_value=response):
             article = main.enrich_selected_news([{"link": "https://n.news.naver.com/mnews/article/001/1", "description": "목록 요약"}])[0]
         self.assertEqual(article["content_status"], "article_verified")
         self.assertIn("본문 수치", article["article_excerpt"])
+        self.assertEqual(article['image_url'], 'https://imgnews.pstatic.net/test.jpg')
 
 
 class NewsCurationTests(unittest.TestCase):
