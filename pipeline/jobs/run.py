@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 
 from pipeline.storage.supabase import Store, iso
 from pipeline.analysis.watchlist import build_watchlist
-from pipeline.analysis.research import snapshot, enrich_events, retain_identical_close
+from pipeline.analysis.research import snapshot, enrich_events, retain_identical_close, exclude_invalid_observations
 from pipeline.analysis.session import edition_context
 from pipeline.analysis.crosscheck import crosscheck
 
@@ -104,6 +104,10 @@ def daily(store):
     indexes.update({k: m.get_index_data(t) for k, t in
                     {'sp500': '^GSPC', 'dow': '^DJI', 'nasdaq': '^IXIC', 'ewy': 'EWY',
                      'vix': '^VIX', 'usdkrw': 'KRW=X', 'us10y': '^TNX', 'wti': 'CL=F'}.items()})
+    history = store.history('daily', limit=7)
+    observation_history = history + store.history('live', limit=16)
+    indexes = retain_identical_close(indexes, observation_history)
+    indexes = exclude_invalid_observations(indexes, observation_history)
     m.require_market_coverage(indexes, minimum=6, required=('kospi', 'kosdaq'))
     daily_overview = m.build_daily_overview(indexes, m.IS_MORNING)
     cross_source = crosscheck(indexes, m.get_index_data)
@@ -112,9 +116,6 @@ def daily(store):
         # auction.  Keep that value but never label it as today's live move.
         for key in ('kospi', 'kosdaq'):
             indexes[key] = {**indexes[key], 'market_status': daily_overview['korea_session_label']}
-    history = store.history('daily', limit=7)
-    observation_history = history + store.history('live', limit=16)
-    indexes = retain_identical_close(indexes, observation_history)
     observation = snapshot(indexes, observation_history)
     raw_news = m.crawl_naver_news(now)
     raw_news.extend(m.crawl_naver_news(now, max_articles=30, section='262'))

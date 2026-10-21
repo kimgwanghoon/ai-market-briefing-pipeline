@@ -72,6 +72,26 @@ def retain_identical_close(markets, history):
     return result
 
 
+def exclude_invalid_observations(markets, history=()):
+    """Quarantine rejected values; callers must check coverage after exclusion."""
+    result = {}
+    for symbol, quote in markets.items():
+        try:
+            snapshot({symbol: quote}, history)
+            result[symbol] = dict(quote)
+        except ValueError as exc:
+            result[symbol] = {
+                'price': 'N/A', 'change': '-', 'trend': '확인 불가',
+                'color': '#64748b', 'market_status': '검증 제외',
+                'as_of': '유효한 기준시각 확인 필요',
+                'source': quote.get('source'),
+                'collected_at': quote.get('collected_at'),
+                'source_warning': '제공처 시세의 기준시각 또는 수치가 기존 관측과 충돌해 이번 분석에서 제외했습니다.',
+                'rejected_observation': {'reason': str(exc), 'quote': dict(quote)},
+            }
+    return result
+
+
 def snapshot(markets, history=()):
     """Refuse source regressions/conflicts before scoring, preserving history."""
     for symbol, current in markets.items():

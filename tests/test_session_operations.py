@@ -3,7 +3,7 @@ from datetime import datetime
 from unittest.mock import Mock, patch
 from zoneinfo import ZoneInfo
 from pipeline.analysis.session import edition_context
-from pipeline.analysis.research import enrich_events, retain_identical_close, snapshot
+from pipeline.analysis.research import enrich_events, retain_identical_close, snapshot, exclude_invalid_observations
 from pipeline.jobs.health import due_slots, check, scheduled_check_time
 from pipeline.jobs.run import market_participation
 from pipeline.analysis.crosscheck import compare_quote
@@ -12,6 +12,26 @@ KST = ZoneInfo('Asia/Seoul')
 
 
 class SessionOperationsTests(unittest.TestCase):
+    def test_rejected_quotes_are_excluded_and_still_subject_to_coverage(self):
+        from main import require_market_coverage
+        old = {'price':'100', 'source':'Yahoo', 'price_basis':'regular_trade',
+               'source_timestamp':'2026-10-21T05:45:00+09:00', 'collected_at':'2026-10-21T16:00:00+09:00'}
+        good = {'price':'200'}
+        for change in ({'source_timestamp':'2026-10-21T05:00:00+09:00'},
+                       {'price':'101'}, {'source_timestamp':'2026-10-22T05:00:00+09:00'}):
+            bad = {**old, **change}
+            result = exclude_invalid_observations({'dow':bad, 'kospi':good}, [{'indexes':{'dow':old}}])
+            self.assertEqual(result['dow']['price'], 'N/A')
+            self.assertNotIn('source_timestamp', result['dow'])
+            self.assertEqual(result['dow']['rejected_observation']['quote'], bad)
+            self.assertIn('제외', result['dow']['source_warning'])
+            self.assertEqual(result['kospi'], good)
+            snapshot(result)
+            with self.assertRaises(RuntimeError):
+                require_market_coverage(result, minimum=2)
+            with self.assertRaises(RuntimeError):
+                require_market_coverage(result, minimum=1, required=('dow',))
+
     def test_identical_close_reuse_is_disclosed_and_preserves_collection_time(self):
         old={'price':'100','change':'+1%','source':'Yahoo','price_basis':'regular_trade','market_status':'최근 종가',
              'source_timestamp':'2026-10-21T05:45:00+09:00','collected_at':'2026-10-21T08:00:00+09:00'}
