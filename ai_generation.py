@@ -168,6 +168,40 @@ def validate_grounded_claims(claims: list[dict], evidence: dict[str, Any], alias
     return all(not grounded_claim_error(claim, evidence, aliases) for claim in claims)
 
 
+def bind_observed_metrics(claim: dict, evidence: dict[str, Any], aliases: dict[str, str]) -> dict:
+    """Resolve explicit metric names to server IDs, without repairing their values.
+
+    An LLM may cite only one ID for a sentence mentioning two indexes. Names
+    are deterministic identifiers; numerical claims still have to match each
+    named metric before we add any missing reference. News IDs are never added.
+    """
+    text = str(claim.get('text', ''))
+    ids = list(claim.get('evidence_ids', []))
+    if not ids or any(key not in evidence for key in ids) or not aliases:
+        return claim
+    pattern = '|'.join(re.escape(alias) for alias in sorted(aliases, key=len, reverse=True))
+    matches = list(re.finditer(pattern, text, re.IGNORECASE))
+    lookup = {alias.lower(): key for alias, key in aliases.items()}
+    referenced = [lookup[match.group().lower()] for match in matches]
+    if not any(key not in ids for key in referenced):
+        return claim
+    # A leading number cannot be safely assigned to a following metric.
+    if matches and _numeric_tokens(text[:matches[0].start()]):
+        return claim
+    for index, match in enumerate(matches):
+        key = referenced[index]
+        item = evidence.get(key)
+        if not key.startswith('idx-') or not isinstance(item, dict) or item.get('price') in (None, 'N/A'):
+            return claim
+        span = text[match.end():matches[index+1].start() if index+1<len(matches) else len(text)]
+        if not has_only_grounded_numbers([span], {field:item.get(field) for field in ('price','change')}):
+            return claim
+        if key not in ids:
+            ids.append(key)
+    candidate = {**claim, 'evidence_ids': ids}
+    return candidate if not grounded_claim_error(candidate, evidence, aliases) else claim
+
+
 def render_grounded_claim(
     claim: dict,
     evidence: dict[str, Any],

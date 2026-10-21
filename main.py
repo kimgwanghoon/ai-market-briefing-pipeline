@@ -20,6 +20,7 @@ from ai_generation import (
     create_structured_completion,
     has_only_grounded_numbers,
     grounded_claim_error,
+    bind_observed_metrics,
     render_grounded_claim,
     validate_grounded_claims,
 )
@@ -959,6 +960,7 @@ def generate_ai_briefing(
             "idx-dow": "DOW", "idx-nasdaq": "NASDAQ", "idx-ewy": "EWY", "idx-vix": "VIX",
             "idx-usdkrw": "USD/KRW", "idx-us10y": "미 10년물", "idx-wti": "WTI",
         }
+        claims = [bind_observed_metrics(claim, evidence, aliases) for claim in claims]
         errors = {str(i): grounded_claim_error(claim, evidence, aliases) for i, claim in enumerate(claims)
                   if grounded_claim_error(claim, evidence, aliases)}
         if errors:
@@ -969,6 +971,7 @@ def generate_ai_briefing(
                     user_prompt=text_prompt + '\n이전 응답: ' + json.dumps(briefing, ensure_ascii=False)
                     + '\n문장 순서 headline,korea_points,us_points,watchpoint의 오류: ' + json.dumps(errors, ensure_ascii=False))
                 replacements = [repaired['headline'], *repaired['korea_points'], *repaired['us_points'], repaired['watchpoint']]
+                replacements = [bind_observed_metrics(claim, evidence, aliases) for claim in replacements]
                 for index in errors:
                     i = int(index)
                     if i < len(replacements) and not grounded_claim_error(replacements[i], evidence, aliases):

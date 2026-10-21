@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 from pipeline.analysis.daily_desk import select_desk_news, build_issue_desk, validate_issue, tickers_for, is_us_issue
-from ai_generation import grounded_claim_error
+from ai_generation import grounded_claim_error, bind_observed_metrics
 
 
 BODY = '엔비디아는 데이터센터용 반도체 공급 계획을 발표했다. 회사 측은 고객사의 투자 일정에 맞춰 공급량을 조절할 계획이라고 설명했다. 다만 개별 고객사의 구매 규모와 확정 계약 금액은 공개하지 않았다. 향후 실제 주문과 매출 반영 시점을 확인해야 한다.'
@@ -73,6 +73,19 @@ class DailyDeskTests(unittest.TestCase):
         self.assertEqual(grounded_claim_error(claim,evidence,{'S&P 500':'idx-sp500'}),'')
         claim['text']='S&P 500 9999 흐름 확인'
         self.assertTrue(grounded_claim_error(claim,evidence,{'S&P 500':'idx-sp500'}))
+
+    def test_resolve_explicit_names_without_accepting_swapped_or_new_values(self):
+        evidence={'idx-kospi':{'price':'2500','change':'+1%'}, 'idx-kosdaq':{'price':'800','change':'-2%'}}
+        aliases={'KOSPI':'idx-kospi','KOSDAQ':'idx-kosdaq'}
+        claim={'text':'KOSPI 2500 (+1%), KOSDAQ 800 (-2%) 흐름입니다.', 'evidence_ids':['idx-kospi']}
+        fixed=bind_observed_metrics(claim,evidence,aliases)
+        self.assertEqual(fixed['evidence_ids'],['idx-kospi','idx-kosdaq'])
+        self.assertEqual(claim['evidence_ids'],['idx-kospi'])
+        for text in ('KOSPI 800, KOSDAQ 2500입니다.', 'KOSPI 2500, KOSDAQ 9999입니다.'):
+            bad={**claim,'text':text}
+            self.assertTrue(grounded_claim_error(bind_observed_metrics(bad,evidence,aliases),evidence,aliases))
+        evidence['idx-kosdaq']['price']='N/A'
+        self.assertEqual(bind_observed_metrics(claim,evidence,aliases),claim)
 
     def test_market_repair_preserves_other_valid_claims(self):
         import main
