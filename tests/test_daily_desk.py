@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import Mock, patch
-from pipeline.analysis.daily_desk import select_desk_news, build_issue_desk, validate_issue, tickers_for, is_us_issue
+from pipeline.analysis.daily_desk import select_desk_news, build_issue_desk, validate_issue, tickers_for, is_us_issue, evidence_quotes
 from ai_generation import grounded_claim_error, bind_observed_metrics
 
 
@@ -43,8 +43,16 @@ class DailyDeskTests(unittest.TestCase):
         result = build_issue_desk(news, 'morning', quote, Mock())
         self.assertEqual([i['analysis_mode'] for i in result], ['ai','ai'])
         self.assertEqual(generate.call_count,2)
+        properties=generate.call_args.kwargs['schema']['properties']['items']['items']['properties']
+        self.assertTrue(all(q in ' '.join(BODY.split()) for q in properties['support_quote']['enum']))
         self.assertIn('issue-2',generate.call_args.kwargs['user_prompt'])
         self.assertEqual(result[0]['observations'],[])
+
+    def test_source_quote_choices_are_literal_even_for_long_sentences(self):
+        source='긴 원문을 그대로 유지하는 검증 문장입니다. '*40
+        quotes=evidence_quotes(source)
+        self.assertTrue(quotes)
+        self.assertTrue(all(15<=len(q)<=160 and q in ' '.join(source.split()) for q in quotes))
 
     @patch('pipeline.analysis.daily_desk.create_structured_completion')
     def test_headline_only_never_becomes_analysis(self, generate):
