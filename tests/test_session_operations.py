@@ -3,7 +3,7 @@ from datetime import datetime
 from unittest.mock import Mock, patch
 from zoneinfo import ZoneInfo
 from pipeline.analysis.session import edition_context
-from pipeline.analysis.research import enrich_events
+from pipeline.analysis.research import enrich_events, retain_identical_close, snapshot
 from pipeline.jobs.health import due_slots, check, scheduled_check_time
 from pipeline.jobs.run import market_participation
 from pipeline.analysis.crosscheck import compare_quote
@@ -12,6 +12,21 @@ KST = ZoneInfo('Asia/Seoul')
 
 
 class SessionOperationsTests(unittest.TestCase):
+    def test_identical_close_reuse_is_disclosed_and_preserves_collection_time(self):
+        old={'price':'100','change':'+1%','source':'Yahoo','price_basis':'regular_trade','market_status':'최근 종가',
+             'source_timestamp':'2026-10-21T05:45:00+09:00','collected_at':'2026-10-21T08:00:00+09:00'}
+        history=[{'indexes':{'sp500':old}}]
+        current={**old,'source_timestamp':'2026-10-21T05:00:00+09:00','collected_at':'2026-10-21T16:00:00+09:00'}
+        fixed=retain_identical_close({'sp500':current},history)
+        self.assertEqual(fixed['sp500']['collected_at'],old['collected_at'])
+        self.assertIn('source_warning',fixed['sp500'])
+        snapshot(fixed,history)
+        for changed in ({'price':'99'},{'market_status':'장중'},{'source_timestamp':'2026-10-20T05:00:00+09:00'}):
+            bad={'sp500':{**current,**changed}}
+            self.assertEqual(retain_identical_close(bad,history),bad)
+            with self.assertRaises(ValueError):
+                snapshot(retain_identical_close(bad,history),history)
+
     def test_cross_source_comparison_requires_compatible_times(self):
         a={'source':'Naver','price':'2500','source_timestamp':'2026-10-20T15:30:00+09:00'}
         b={**a,'source':'Yahoo','price':'2490'}

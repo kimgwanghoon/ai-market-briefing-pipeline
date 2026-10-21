@@ -1,7 +1,7 @@
 export type Kind = 'live' | 'daily' | 'weekly';
 export const labels: Record<Kind, string> = { live: '장중 브리핑', daily: '데일리 리서치', weekly: '주간 전략' };
 export type Event = { title: string; image_url?: string; url?: string; link?: string; source?: string; press?: string; published_at?: string; time?: string; why_it_matters?: string; corp_name?: string; impact_score?: number; scope?: string; content_status?: string; research_insight?: {impact: string; fact: string; interpretation: string; watchpoint: string; basis: string} };
-export type Market = { price: string; change: string; as_of?: string; market_status?: string; source?: string; source_timestamp?: string; collected_at?: string; price_basis?: string };
+export type Market = { price: string; change: string; as_of?: string; market_status?: string; source?: string; source_timestamp?: string; collected_at?: string; price_basis?: string; source_warning?:string; received_source_timestamp?:string };
 export type DailyIssue = {id: string; title: string; url: string; image_url?: string; source: string; published_at: string; region: string; content_status: string; fact: string; korea_impact: string; next_check: string; invalidation: string; analysis_mode: string; analysis_note: string; observations: (Market & {ticker: string})[]};
 type Stock = { catalyst?: string; name: string; ticker: string; sector: string; status: string; reason: string; risk: string; invalidation: string; basis: string; quote: { price: number; as_of: string }; evidence: Event[] };
 export type Payload = {

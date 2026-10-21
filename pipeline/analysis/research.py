@@ -44,6 +44,34 @@ def source_time(value):
         return None
 
 
+def retain_identical_close(markets, history):
+    """Keep an already observed identical close when the vendor revises its time.
+
+    Never reuse changing/live prices or a prior day's quote. Preserve the old
+    collection time and disclose both the reuse and the received older time.
+    The normal regression/conflict guard still runs after this narrow repair.
+    """
+    result = {key: dict(value) for key, value in markets.items()}
+    for key, current in markets.items():
+        stamp = source_time(current.get('source_timestamp'))
+        if not stamp or current.get('market_status') != '최근 종가' or current.get('price') in (None,'N/A'):
+            continue
+        candidates = []
+        for report in history:
+            old = (report.get('indexes') or report.get('market_signals') or {}).get(key, {})
+            old_stamp = source_time(old.get('source_timestamp'))
+            if (old_stamp and old_stamp > stamp and old_stamp[:10] == stamp[:10]
+                    and old.get('market_status') == '최근 종가'
+                    and all(old.get(field) == current.get(field) for field in ('source','price_basis','price','change'))
+                    and old.get('source') and old.get('price_basis')):
+                candidates.append((old_stamp, old))
+        if candidates:
+            _, old = max(candidates, key=lambda candidate:candidate[0])
+            result[key] = {**old, 'received_source_timestamp':stamp,
+                           'source_warning':'제공처 기준시각이 후퇴해 같은 날짜·출처의 동일 종가 관측값을 유지했습니다. 수치와 기존 수집시각은 변경하지 않았습니다.'}
+    return result
+
+
 def snapshot(markets, history=()):
     """Refuse source regressions/conflicts before scoring, preserving history."""
     for symbol, current in markets.items():

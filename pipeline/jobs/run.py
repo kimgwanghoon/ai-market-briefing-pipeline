@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 
 from pipeline.storage.supabase import Store, iso
 from pipeline.analysis.watchlist import build_watchlist
-from pipeline.analysis.research import snapshot, enrich_events
+from pipeline.analysis.research import snapshot, enrich_events, retain_identical_close
 from pipeline.analysis.session import edition_context
 from pipeline.analysis.crosscheck import crosscheck
 
@@ -113,7 +113,9 @@ def daily(store):
         for key in ('kospi', 'kosdaq'):
             indexes[key] = {**indexes[key], 'market_status': daily_overview['korea_session_label']}
     history = store.history('daily', limit=7)
-    observation = snapshot(indexes, history + store.history('live', limit=16))
+    observation_history = history + store.history('live', limit=16)
+    indexes = retain_identical_close(indexes, observation_history)
+    observation = snapshot(indexes, observation_history)
     raw_news = m.crawl_naver_news(now)
     raw_news.extend(m.crawl_naver_news(now, max_articles=30, section='262'))
     # Broaden daily evidence beyond the domestic stock section. Google RSS is
