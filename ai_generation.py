@@ -117,40 +117,55 @@ def has_only_grounded_numbers(texts: list[str], evidence: Any) -> bool:
     return claimed.issubset(allowed)
 
 
-def validate_grounded_claims(claims: list[dict], evidence: dict[str, Any], aliases: dict[str, str]) -> bool:
+def grounded_claim_error(claim: dict, evidence: dict[str, Any], aliases: dict[str, str]) -> str:
     directional_terms = ("상승", "하락", "반등", "강세", "약세", "확대", "축소")
     prohibited_terms = ("확정", "반드시", "무조건", "매수", "매도", "목표가", "폭등", "폭락")
-    for claim in claims:
+    for claim in [claim]:
         text = str(claim.get("text", "")).strip()
         evidence_ids = claim.get("evidence_ids", [])
         if not text or not evidence_ids or any(evidence_id not in evidence for evidence_id in evidence_ids):
-            return False
-        if any(term in text for term in prohibited_terms):
-            return False
+            return '내용 또는 유효한 근거 ID가 없습니다'
+        # Quoted news titles may legitimately contain words such as 목표가.
+        # Keep the restriction on the editor's own advice, not the source title.
+        editorial = text
+        for evidence_id in evidence_ids:
+            title = evidence[evidence_id].get('title', '') if isinstance(evidence[evidence_id], dict) else ''
+            if title:
+                editorial = editorial.replace(title, '')
+        if any(term in editorial for term in prohibited_terms):
+            return '단정 또는 투자 지시 표현을 제거하세요'
         cited = {evidence_id: evidence[evidence_id] for evidence_id in evidence_ids}
-        if not has_only_grounded_numbers([text], cited):
-            return False
+        # S&P 500 and 미 10년물 contain names, not newly asserted data values.
+        numeric_text = text
+        for alias in sorted(aliases, key=len, reverse=True):
+            numeric_text = re.sub(re.escape(alias), '', numeric_text, flags=re.IGNORECASE)
+        if not has_only_grounded_numbers([numeric_text], cited):
+            return '인용한 근거에 없는 숫자가 있습니다. 숫자·부호를 그대로 사용하세요'
         linked_to_evidence = False
         for alias, required_id in aliases.items():
             if alias.lower() in text.lower() and required_id not in evidence_ids:
-                return False
+                return f'{alias}의 근거 ID {required_id}가 빠졌습니다'
             if alias.lower() in text.lower() and required_id in evidence_ids:
                 linked_to_evidence = True
         for item in cited.values():
             if isinstance(item, dict) and item.get("price") == "N/A":
                 if any(term in text for term in directional_terms):
-                    return False
+                    return '결측 지표의 방향을 해석할 수 없습니다'
         for evidence_id, item in cited.items():
             if not evidence_id.startswith(("news-", "dart-")) or not isinstance(item, dict):
                 continue
             title = f"{item.get('corp_name', '')} {item.get('title', '')}".strip()
             if title and title not in text:
-                return False
+                return '인용한 뉴스의 제목을 정확히 포함하세요'
             if title and title in text:
                 linked_to_evidence = True
         if not linked_to_evidence:
-            return False
-    return True
+            return '근거의 지표명 또는 뉴스 제목이 없습니다'
+    return ''
+
+
+def validate_grounded_claims(claims: list[dict], evidence: dict[str, Any], aliases: dict[str, str]) -> bool:
+    return all(not grounded_claim_error(claim, evidence, aliases) for claim in claims)
 
 
 def render_grounded_claim(

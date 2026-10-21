@@ -115,6 +115,7 @@ def daily(store):
     history = store.history('daily', limit=7)
     observation = snapshot(indexes, history + store.history('live', limit=16))
     raw_news = m.crawl_naver_news(now)
+    raw_news.extend(m.crawl_naver_news(now, max_articles=30, section='262'))
     # Broaden daily evidence beyond the domestic stock section. Google RSS is
     # a discovery source, not an assertion that the article body was verified.
     from intraday import fetch_google_market_news
@@ -138,8 +139,13 @@ def daily(store):
         item.pop('dt', None)
     # Select and read the actual articles before asking the editor to write.
     # This keeps the daily conclusion connected to the same evidence readers see.
-    news = m.enrich_selected_news(m.select_top_news(raw_news, max_count=5))
+    from pipeline.analysis.daily_desk import select_desk_news, build_issue_desk
+    news = m.enrich_selected_news(select_desk_news(raw_news, m.IS_MORNING, m.select_top_news))
     session = edition_context(indexes, history, now)
+    client = m.OpenAI(api_key=m.OPENAI_API_KEY, timeout=45, max_retries=1) if m.OPENAI_API_KEY else None
+    session['issues'] = build_issue_desk(news, session['session'], m.get_index_data, client)
+    session['coverage'] = {'selected': len(news), 'us': sum(i['region'] == '미국' for i in session['issues']),
+                           'analyzed': sum(i['analysis_mode'] == 'ai' for i in session['issues'])}
     generation = {}
     headline, points, cover = m.generate_ai_briefing(*(indexes[k] for k in
                                ('kospi','kosdaq','sp500','dow','nasdaq','ewy','vix','usdkrw','us10y','wti')),

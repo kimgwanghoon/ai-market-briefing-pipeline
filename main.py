@@ -19,6 +19,7 @@ from ai_generation import (
     DAILY_BRIEFING_SCHEMA,
     create_structured_completion,
     has_only_grounded_numbers,
+    grounded_claim_error,
     render_grounded_claim,
     validate_grounded_claims,
 )
@@ -588,21 +589,18 @@ def build_market_overview(indexes: dict) -> List[dict]:
 def _news_cutoff(now_kst: datetime) -> datetime:
     weekday = now_kst.weekday()
     if now_kst.hour < 12:
-        if weekday == 0:
-            return (now_kst - timedelta(days=2)).replace(hour=0, minute=0, second=0, microsecond=0)
-        else:
-            return (now_kst - timedelta(days=1)).replace(hour=18, minute=0, second=0, microsecond=0)
+        return now_kst - timedelta(days=3 if weekday == 0 else 1)
     else:
         return now_kst.replace(hour=9, minute=0, second=0, microsecond=0)
 
 
-def crawl_naver_news(now_kst: datetime, max_articles: int = 30) -> List[dict]:
+def crawl_naver_news(now_kst: datetime, max_articles: int = 30, section: str = '258') -> List[dict]:
     cutoff = _news_cutoff(now_kst)
     headers = {"User-Agent": "Mozilla/5.0"}
     articles: List[dict] = []
 
     for page in range(1, 4):
-        url = f"https://news.naver.com/breakingnews/section/101/258?page={page}"
+        url = f"https://news.naver.com/breakingnews/section/101/{section}?page={page}"
         try:
             res = requests.get(url, headers=headers, timeout=10)
             res.raise_for_status()
@@ -631,6 +629,10 @@ def crawl_naver_news(now_kst: datetime, max_articles: int = 30) -> List[dict]:
                 image_url = image_el.get("data-src") or image_el.get("src") or ""
 
             article_dt = None
+            relative = re.fullmatch(r'(\d+)\s*(분|시간|일)\s*전', time_str)
+            if relative:
+                amount, unit = relative.groups()
+                article_dt = now_kst - timedelta(**{{'분':'minutes','시간':'hours','일':'days'}[unit]:int(amount)})
             for fmt in ("%Y.%m.%d. %H:%M", "%Y.%m.%d."):
                 try:
                     article_dt = KST.localize(datetime.strptime(time_str, fmt))
@@ -638,14 +640,14 @@ def crawl_naver_news(now_kst: datetime, max_articles: int = 30) -> List[dict]:
                 except ValueError:
                     continue
 
-            if article_dt and article_dt < cutoff:
+            if article_dt and (article_dt < cutoff or article_dt > now_kst):
                 continue
 
             articles.append({
                 "title": title,
                 "link": link,
                 "press": press,
-                "time": time_str,
+                "time": article_dt.isoformat() if article_dt else time_str,
                 "dt": article_dt,
                 "description": description,
                 "image_url": image_url,
@@ -830,7 +832,7 @@ def generate_ai_briefing(
     fallback_korea_items, fallback_us_items = build_fallback_section_items(
         kospi, kosdaq, sp500, dow, nasdaq, ewy, vix, usdkrw, us10y, wti
     )
-    selected_news = (news_items or [])[:3]
+    selected_news = (news_items or [])[:5]
     if selected_news:
         lead = selected_news[0]
         detail = lead.get("article_excerpt") or lead.get("listing_summary") or lead.get("description")
@@ -944,28 +946,45 @@ def generate_ai_briefing(
         claims = [briefing["headline"], *briefing["korea_points"], *briefing["us_points"], briefing["watchpoint"]]
         aliases = {
             "코스피": "idx-kospi", "KOSPI": "idx-kospi", "코스닥": "idx-kosdaq", "KOSDAQ": "idx-kosdaq",
-            "S&P500": "idx-sp500", "S&P 500": "idx-sp500", "다우": "idx-dow", "나스닥": "idx-nasdaq",
+            "S&P500": "idx-sp500", "S&P 500": "idx-sp500", "다우": "idx-dow", "DOW": "idx-dow", "나스닥": "idx-nasdaq",
             "NASDAQ": "idx-nasdaq", "EWY": "idx-ewy", "VIX": "idx-vix", "달러원": "idx-usdkrw",
-            "USD/KRW": "idx-usdkrw", "미10년물": "idx-us10y", "WTI": "idx-wti",
+            "USD/KRW": "idx-usdkrw", "미10년물": "idx-us10y", "미 10년물": "idx-us10y", "WTI": "idx-wti",
         }
         evidence_labels = {
             "idx-kospi": "KOSPI", "idx-kosdaq": "KOSDAQ", "idx-sp500": "S&P 500",
             "idx-dow": "DOW", "idx-nasdaq": "NASDAQ", "idx-ewy": "EWY", "idx-vix": "VIX",
             "idx-usdkrw": "USD/KRW", "idx-us10y": "미 10년물", "idx-wti": "WTI",
         }
-        if not validate_grounded_claims(claims, evidence, aliases):
-            raise ValueError("AI briefing contains a claim not grounded in its cited evidence")
+        errors = {str(i): grounded_claim_error(claim, evidence, aliases) for i, claim in enumerate(claims)
+                  if grounded_claim_error(claim, evidence, aliases)}
+        if errors:
+            print('Daily claim validation:', json.dumps(errors, ensure_ascii=False))
+            try:
+                repaired = create_structured_completion(client, schema_name='daily_market_briefing', schema=DAILY_BRIEFING_SCHEMA,
+                    system_prompt='제공된 근거로만 문장을 교정하세요. 검증 실패를 숨기거나 숫자를 창작하지 마세요.',
+                    user_prompt=text_prompt + '\n이전 응답: ' + json.dumps(briefing, ensure_ascii=False)
+                    + '\n문장 순서 headline,korea_points,us_points,watchpoint의 오류: ' + json.dumps(errors, ensure_ascii=False))
+                replacements = [repaired['headline'], *repaired['korea_points'], *repaired['us_points'], repaired['watchpoint']]
+                for index in errors:
+                    i = int(index)
+                    if i < len(replacements) and not grounded_claim_error(replacements[i], evidence, aliases):
+                        claims[i] = replacements[i]
+            except Exception as exc:
+                print(f'Daily claim repair: {type(exc).__name__}')
+        valid = [not grounded_claim_error(claim, evidence, aliases) for claim in claims]
+        briefing = {'headline': claims[0], 'korea_points': claims[1:4], 'us_points': claims[4:6], 'watchpoint': claims[6]}
         headline = re.sub(r"[*#`]+", "", briefing["headline"]["text"]).strip()
-        if not 8 <= len(headline) <= 40:
+        if not valid[0] or not 8 <= len(headline) <= 40:
             headline = fallback_headline
-        korea_points = [render_grounded_claim(item, evidence, evidence_labels, use_model_text=True) for item in briefing["korea_points"]]
-        us_points = [render_grounded_claim(item, evidence, evidence_labels, use_model_text=True) for item in briefing["us_points"]]
-        watchpoint_body = render_grounded_claim(briefing["watchpoint"], evidence, evidence_labels, use_model_text=True)
+        korea_points = [render_grounded_claim(item, evidence, evidence_labels, use_model_text=True) if valid[i+1] else fallback_korea_items[i] for i, item in enumerate(briefing["korea_points"])]
+        us_points = [render_grounded_claim(item, evidence, evidence_labels, use_model_text=True) if valid[i+4] else fallback_us_items[i] for i, item in enumerate(briefing["us_points"])]
+        watchpoint_body = render_grounded_claim(briefing["watchpoint"], evidence, evidence_labels, use_model_text=True) if valid[6] else ''
         watchpoint = f"오늘의 **핵심 관전 포인트**: {watchpoint_body}" if watchpoint_body else watchpoint_line
         summary_items = (["[미국장 결과]", *us_points, "[국내장 대응 조건]", *korea_points, watchpoint]
                          if IS_MORNING else ["[국내장 결과]", *korea_points, "[미국장 관전 조건]", *us_points, watchpoint])
         if generation_meta is not None:
-            generation_meta.update(mode='ai', reason='근거 검증 통과')
+            generation_meta.update(mode='ai' if all(valid) else 'partial' if any(valid) else 'rules',
+                                   reason='근거 검증 통과' if all(valid) else f'문장 {len(valid)-sum(valid)}개 검증 실패 · 해당 부분만 관측값으로 대체')
         return headline, summary_items, ""
     except Exception as exc:
         print(f"AI briefing fallback: {type(exc).__name__}: {exc}")

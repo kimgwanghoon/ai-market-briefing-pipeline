@@ -17,6 +17,8 @@ rows[1].payload.sentiment={score:51.7,label:'중립',normalized_components:{mark
 rows[1].payload.reliability={evaluated:13,hit_rate:'53.8%',false_alarm_rate:'23.1%',status:'검증 표본 부족'};
 rows[0].payload.daily_session={session:'morning',title:'미국장 결과와 국내장 준비',facts:['NASDAQ -0.50% · 테스트 관측값'],upside:'국내 개장 후 방향 확인',downside:'하락과 환율 상승 동반 여부 확인',review:[],limits:'조건부 시나리오이며 상승 확률이 아닙니다.'};
 rows[0].payload.evidence_assessment={status:'근거 부족',total:1,verified:0,guidance:'원문 근거가 없어 판단 보류'};
+rows[0].payload.daily_session.issues=[{id:'issue-1',title:event.title,url:event.link,image_url:event.image_url,source:'테스트 출처',published_at:'2026-10-21 07:00',region:'미국',content_status:'article_verified',fact:'검증용 공급 계획 발표입니다.',korea_impact:'실제 주문 증가 시 국내 공급망 수요를 확인합니다.',next_check:'후속 실적의 주문 규모를 확인합니다.',invalidation:'주문 지연 시 재검토합니다.',analysis_note:'AI 요약 · 인용문·숫자 검증 통과',analysis_mode:'ai',observations:[{ticker:'NVDA',price:'100',change:'+1%',market_status:'최근 종가',as_of:'10-21 05:00 KST'}]}];
+rows[0].payload.daily_session.coverage={selected:1,us:1,analyzed:1};
 rows[0].payload.cover_image='https://example.com/retired-cover.png';
 rows.push({...rows[1],id:'44444444-4444-4444-8444-444444444444',generated_at:new Date(Date.now()-3600000).toISOString(),payload:{...rows[1].payload,sentiment:{...rows[1].payload.sentiment,score:50}}});
 let mode='ready'; const seen=[];
@@ -55,6 +57,10 @@ try{
    }
    await page.goto('http://127.0.0.1:3219/daily');
    await page.getByRole('heading',{name:'미국장 결과와 국내장 준비'}).waitFor();
+   await page.getByRole('heading',{name:'미국 기술주 아침 브리핑 · 국내장 연결'}).waitFor();
+   await page.getByText('이 해석을 다시 봐야 하는 조건').click();
+   await page.getByText('주문 지연 시 재검토합니다.').waitFor();
+   assert.ok((await page.textContent('.daily-issues')).includes('NVDA'));
    assert.equal(await page.locator('img[src*="retired-cover"]').count(),0);
    assert.ok((await page.textContent('body')).includes('근거 부족'));
    await page.locator('.news-thumbnail').first().scrollIntoViewIfNeeded();
