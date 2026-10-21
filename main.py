@@ -833,6 +833,10 @@ def generate_ai_briefing(
         kospi, kosdaq, sp500, dow, nasdaq, ewy, vix, usdkrw, us10y, wti
     )
     selected_news = (news_items or [])[:5]
+    if (session_context or {}).get('issues'):
+        # Dedicated issue cards already explain the news. Keep this section
+        # focused on market observations instead of repeating the same stories.
+        selected_news = []
     if selected_news:
         lead = selected_news[0]
         detail = lead.get("article_excerpt") or lead.get("listing_summary") or lead.get("description")

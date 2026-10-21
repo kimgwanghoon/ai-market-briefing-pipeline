@@ -119,7 +119,7 @@ def has_only_grounded_numbers(texts: list[str], evidence: Any) -> bool:
 
 def grounded_claim_error(claim: dict, evidence: dict[str, Any], aliases: dict[str, str]) -> str:
     directional_terms = ("상승", "하락", "반등", "강세", "약세", "확대", "축소")
-    prohibited_terms = ("확정", "반드시", "무조건", "매수", "매도", "목표가", "폭등", "폭락")
+    prohibited_terms = ("반드시", "무조건", "목표가", "폭등", "폭락")
     for claim in [claim]:
         text = str(claim.get("text", "")).strip()
         evidence_ids = claim.get("evidence_ids", [])
@@ -132,7 +132,7 @@ def grounded_claim_error(claim: dict, evidence: dict[str, Any], aliases: dict[st
             title = evidence[evidence_id].get('title', '') if isinstance(evidence[evidence_id], dict) else ''
             if title:
                 editorial = editorial.replace(title, '')
-        if any(term in editorial for term in prohibited_terms):
+        if any(term in editorial for term in prohibited_terms) or re.search(r'(매수|매도)(하세요|하라|해야|하십시오|를 추천)|(?:상승|하락|수익).{0,5}확정', editorial):
             return '단정 또는 투자 지시 표현을 제거하세요'
         cited = {evidence_id: evidence[evidence_id] for evidence_id in evidence_ids}
         # S&P 500 and 미 10년물 contain names, not newly asserted data values.
