@@ -43,8 +43,7 @@ class DailyDeskTests(unittest.TestCase):
         result = build_issue_desk(news, 'morning', quote, Mock())
         self.assertEqual([i['analysis_mode'] for i in result], ['ai','ai'])
         self.assertEqual(generate.call_count,2)
-        properties=generate.call_args.kwargs['schema']['properties']['items']['items']['properties']
-        self.assertTrue(all(q in ' '.join(BODY.split()) for q in properties['support_quote']['enum']))
+        self.assertIn('issue-1-q-1',generate.call_args.kwargs['user_prompt'])
         self.assertIn('issue-2',generate.call_args.kwargs['user_prompt'])
         self.assertEqual(result[0]['observations'],[])
 
@@ -53,6 +52,16 @@ class DailyDeskTests(unittest.TestCase):
         quotes=evidence_quotes(source)
         self.assertTrue(quotes)
         self.assertTrue(all(15<=len(q)<=160 and q in ' '.join(source.split()) for q in quotes))
+
+    @patch('pipeline.analysis.daily_desk.create_structured_completion')
+    def test_resolves_quote_id_only_for_its_own_article(self, generate):
+        generate.return_value={'items':[{**response(),'support_quote':'issue-1-q-1'}]}
+        item={'title':'엔비디아 공급 계획','article_excerpt':BODY,'content_status':'article_verified'}
+        result=build_issue_desk([item],'morning',lambda _: {'price':'N/A'},Mock())
+        self.assertEqual(result[0]['analysis_mode'],'ai')
+        generate.return_value={'items':[{**response(),'support_quote':'issue-2-q-1'}]}
+        result=build_issue_desk([item],'morning',lambda _: {'price':'N/A'},Mock())
+        self.assertEqual(result[0]['analysis_mode'],'source_summary')
 
     @patch('pipeline.analysis.daily_desk.create_structured_completion')
     def test_headline_only_never_becomes_analysis(self, generate):
