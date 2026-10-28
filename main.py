@@ -378,6 +378,8 @@ def build_fallback_section_items(
         f"**EWY** {ewy['price']} ({ewy['change']})와 **달러원** {usdkrw['price']} ({usdkrw['change']})의 관측 방향을 함께 확인하세요.",
         "수급과 거래대금 데이터는 제공되지 않았으므로 **지수 관측값** 이상의 원인 해석은 보류합니다.",
     ]
+    if any('개장 전' in q.get('market_status', '') or q.get('market_status') == '장전' for q in (kospi, kosdaq)):
+        korea_items[0] = f"개장 전 참고값은 **코스피** {kospi['price']}, **코스닥** {kosdaq['price']}입니다. 전일 종가 기준이며 당일 등락이나 미국장에 대한 반응은 아직 판단할 수 없습니다."
     us_items = [
         f"**S&P500** {sp500['price']} ({sp500['change']}), **다우** {dow['price']} ({dow['change']}), **나스닥** {nasdaq['price']} ({nasdaq['change']})로 집계됐습니다.",
         f"**VIX** {vix['price']} ({vix['change']}), **미10년물** {us10y['price']} ({us10y['change']}), **WTI** {wti['price']} ({wti['change']})의 동행 여부를 확인하세요.",

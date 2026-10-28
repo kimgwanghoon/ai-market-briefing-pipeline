@@ -135,6 +135,14 @@ def grounded_claim_error(claim: dict, evidence: dict[str, Any], aliases: dict[st
         if any(term in editorial for term in prohibited_terms) or re.search(r'(매수|매도)(하세요|하라|해야|하십시오|를 추천)|(?:상승|하락|수익).{0,5}확정', editorial):
             return '단정 또는 투자 지시 표현을 제거하세요'
         cited = {evidence_id: evidence[evidence_id] for evidence_id in evidence_ids}
+        domestic = [evidence.get(k, {}) for k in ('idx-kospi', 'idx-kosdaq')]
+        if '낙폭' in text and all(re.search(r'\(\+\d+(?:\.\d+)?%\)', q.get('change', '')) for q in domestic):
+            return '국내 지수가 동반 상승 중입니다. 현재 낙폭을 전제하지 말고 상승세 유지 여부를 확인하세요'
+        for key in ('idx-kospi', 'idx-kosdaq'):
+            quote = cited.get(key, {})
+            if isinstance(quote, dict) and ('개장 전' in quote.get('market_status', '') or quote.get('market_status') == '장전'):
+                if ('개장 전' not in text and '전일 종가' not in text) or re.search(r'보합세|영향.{0,12}못|상승에도.{0,12}변동', text):
+                    return '국내 지수는 개장 전 참고값입니다. 당일 보합·반응 부재로 해석하지 말고 전일 종가와 개장 후 확인 조건만 쓰세요'
         # S&P 500 and 미 10년물 contain names, not newly asserted data values.
         numeric_text = text
         for alias in sorted(aliases, key=len, reverse=True):

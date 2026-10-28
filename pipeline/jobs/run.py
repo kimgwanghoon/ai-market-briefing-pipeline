@@ -104,6 +104,9 @@ def daily(store):
     indexes.update({k: m.get_index_data(t) for k, t in
                     {'sp500': '^GSPC', 'dow': '^DJI', 'nasdaq': '^IXIC', 'ewy': 'EWY',
                      'vix': '^VIX', 'usdkrw': 'KRW=X', 'us10y': '^TNX', 'wti': 'CL=F'}.items()})
+    if now.hour < 9:
+        for key in ('kospi', 'kosdaq'):
+            indexes[key] = {**indexes[key], 'market_status': '전일 종가 · 개장 전'}
     history = store.history('daily', limit=7)
     observation_history = history + store.history('live', limit=16)
     indexes = retain_identical_close(indexes, observation_history)
@@ -175,8 +178,18 @@ def live(store):
                    'metric': result.get('metric', 0), 'samples': result.get('samples', 0),
                    'model_version': 'v2.0-calibrated', 'mode': result.get('mode', 'default')}
     indexes = i.fetch_market_signals()
+    observation_history = history[:16] + store.history('daily', limit=7)
+    indexes = retain_identical_close(indexes, observation_history)
+    checked = exclude_invalid_observations(indexes, observation_history)
+    # Retry only rejected required quotes. Never substitute old prices as live.
+    for key, ticker in (('kospi', 'KOSPI'), ('kosdaq', 'KOSDAQ')):
+        if checked[key].get('market_status') == '검증 제외':
+            import time
+            time.sleep(2)
+            indexes[key] = i.get_korean_index_data(ticker)
+    indexes = exclude_invalid_observations(indexes, observation_history)
     i.require_market_coverage(indexes, minimum=5, required=('kospi', 'kosdaq'))
-    observation = snapshot(indexes, history[:16] + store.history('daily', limit=7))
+    observation = snapshot(indexes, observation_history)
     news, darts = i.fetch_naver_news(limit=20), i.fetch_dart_events(limit=20)
     cutoff = datetime.now(i.KST)
     start, end = i.observation_window(history, cutoff)
@@ -260,7 +273,11 @@ def run(kind):
         if rows and rows[0]['status'] == 'complete':
             print('Publication confirmed after interrupted response')
         else:
-            store.update_run(run_id, token, status='failed', error_code=type(exc).__name__, finished_at=datetime.now(KST).isoformat())
+            # Persist only known non-sensitive diagnostics, never arbitrary HTTP errors.
+            reason = str(exc)
+            safe_prefixes = ('Regressing source timestamp:', 'Conflicting source observation:', 'Future source timestamp:', 'Required market data missing:', 'Market data coverage below threshold:')
+            code = f'{type(exc).__name__}: {reason}'[:200] if reason.startswith(safe_prefixes) else type(exc).__name__
+            store.update_run(run_id, token, status='failed', error_code=code, finished_at=datetime.now(KST).isoformat())
             raise
     store.update_run(run_id, token, notification_status='sending')
     try:

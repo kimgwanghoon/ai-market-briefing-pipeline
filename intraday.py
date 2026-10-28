@@ -714,6 +714,7 @@ def score_news_events(events: List[dict]) -> List[dict]:
 
 
 def score_dart_events(events: List[dict]) -> List[dict]:
+    from pipeline.analysis.research import filing_needs_review
     positive = {
         "매출액": 2,
         "영업이익": 2,
@@ -756,6 +757,8 @@ def score_dart_events(events: List[dict]) -> List[dict]:
                 score -= weight
                 tags.append(f"-{phrase}")
         event_copy = dict(event)
+        if filing_needs_review(event.get('title', '')):
+            score, tags = 0, ['문맥 확인 필요']
         event_copy["impact_score"] = score
         event_copy["tags"] = tags
         scored.append(event_copy)
@@ -1530,9 +1533,16 @@ def build_rule_points(indexes: Dict[str, dict], sentiment: dict, news: List[dict
     else:
         point3 = "새로 확인된 뉴스와 공시가 충분하지 않아, 특정 사건이 시장을 움직였다고 단정하기 어렵습니다."
 
+    changes = [parse_change_percent(indexes[k].get('change', '')) for k in ('kospi', 'kosdaq')]
+    if all(x > 0 for x in changes):
+        follow = '국내 지수의 상승세가 유지되는지'
+    elif all(x < 0 for x in changes):
+        follow = '국내 지수의 낙폭이 줄어드는지'
+    else:
+        follow = 'KOSPI와 KOSDAQ의 방향이 함께 개선되는지'
     watchpoint = (
         "오늘은 VIX와 달러원 환율을 보세요. 두 지표가 함께 오르면 투자자들의 불안이 커졌는지, "
-        "안정되면 국내 지수의 낙폭이 줄어드는지를 확인하면 됩니다."
+        f"안정되면 {follow} 확인하세요. VIX는 최근 미국장 관측값이며 국내 장중 실시간 변화가 아닐 수 있습니다."
     )
     return [point1, point2, point3], watchpoint
 

@@ -106,7 +106,9 @@ def snapshot(markets, history=()):
             old = (report.get('market_signals') or report.get('indexes') or {}).get(symbol, {})
             old_stamp = source_time(old.get('source_timestamp'))
             if (not old_stamp or old.get('source') != current.get('source') or
-                    old.get('price_basis') != current.get('price_basis')):
+                    old.get('price_basis') != current.get('price_basis') or
+                    ('개장 전' in old.get('market_status', '') or old.get('market_status') == '장전') !=
+                    ('개장 전' in current.get('market_status', '') or current.get('market_status') == '장전')):
                 continue
             old_dt = datetime.fromisoformat(old_stamp)
             if current_dt < old_dt:
@@ -120,9 +122,18 @@ def snapshot(markets, history=()):
             'schema': 'market-observation-v1', 'cross_source_validation': 'not_performed'}
 
 
+def filing_needs_review(title):
+    return any(word in str(title) for word in ('기각', '철회', '취소', '정정'))
+
+
 def event_insight(item):
     """Use a collected article body when available; otherwise remain explicit about the limit."""
     title = item.get('title', '')
+    if filing_needs_review(title) and (item.get('corp_name') or item.get('event_type') == 'dart' or str(item.get('content_status', '')).startswith('filing')):
+        return {'impact': '판단 보류', 'fact': title,
+                'interpretation': '기각·철회·취소·정정의 대상과 변경 내용을 확인해야 하므로 제목의 단어만으로 호재·악재를 판단하지 않습니다.',
+                'watchpoint': '원공시와 변경 공시의 대상·금액·효력 발생 여부를 비교하세요.',
+                'basis': '공시 문맥 추가 확인 필요'}
     excerpt = compact_fact(item.get('article_excerpt', ''), limit=340)
     event_scope = classify_event(item)
     if excerpt:
