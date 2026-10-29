@@ -54,6 +54,13 @@ try{
      await page.goto('http://127.0.0.1:3219'+route);await page.locator('h1').waitFor();
      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),`${route} overflow at ${width}`);
      assert.ok(!(await page.content()).includes('sb_publishable_fixture_key'),'Server key must not be in document');
+     if(['/live','/daily','/weekly'].includes(route)){
+       await page.getByRole('navigation',{name:'보고서 바로가기'}).waitFor();
+       await page.getByRole('link',{name:'다음 확인',exact:true}).click();
+       assert.ok(page.url().endsWith('#report-next'));
+       await page.getByText('시장 판단의 상세 설명',{exact:true}).click();
+       assert.equal(await page.locator('.story-details').getAttribute('open'),'');
+     }
    }
    await page.goto('http://127.0.0.1:3219/daily');
    await page.getByRole('heading',{name:'미국장 결과와 국내장 준비'}).waitFor();
