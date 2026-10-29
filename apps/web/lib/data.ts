@@ -13,7 +13,7 @@ export type Payload = {
   daily_overview?: { label: string; interpretation: string; watchpoint: string; korea_session_label: string; data_note: string };
   window_start?: string; collection_cutoff?: string; edition_title?: string; cover_image?: string;
   indexes?: Record<string, Market>; market_signals?: Record<string, Market>;
-  news_items?: Event[]; events?: { news?: Event[]; dart?: Event[]; news_count?: number; dart_count?: number };
+  news_items?: Event[]; events?: { news?: Event[]; dart?: Event[]; news_count?: number; dart_count?: number; dart_collection?:{status:string}; collection?:{candidate_count:number;distinct_events:number;selected:number;body_count:number} };
   sentiment?: { score: number; label: string; interpretation?: string; data_completeness?: number; normalized_components?: Record<string,number>; weights?: Record<string,number>; score_breakdown?: Record<string,number>; model_version?: string };
   market_participation?: { up: number; down: number; flat: number; state: string; basis: string; limitation: string };
   market_trend?: { at: string; kospi?: string | number; kosdaq?: string | number; temperature?: number }[];

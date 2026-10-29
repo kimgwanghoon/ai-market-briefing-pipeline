@@ -76,6 +76,7 @@ class DailyDeskTests(unittest.TestCase):
         self.assertFalse(is_us_issue({'title':'코스피 반등 출발', 'description':'미국 엔비디아 뉴스'}))
         self.assertTrue(is_us_issue({'title':'美 기술주 전망'}))
         self.assertTrue(validate_issue({**response(),'next_check':'오늘 국내 개장 후 실적 발표를 확인한다.'}, BODY))
+        self.assertFalse(validate_issue({**response(),'next_check':'개장 후 실적과 실제 주문 증가 여부를 확인한다.'}, BODY))
 
     def test_quoted_title_not_investment_advice(self):
         evidence={'news-1':{'title':'목표가 상향 보도'}}

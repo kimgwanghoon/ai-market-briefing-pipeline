@@ -222,22 +222,20 @@ def build_next_week_outlook(summary: dict) -> dict:
     score_change = float(summary.get("score_change", 0))
     score_range = max(0.0, float(summary.get("score_max", score_avg)) - float(summary.get("score_min", score_avg)))
 
-    momentum_adjustment = max(-4.0, min(4.0, score_change * 0.15))
-    projected_center = max(0.0, min(100.0, score_end * 0.55 + score_avg * 0.45 + momentum_adjustment))
-    range_width = max(6.0, min(15.0, score_range * 0.35))
-    expected_low = round(max(0.0, projected_center - range_width), 1)
-    expected_high = round(min(100.0, projected_center + range_width), 1)
+    projected_center = score_end
+    expected_low = round(float(summary.get('score_min', score_avg)), 1)
+    expected_high = round(float(summary.get('score_max', score_avg)), 1)
 
     if projected_center >= 65:
         bias = "우호 흐름 우세"
     elif projected_center >= 55:
-        bias = "중립 상단에서 우호 전환 시도"
+        bias = "마지막 관측: 중립 상단"
     elif projected_center >= 45:
-        bias = "중립권 등락 가능성 우세"
+        bias = "마지막 관측: 중립권"
     elif projected_center >= 35:
         bias = "중립 하단에서 경계 신호 우세"
     else:
-        bias = "경계 흐름 지속 가능성"
+        bias = "마지막 관측: 경계 신호 우세"
 
     trading_days = int(summary.get("trading_days", 0))
     sample_count = int(summary.get("count", 0))
@@ -267,7 +265,7 @@ def build_next_week_outlook(summary: dict) -> dict:
         "bias": bias,
         "expected_low": expected_low,
         "expected_high": expected_high,
-        "expected_range": f"시장 온도 {expected_low:.1f}~{expected_high:.1f}점",
+        "expected_range": f"지난주 관측 온도 {expected_low:.1f}~{expected_high:.1f}점 · 다음 주 예측 범위 아님",
         "confidence": confidence,
         "rationale": rationale,
         "upside_conditions": upside_conditions,

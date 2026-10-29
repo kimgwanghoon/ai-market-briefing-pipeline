@@ -523,6 +523,7 @@ def fetch_news_article_excerpt(url: str, limit: int = 1400, media: dict | None =
 
 def enrich_news_article_excerpts(events: List[dict], limit: int = 5) -> List[dict]:
     """Fetch the body for only the material news that can be shown to readers."""
+    from pipeline.analysis.newsroom import has_listing_summary
     ranked = sorted(events, key=lambda item: abs(float(item.get("impact_score", 0) or 0)), reverse=True)
     selected_ids = {str(item.get("event_id") or item.get("url") or "") for item in ranked[:limit]}
     enriched: List[dict] = []
@@ -535,7 +536,7 @@ def enrich_news_article_excerpts(events: List[dict], limit: int = 5) -> List[dic
                 item["article_excerpt"] = excerpt
                 item["content_status"] = "article_verified"
             else:
-                item["content_status"] = "listing_summary" if item.get("listing_summary") else "headline_only"
+                item["content_status"] = "listing_summary" if has_listing_summary(item) else "headline_only"
         else:
             item["content_status"] = "headline_only"
         enriched.append(item)
@@ -558,12 +559,14 @@ def fetch_dart_document_excerpt(rcept_no: str, limit: int = 1600) -> str:
             params={"rcpNo": rcept_no}, headers=headers, timeout=10,
         )
         viewer.raise_for_status()
-        dcm_match = re.search(r"dcmNo[=:'\"]+([0-9]+)", viewer.text)
-        if not dcm_match:
+        # The landing page is navigation, not filing evidence. Only follow
+        # an explicit document viewer call with all required parameters.
+        document_match = re.search(r"viewDoc\(\s*['\"](\d+)['\"]\s*,\s*['\"](\d+)['\"]\s*,\s*['\"](\d+)['\"]\s*,\s*['\"](\d+)['\"]\s*,\s*['\"](\d+)['\"]\s*,\s*['\"]([a-zA-Z0-9_.-]+)['\"]\s*\)", viewer.text)
+        if not document_match or document_match.group(1) != rcept_no:
             return ""
         document = requests.get(
-            "https://dart.fss.or.kr/dsaf001/main.do",
-            params={"rcpNo": rcept_no, "dcmNo": dcm_match.group(1)}, headers=headers, timeout=10,
+            "https://dart.fss.or.kr/report/viewer.do",
+            params=dict(zip(('rcpNo','dcmNo','eleId','offset','length','dtd'), document_match.groups())), headers=headers, timeout=10,
         )
         document.raise_for_status()
     except requests.RequestException:
@@ -596,7 +599,9 @@ def enrich_dart_document_excerpts(events: List[dict], limit: int = 5) -> List[di
     return enriched
 
 
-def fetch_dart_events(limit: int = 30) -> List[dict]:
+def fetch_dart_events(limit: int = 30, diagnostics=None) -> List[dict]:
+    if diagnostics is not None:
+        diagnostics.update(status='not_configured' if not DART_API_KEY else 'failed')
     if not DART_API_KEY:
         return []
 
@@ -620,9 +625,13 @@ def fetch_dart_events(limit: int = 30) -> List[dict]:
         return []
 
     if payload.get("status") != "000":
+        if diagnostics is not None:
+            diagnostics.update(status='empty' if payload.get('status') == '013' else 'failed')
         return []
 
     items = payload.get("list", [])
+    if diagnostics is not None:
+        diagnostics.update(status='ok', received=len(items), total_pages=payload.get('total_page',1))
     events: List[dict] = []
     seen_keys = set()
     for item in items:

@@ -3,10 +3,14 @@ import type {Payload} from '@/lib/data';
 import { NewsThumbnail } from './NewsThumbnail';
 
 export function EvidenceNotice({payload}: {payload:Payload}) {
+  const collection=payload.events?.collection;
+  const dartStatus=payload.events?.dart_collection?.status;
   const evidence=payload.evidence_assessment;
   const differences=Object.entries(payload.cross_source_checks || {}).filter(([,check])=>check.status==='different');
   const reused=Object.entries(payload.indexes || payload.market_signals || {}).filter(([,quote])=>quote.source_warning);
   return <>{evidence && <p className={evidence.verified ? 'muted' : 'notice'}><strong>근거 상태 · {evidence.status}</strong> — {evidence.guidance}</p>}
+    {collection && <p className="muted">뉴스 후보 {collection.candidate_count}건 · 중복 통합 후 {collection.distinct_events}건 · 선정 {collection.selected}건 중 본문 {collection.body_count}건 확보</p>}
+    {dartStatus && ['failed','not_configured'].includes(dartStatus) && <p className="notice">공시 {dartStatus==='failed'?'수집 실패':'수집 미설정'} · 공시가 없다는 의미가 아닙니다.</p>}
     {payload.generation && payload.generation.mode!=='ai' && <p className="notice">시장 요약 작성 상태 · {payload.generation.reason}</p>}
     {differences.length>0 && <p className="notice" role="alert">출처 간 가격 차이: {differences.map(([key])=>key.toUpperCase()).join(', ')}. 수집시각·원문 확인 전 해당 지표 해석을 보류하세요.</p>}
     {reused.map(([key,quote])=><p className="notice" key={key}>{key.toUpperCase()} · {quote.source_warning} 기준 {quote.as_of}</p>)}

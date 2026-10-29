@@ -120,8 +120,8 @@ def daily(store):
         for key in ('kospi', 'kosdaq'):
             indexes[key] = {**indexes[key], 'market_status': daily_overview['korea_session_label']}
     observation = snapshot(indexes, observation_history)
-    raw_news = m.crawl_naver_news(now)
-    raw_news.extend(m.crawl_naver_news(now, max_articles=30, section='262'))
+    from pipeline.analysis.newsroom import collect_news, collection_quality
+    raw_news, source_status = collect_news(now, m.crawl_naver_news)
     # Broaden daily evidence beyond the domestic stock section. Google RSS is
     # a discovery source, not an assertion that the article body was verified.
     from intraday import fetch_google_market_news
@@ -146,7 +146,11 @@ def daily(store):
     # Select and read the actual articles before asking the editor to write.
     # This keeps the daily conclusion connected to the same evidence readers see.
     from pipeline.analysis.daily_desk import select_desk_news, build_issue_desk
-    news = m.enrich_selected_news(select_desk_news(raw_news, m.IS_MORNING, m.select_top_news))
+    news = m.enrich_selected_news(select_desk_news(raw_news, m.IS_MORNING, m.select_top_news, max_count=8), limit=8)
+    import intraday as intraday_collectors
+    dart_status = {}
+    darts = intraday_collectors.enrich_dart_document_excerpts(intraday_collectors.score_dart_events(intraday_collectors.fetch_dart_events(limit=50, diagnostics=dart_status)))
+    darts = display_events(darts)
     session = edition_context(indexes, history, now)
     client = m.OpenAI(api_key=m.OPENAI_API_KEY, timeout=45, max_retries=1) if m.OPENAI_API_KEY else None
     session['issues'] = build_issue_desk(news, session['session'], m.get_index_data, client)
@@ -162,8 +166,9 @@ def daily(store):
             'daily_overview': daily_overview, 'watchpoint': daily_overview['watchpoint'],
             # The selected set is both the on-screen evidence and the DB event
             # record.  Raw collection remains represented by the count.
-            'news_items': news, 'events': {'news': news, 'dart': [],
-                                             'news_count': len(raw_news), 'dart_count': 0},
+            'news_items': news, 'events': {'news': news, 'dart': darts,
+                                             'news_count': len(raw_news), 'dart_count': len(darts),
+                                             'collection': collection_quality(raw_news, news, source_status), 'dart_collection':dart_status},
             'cover_image': cover, 'research': research, 'collection_cutoff': cutoff.isoformat(),
             'risk_trends': m.build_risk_trends(history, indexes), 'market_trend': short_market_trend(history, indexes),
             'run_source': 'supabase'}
@@ -190,24 +195,33 @@ def live(store):
     indexes = exclude_invalid_observations(indexes, observation_history)
     i.require_market_coverage(indexes, minimum=5, required=('kospi', 'kosdaq'))
     observation = snapshot(indexes, observation_history)
-    news, darts = i.fetch_naver_news(limit=20), i.fetch_dart_events(limit=20)
+    from pipeline.analysis.newsroom import collect_news, diverse_news, collection_quality
+    import main as m
+    raw_news, source_status = collect_news(datetime.now(KST), m.crawl_naver_news)
+    if not raw_news:
+        raw_news = i.fetch_naver_news(limit=30)
+        source_status.append({'section':'보조 수집', 'status':'ok' if raw_news else 'empty', 'accepted':len(raw_news)})
+    news = raw_news
+    dart_status = {}
+    darts = i.fetch_dart_events(limit=50, diagnostics=dart_status)
     cutoff = datetime.now(i.KST)
     start, end = i.observation_window(history, cutoff)
     news = i.score_news_events(i.filter_unseen_events(news, history, 'news', cutoff))
-    news = i.enrich_news_article_excerpts(news)
+    news = i.enrich_news_article_excerpts(diverse_news(news, 8), limit=8)
     darts = i.score_dart_events(i.filter_unseen_events(darts, history, 'dart', cutoff))
     darts = i.enrich_dart_document_excerpts(darts)
     sectors = i.detect_sector_rotation(news, darts)
     sentiment = i.build_sentiment(indexes, news, darts, sectors, calibration)
     points, watchpoint = i.build_llm_points(indexes, sentiment, news, darts)
-    display_news = display_events(news + carry_forward_events(history, 'news', cutoff))
+    display_news = diverse_news(display_events(news + carry_forward_events(history, 'news', cutoff), limit=20), limit=8)
     display_darts = display_events(darts + carry_forward_events(history, 'dart', cutoff))
     payload = {'market_snapshot': observation, 'timestamp': datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S'),
                'window_start': start.strftime('%Y-%m-%d %H:%M:%S'), 'window_end': end.strftime('%Y-%m-%d %H:%M:%S'),
                'collection_cutoff': end.strftime('%Y-%m-%d %H:%M:%S'), 'market_signals': indexes,
                'events': {'news': display_news, 'dart': display_darts,
                           'news_count': len(display_news), 'dart_count': len(display_darts),
-                          'new_news_count': len(news), 'new_dart_count': len(darts)},
+                          'new_news_count': len(news), 'new_dart_count': len(darts),
+                          'collection':collection_quality(raw_news, display_news, source_status), 'dart_collection':dart_status},
                'sentiment': sentiment, 'key_points': points, 'watchpoint': watchpoint,
                'sector_rotation': sectors, 'market_participation': market_participation(indexes),
                'market_trend': short_market_trend(history, indexes), 'calibration': calibration,

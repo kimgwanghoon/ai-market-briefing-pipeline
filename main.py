@@ -457,6 +457,7 @@ def fetch_news_article_excerpt(url: str, limit: int = 1400, media: dict | None =
 
 def enrich_selected_news(articles: List[dict], limit: int = 5) -> List[dict]:
     """Attach article excerpts without losing a transparent listing-summary fallback."""
+    from pipeline.analysis.newsroom import has_listing_summary
     enriched = []
     for index, article in enumerate(articles):
         item = dict(article)
@@ -467,7 +468,7 @@ def enrich_selected_news(articles: List[dict], limit: int = 5) -> List[dict]:
                 item["article_excerpt"] = excerpt
                 item["content_status"] = "article_verified"
             else:
-                item["content_status"] = "listing_summary" if item.get("listing_summary") else "headline_only"
+                item["content_status"] = "listing_summary" if has_listing_summary(item) else "headline_only"
         enriched.append(item)
     return enriched
 
@@ -597,10 +598,11 @@ def _news_cutoff(now_kst: datetime) -> datetime:
         return now_kst.replace(hour=9, minute=0, second=0, microsecond=0)
 
 
-def crawl_naver_news(now_kst: datetime, max_articles: int = 30, section: str = '258') -> List[dict]:
+def crawl_naver_news(now_kst: datetime, max_articles: int = 30, section: str = '258', diagnostics=None) -> List[dict]:
     cutoff = _news_cutoff(now_kst)
     headers = {"User-Agent": "Mozilla/5.0"}
     articles: List[dict] = []
+    pages_ok, pages_failed, cards_seen = 0, 0, 0
 
     for page in range(1, 4):
         url = f"https://news.naver.com/breakingnews/section/101/{section}?page={page}"
@@ -608,9 +610,12 @@ def crawl_naver_news(now_kst: datetime, max_articles: int = 30, section: str = '
             res = requests.get(url, headers=headers, timeout=10)
             res.raise_for_status()
         except Exception:
+            pages_failed += 1
             continue
 
         soup = BeautifulSoup(res.text, "html.parser")
+        pages_ok += 1
+        cards_seen += len(soup.select('li.sa_item'))
         for item in soup.select("li.sa_item"):
             title_el = item.select_one("a.sa_text_title")
             if not title_el:
@@ -635,7 +640,7 @@ def crawl_naver_news(now_kst: datetime, max_articles: int = 30, section: str = '
             relative = re.fullmatch(r'(\d+)\s*(분|시간|일)\s*전', time_str)
             if relative:
                 amount, unit = relative.groups()
-                article_dt = now_kst - timedelta(**{{'분':'minutes','시간':'hours','일':'days'}[unit]:int(amount)})
+                article_dt = (now_kst - timedelta(**{{'분':'minutes','시간':'hours','일':'days'}[unit]:int(amount)})).replace(second=0, microsecond=0)
             for fmt in ("%Y.%m.%d. %H:%M", "%Y.%m.%d."):
                 try:
                     article_dt = KST.localize(datetime.strptime(time_str, fmt))
@@ -659,6 +664,8 @@ def crawl_naver_news(now_kst: datetime, max_articles: int = 30, section: str = '
         if len(articles) >= max_articles:
             break
 
+    if diagnostics is not None:
+        diagnostics.update(status='failed' if not pages_ok else 'parse_failed' if not cards_seen else 'partial' if pages_failed else 'ok', pages_ok=pages_ok, pages_failed=pages_failed)
     return articles[:max_articles]
 
 
